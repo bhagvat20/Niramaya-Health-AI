@@ -1,0 +1,23 @@
+2025-04-09 10:03:06,568 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 10:03:06,575 - werkzeug - INFO -  * Debugger PIN: 110-422-295
+2025-04-09 10:03:06,824 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "GET /api/models/microsoft/biogpt/commits/main HTTP/11" 200 5423
+2025-04-09 10:03:07,133 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "GET /api/models/microsoft/biogpt/discussions?p=0 HTTP/11" 200 14637
+2025-04-09 10:03:07,471 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "GET /api/models/microsoft/biogpt/commits/refs%2Fpr%2F17 HTTP/11" 200 5728
+2025-04-09 10:03:07,763 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "HEAD /microsoft/biogpt/resolve/refs%2Fpr%2F17/model.safetensors.index.json HTTP/11" 404 0
+2025-04-09 10:03:08,031 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "HEAD /microsoft/biogpt/resolve/refs%2Fpr%2F17/model.safetensors HTTP/11" 302 0
+2025-04-09 10:03:13,213 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 10:03:13] "OPTIONS /getchat HTTP/1.1" 200 -
+2025-04-09 10:03:13,291 - routes.chat_API - ERROR - Database error: operator does not exist: character varying = integer
+LINE 4:             WHERE account_id = 1 AND member_id = 1 
+                                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+2025-04-09 10:03:13,293 - werkzeug - INFO - 127.0.0.1 - - [09/Apr/2025 10:03:13] "[35m[1mPOST /getchat HTTP/1.1[0m" 500 -
+2025-04-09 10:04:23,329 - werkzeug - INFO -  * Detected change in 'e:\\ProjectH\\APIs\\backend\\routes\\chat_API.py', reloading
+2025-04-09 10:04:37,606 - werkzeug - WARNING -  * Debugger is active!
+2025-04-09 10:04:37,610 - werkzeug - INFO -  * Debugger PIN: 110-422-295
+2025-04-09 10:04:37,863 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "GET /api/models/microsoft/biogpt/commits/main HTTP/11" 200 5423
+2025-04-09 10:04:38,193 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "GET /api/models/microsoft/biogpt/discussions?p=0 HTTP/11" 200 14637
+2025-04-09 10:04:38,503 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "GET /api/models/microsoft/biogpt/commits/refs%2Fpr%2F17 HTTP/11" 200 5728
+2025-04-09 10:04:38,822 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "HEAD /microsoft/biogpt/resolve/refs%2Fpr%2F17/model.safetensors.index.json HTTP/11" 404 0
+2025-04-09 10:04:39,143 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "HEAD /microsoft/biogpt/resolve/refs%2Fpr%2F17/model.safetensors HTTP/11" 302 0
+2025-04-09 10:05:37,242 - werkzeug - INFO -  * Detected change in 'e:\\ProjectH\\APIs\\backend\\routes\\chat_API.py', reloading

@@ -1,0 +1,2589 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Niramaya</title>
+    <link rel="icon" type="image/png" href="N-16.png">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"
+        crossorigin="anonymous"></script>
+
+    <style>
+        /* Header Styles */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+            background: #1c1c1c;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            height: 90px;
+        }
+
+        .logo img {
+            height: 80px;
+            width: auto;
+            margin-right: 15px;
+            margin-left: 48px;
+            margin-bottom: 5px;
+        }
+
+        .site-name {
+            font-size: 24px;
+            color: #e0e0e0;
+            font-weight: bold;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            margin-left: auto;
+            margin-right: 35px;
+        }
+
+        .nav a {
+            color: #e0e0e0;
+            text-decoration: none;
+            font-size: 16px;
+            padding: 8px 16px;
+            transition: background-color 0.3s;
+        }
+
+        .nav a:hover {
+            background-color: #333;
+            border-radius: 5px;
+        }
+
+        /* Body Styles */
+        body {
+            background-color: #1c1c1c;
+            color: #ffffff;
+            font-family: Arial, Helvetica, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Greeting Container Styles */
+        .greeting-container {
+            text-align: center;
+            width: 100%;
+            margin-top: 350px;
+            position: relative;
+        }
+
+        .sub-header {
+            font-size: 22px;
+            font-weight: normal;
+            color: #cccccc;
+            margin-bottom: 20px;
+            margin: auto;
+        }
+
+        #welcome-message {
+            font-size: 26px;
+            color: #e0e0e0;
+            margin-bottom: 10px;
+        }
+
+        /* Input Container Styles */
+        .input-container {
+            position: relative;
+            top: auto;
+            left: auto;
+            transform: none;
+            display: flex;
+            align-items: center;
+            background-color: #333333;
+            padding: 15px;
+            border-radius: 30px;
+            width: 550px;
+            transition: all 0.5s ease;
+            margin-top: 30px;
+            margin-bottom: 10px;
+            transition: margin 0.3s ease-in-out;
+        }
+
+        .input-container input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-size: 16px;
+            padding: 12px;
+            height: 100%;
+        }
+
+        .model-select {
+            background: #444444;
+            border: 1px solid #666666;
+            color: #ffffff;
+            font-size: 16px;
+            cursor: pointer;
+            margin-left: 15px;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .input-container button {
+            background: #555555;
+            color: #ffffff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-left: 15px;
+        }
+
+        /* Chat Container Styles */
+        .chat-container {
+            width: 50%;
+            margin: 0 auto;
+            display: none;
+            flex-direction: column;
+            height: calc(75vh - 90px - 70px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-radius: 10px;
+            padding: 15px;
+            padding-bottom: 90px;
+            background-color: #1c1c1c;
+            scrollbar-width: thin;
+            scrollbar-color: #888 transparent;
+            margin-top: 120px;
+        }
+
+        .chat-message {
+            padding: 12px;
+            border-radius: 12px;
+            margin: 8px 0;
+            max-width: 100%;
+            line-height: 1.6;
+            width: fit-content;
+            font-size: 16px;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: #333333;
+            margin-left: auto;
+            margin-right: 0;
+            text-align: right;
+        }
+
+        .bot-message {
+            align-self: flex-start;
+            background-color: transparent;
+            padding: 15px;
+            margin-right: auto;
+            margin-left: 0;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        .bot-message ul {
+            padding-left: 20px;
+            margin: 0;
+            word-wrap: break-word;
+            font-size: inherit;
+        }
+
+        .bot-message li {
+            list-style-type: disc;
+            margin-bottom: 5px;
+            font-size: inherit;
+        }
+
+        /* Chat Footer Styles */
+        .chat-footer {
+            position: fixed;
+            bottom: 5%;
+            width: 100%;
+            background: #1c1c1c;
+            padding: 15px 0;
+            display: none;
+            justify-content: center;
+            box-sizing: border-box;
+            height: 70px;
+            margin-top: 10px;
+        }
+
+        .chat-footer .input-container {
+            width: 600px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            background-color: #333333;
+            border-radius: 30px;
+            height: 50px;
+        }
+
+        /* Custom Scrollbar */
+        .chat-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background-color: #555;
+        }
+
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000 !important;
+            visibility: hidden;
+            /* Initially hidden */
+            opacity: 0;
+            /* Initially transparent */
+            transition: visibility 0.3s, opacity 0.3s;
+            /* Smooth transition */
+        }
+
+        .modal[style*="display: flex"] {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: #1c1c1c;
+            padding: 40px;
+            border-radius: 15px;
+            width: 500px;
+            /* Increased from 450px to match login modal's apparent width */
+            max-width: 90%;
+            position: relative;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+            border: 1px solid #444444;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 28px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: #ffffff;
+        }
+
+        .modal-content h2 {
+            color: #e0e0e0;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        #login-form,
+        #register-form {
+            width: 100%;
+            /* Full width of the modal content */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #login-modal .modal-content,
+        #register-modal .modal-content {
+            width: 450px;
+            max-width: 90%;
+            position: relative;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+            border: 1px solid #444444;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #member-selection-modal .modal-content {
+            width: 450px;
+            /* Match login/register modal width */
+            max-height: 80vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        #member-selection-modal .member-list {
+            width: 100%;
+            /* Full width of the modal content */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+            gap: 10px;
+            /* Space between member cards */
+        }
+
+        #member-selection-modal .add-member-btn {
+            width: 100%;
+            /* Match input/button width */
+            padding: 12px;
+            background: linear-gradient(90deg, #555555, #666666);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            box-sizing: border-box;
+            /* Include padding in width */
+            margin-top: 10px;
+            /* Space above the button */
+        }
+
+        #member-selection-modal .add-member-btn:hover {
+            background: linear-gradient(90deg, #666666, #777777);
+        }
+
+        #member-selection-modal .modal-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #cccccc;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        #profile-modal .modal-content {
+            width: 450px;
+            /* Match login/register modal width */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        #profile-modal .profile-card,
+        #profile-modal .profile-actions {
+            width: 100%;
+            /* Full width of the modal content */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #add-member-modal .modal-content {
+            width: 450px;
+            /* Match login/register modal width */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        #add-member-modal #add-member-form {
+            width: 100%;
+            /* Full width of the modal content */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #history-modal .modal-content {
+            width: 600px;
+            max-height: 80vh;
+            /* Ensure the modal content respects the viewport height */
+            overflow-y: auto;
+            /* Enable vertical scrolling for the entire modal content */
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            /* Align content from the top */
+            align-items: center;
+            padding: 40px;
+            background: linear-gradient(145deg, #2a2a2a, #1c1c1c);
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+            border: 1px solid #444444;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+            /* Ensure the group takes full width of the container */
+        }
+
+        .form-group label {
+            display: block;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            /* Match the button's width */
+            padding: 12px;
+            background-color: #3a3a3a;
+            border: 1px solid #555555;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            box-sizing: border-box;
+            /* Include padding in width calculation */
+        }
+
+        .form-group input:focus {
+            border-color: #888888;
+            box-shadow: 0 0 8px rgba(136, 136, 136, 0.3);
+        }
+
+        .modal-btn {
+            width: 100%;
+            /* Match the input width */
+            padding: 12px;
+            background: linear-gradient(90deg, #555555, #666666);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            box-sizing: border-box;
+            /* Include padding in width calculation */
+            margin-top: 10px;
+            /* Maintain spacing */
+        }
+
+        .modal-btn:hover {
+            background: linear-gradient(90deg, #666666, #777777);
+            transform: translateY(-2px);
+        }
+
+        .modal-btn:active {
+            transform: translateY(0);
+        }
+
+        .modal-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #cccccc;
+            font-size: 14px;
+        }
+
+        .modal-link a {
+            color: #888888;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .modal-link a:hover {
+            color: #ffffff;
+        }
+
+        .member-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .member-card {
+            background: #3a3a3a;
+            padding: 12px;
+            /* Match input padding */
+            margin: 5px 0;
+            /* Reduced margin for compactness */
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            /* Full width to match inputs/buttons */
+            box-sizing: border-box;
+            /* Include padding in width */
+            text-align: center;
+            /* Center the text */
+            font-size: 16px;
+            /* Match input font size */
+            color: #e0e0e0;
+        }
+
+        .member-card:hover {
+            background: #4a4a4a;
+        }
+
+        .member-card.selected {
+            background: #555555;
+            border: 2px solid #777777;
+        }
+
+        .member-name {
+            color: #e0e0e0;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .member-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 5px;
+        }
+
+        .member-actions i {
+            color: #888;
+            font-size: 16px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .member-actions i:hover {
+            color: #ffffff;
+        }
+
+        /* profile */
+        .profile-card {
+            background: #3a3a3a;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .profile-detail {
+            margin: 10px 0;
+            font-size: 16px;
+            color: #e0e0e0;
+        }
+
+        .profile-detail strong {
+            color: #cccccc;
+            margin-right: 10px;
+        }
+
+        .profile-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .profile-actions .modal-btn {
+            background: linear-gradient(90deg, #555555, #666666);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .profile-actions .modal-btn:hover {
+            background: linear-gradient(90deg, #666666, #777777);
+        }
+
+        /* History modal */
+        .history-list {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            margin-top: 20px;
+            max-height: calc(100% - 100px);
+            /* Subtract padding and header height */
+            overflow-y: auto;
+            /* Enable scrolling within the list */
+        }
+
+        .history-card {
+            background: #2a2a2a;
+            padding: 15px;
+            margin-bottom: 15px;
+            /* Consistent spacing between cards */
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 100%;
+            /* Ensure each card uses the full width of the list (within 450px) */
+            box-sizing: border-box;
+            /* Include padding in width calculation */
+        }
+
+        .history-title {
+            color: #e0e0e0;
+            font-size: 18px;
+            font-weight: 500;
+            margin: 0;
+            word-break: break-word;
+            /* Prevent overflow */
+        }
+
+        .history-response {
+            color: #cccccc;
+            font-size: 14px;
+            margin: 5px 0;
+            word-break: break-word;
+            /* Prevent overflow */
+            max-width: 100%;
+            /* Ensure it fits within the card */
+            overflow-wrap: break-word;
+            /* Handle long words */
+        }
+
+        .history-timestamp {
+            color: #cccccc;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .history-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 5px;
+        }
+
+        .history-actions i {
+            color: #888;
+            font-size: 16px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .history-actions i:hover {
+            color: #ffffff;
+        }
+
+        /* Gemini */
+        .gemini-response {
+            color: #cccccc;
+            font-size: 16px;
+            line-height: 1.6;
+            word-break: break-word;
+            max-width: 100%;
+        }
+
+        .gemini-response p {
+            margin: 5px 0;
+            font-size: inherit;
+        }
+
+        .gemini-response ul {
+            padding-left: 20px;
+            margin: 5px 0;
+            font-size: inherit;
+        }
+
+        .gemini-response li {
+            margin-bottom: 5px;
+            font-size: inherit;
+        }
+
+        .gemini-response strong {
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .logo {
+            cursor: pointer;
+        }
+
+        .site-name {
+            cursor: pointer;
+        }
+
+        #history-btn,
+        #profile-btn,
+        #login-btn,
+        #register-btn {
+            cursor: pointer;
+        }
+
+        /* Radio Group Styling */
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            /* Space between radio options */
+            padding: 10px 0;
+            /* Match input padding */
+            background-color: #3a3a3a;
+            /* Match input background */
+            border: 1px solid #555555;
+            /* Match input border */
+            border-radius: 8px;
+            /* Match input border-radius */
+            padding-left: 12px;
+            /* Align with input padding */
+            margin-top: 5px;
+            /* Space below label */
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            /* Space between radio and text */
+            color: #e0e0e0;
+            /* Match text color */
+            font-size: 16px;
+            /* Match input font size */
+        }
+
+        .radio-text {
+            margin: 0;
+            /* Remove default margin */
+        }
+
+        input[type="radio"] {
+            appearance: none;
+            /* Remove default radio styling */
+            width: 16px;
+            height: 16px;
+            border: 2px solid #666666;
+            /* Custom border */
+            border-radius: 50%;
+            /* Circular shape */
+            outline: none;
+            cursor: pointer;
+            position: relative;
+            background-color: #2a2a2a;
+            /* Dark background */
+        }
+
+        input[type="radio"]:checked {
+            border-color: #888888;
+            /* Highlight when checked */
+        }
+
+        input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #888888;
+            /* Checked dot color */
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .form-group .radio-group {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Update Profile Modal Specific Styles */
+        #update-profile-modal .modal-content {
+            width: 450px !important;
+            max-width: 90% !important;
+            padding: 40px !important;
+            box-sizing: border-box !important;
+            /* Override flex alignment to stretch children */
+            align-items: stretch !important;
+        }
+
+        #update-profile-modal .form-group {
+            width: 100% !important;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        #update-profile-modal .form-group label {
+            display: block !important;
+            color: #e0e0e0 !important;
+            margin-bottom: 8px !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
+        }
+
+        #update-profile-modal .form-group input {
+            width: 100% !important;
+            padding: 12px;
+            background-color: #3a3a3a;
+            border: 1px solid #555555;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            box-sizing: border-box;
+        }
+
+        #update-profile-modal .form-group input:focus {
+            border-color: #888888;
+            box-shadow: 0 0 8px rgba(136, 136, 136, 0.3);
+        }
+
+        /* Radio Group Styling for Update Profile Modal */
+        #update-profile-modal .radio-group {
+            width: 100% !important;
+            padding: 10px 12px;
+            background-color: #3a3a3a;
+            border: 1px solid #555555;
+            border-radius: 8px;
+            box-sizing: border-box;
+            margin-top: 5px;
+        }
+
+        #update-profile-modal .radio-label {
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            color: #e0e0e0 !important;
+            font-size: 16px !important;
+            margin-bottom: 8px !important;
+        }
+
+        #update-profile-modal .radio-text {
+            margin: 0 !important;
+        }
+
+        #update-profile-modal input[type="radio"] {
+            appearance: none !important;
+            width: 16px !important;
+            height: 16px !important;
+            border: 2px solid #666666 !important;
+            border-radius: 50% !important;
+            outline: none !important;
+            cursor: pointer !important;
+            position: relative !important;
+            background-color: #2a2a2a !important;
+        }
+
+        #update-profile-modal input[type="radio"]:checked {
+            border-color: #888888 !important;
+        }
+
+        #update-profile-modal input[type="radio"]:checked::after {
+            content: '' !important;
+            position: absolute !important;
+            width: 8px !important;
+            height: 8px !important;
+            background-color: #888888 !important;
+            border-radius: 50% !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+        }
+
+
+        /* Forgot password */
+        #send-otp-modal .modal-content,
+        #reset-password-modal .modal-content {
+            width: 450px;
+            min-width: 400px;
+            max-width: 90%;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #send-otp-modal .form-group,
+        #reset-password-modal .form-group {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        #send-otp-modal .form-group input,
+        #reset-password-modal .form-group input {
+            width: 100%;
+            padding: 12px;
+            background-color: #3a3a3a;
+            border: 1px solid #555555;
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 16px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        #send-otp-modal .form-group input:focus,
+        #reset-password-modal .form-group input:focus {
+            border-color: #888888;
+            box-shadow: 0 0 8px rgba(136, 136, 136, 0.3);
+        }
+
+        #send-otp-modal .modal-btn,
+        #reset-password-modal .modal-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(90deg, #555555, #666666);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            box-sizing: border-box;
+        }
+
+        #send-otp-modal .modal-btn:hover,
+        #reset-password-modal .modal-btn:hover {
+            background: linear-gradient(90deg, #666666, #777777);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <img src="N-dark.png" alt="Niramaya Logo">
+        </div>
+        <div class="site-name">Niramaya</div>
+        <div class="nav">
+            <a onclick="newChat()" href="question_input.html">New chat</a>
+            <a id="history-btn">History</a>
+            <a id="profile-btn" style="display: none;">Profile</a>
+            <a id="login-btn" onclick="openLoginModal()">Login</a>
+            <a id="register-btn" onclick="openRegisterModal()">Register</a>
+            <a href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i class="fas fa-user-shield"></i> Admin
+                Portal</a>
+        </div>
+    </div>
+
+    <!-- Greeting Container -->
+    <div class="greeting-container" id="greeting-container">
+        <div id="welcome-message" style="display: none;"></div>
+        <div class="sub-header">How can I help you today?</div>
+    </div>
+
+    <!-- Initial Input Container -->
+    <div class="input-container" id="input-container">
+        <input type="text" id="user-input" placeholder="What do you want to know?">
+        <select class="model-select" id="model-select">
+            <option value="BioGPT">BioGPT</option>
+            <option value="Gemini">Gemini</option>
+            <option value="LRv1">LRv1</option>
+            <option value="LRv2">LRv2</option>
+        </select>
+        <button onclick="sendMessage()">➤</button>
+    </div>
+
+    <!-- Chat Container -->
+    <div class="chat-container" id="chat-container"></div>
+
+    <!-- Chat Footer -->
+    <div class="chat-footer" id="chat-footer">
+        <div class="input-container">
+            <input type="text" id="user-input-footer" placeholder="Type your message...">
+            <select class="model-select" id="model-select-footer">
+                <option value="BioGPT">BioGPT</option>
+                <option value="Gemini">Gemini</option>
+                <option value="LRv1">LRv1</option>
+                <option value="LRv2">LRv2</option>
+            </select>
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeLoginModal()">×</span>
+            <h2>Login to Niramaya</h2>
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <p class="modal-link">
+                        <a href="#" onclick="openForgotPasswordModal();">Forgot Password?</a>
+                    </p>
+                </div>
+                <button type="submit" class="modal-btn">Login</button>
+            </form>
+            <p class="modal-link">
+                Don't have an Account? <a href="#" onclick="openRegisterModal(); closeLoginModal();">Register</a><br>
+            </p>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="register-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeRegisterModal()">×</span>
+            <h2>Register for Niramaya</h2>
+            <form id="register-form" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label for="familyname">Family Name</label>
+                    <input type="text" id="familyname" name="familyname" placeholder="Enter your family name" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" name="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" name="password" placeholder="Enter your password"
+                        required>
+                </div>
+                <button type="submit" class="modal-btn">Register</button>
+            </form>
+            <p class="modal-link">Already have an account? <a href="#"
+                    onclick="openLoginModal(); closeRegisterModal();">Login</a></p>
+        </div>
+    </div>
+
+    <!-- Member Selection Modal -->
+    <div id="member-selection-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Select Member</h2>
+            <div id="member-list" class="member-list">
+                <!-- Members will be dynamically added here -->
+            </div>
+            <button class="add-member-btn" onclick="openAddMemberModal()">Add Member</button>
+            <p class="modal-link">Need to add a member? Contact support.</p>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeProfileModal()">×</span>
+            <h2>Profile Details</h2>
+            <div class="profile-card">
+                <div class="profile-detail"><strong>Name:</strong> <span id="profile-name"></span></div>
+                <div class="profile-detail"><strong>Gender:</strong> <span id="profile-gender"></span></div>
+                <div class="profile-detail"><strong>Age:</strong> <span id="profile-age"></span></div>
+                <div class="profile-detail"><strong>Height:</strong> <span id="profile-height"></span></div>
+                <div class="profile-detail"><strong>Weight:</strong> <span id="profile-weight"></span></div>
+            </div>
+            <div class="profile-actions">
+                <button class="modal-btn" onclick="openUpdateProfileModal()">Update Profile</button>
+                <button class="modal-btn" onclick="changeMember()">Change Member</button>
+                <button class="modal-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Profile Modal -->
+    <div id="update-profile-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeUpdateProfileModal()">×</span>
+            <h2>Update Profile</h2>
+            <form id="update-profile-form" onsubmit="handleUpdateProfile(event)">
+                <div class="form-group">
+                    <label for="update-name">Name</label>
+                    <input type="text" id="update-name" name="name" placeholder="Enter name" required>
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" id="update-gender-male" name="update-gender" value="Male" required>
+                            <span class="radio-text">Male</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" id="update-gender-female" name="update-gender" value="Female">
+                            <span class="radio-text">Female</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="update-age">Age</label>
+                    <input type="number" id="update-age" name="age" placeholder="Enter age" required>
+                </div>
+                <div class="form-group">
+                    <label for="update-height">Height (cm)</label>
+                    <input type="number" id="update-height" name="height" placeholder="Enter height in cm" required>
+                </div>
+                <div class="form-group">
+                    <label for="update-weight">Weight (kg)</label>
+                    <input type="number" id="update-weight" name="weight" placeholder="Enter weight in kg" required>
+                </div>
+                <button type="submit" class="modal-btn">Update</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="add-member-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Add New Member</h2>
+            <form id="add-member-form" onsubmit="handleAddMember(event)">
+                <div class="form-group">
+                    <label for="member-name">Name</label>
+                    <input type="text" id="member-name" name="name" placeholder="Enter member name" required>
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" id="member-gender-male" name="member-gender" value="Male" required>
+                            <span class="radio-text">Male</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" id="member-gender-female" name="member-gender" value="Female">
+                            <span class="radio-text">Female</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="member-age">Age</label>
+                    <input type="number" id="member-age" name="age" placeholder="Enter age" required>
+                </div>
+                <div class="form-group">
+                    <label for="member-height">Height (cm)</label>
+                    <input type="number" id="member-height" name="height" placeholder="Enter height in cm" required>
+                </div>
+                <div class="form-group">
+                    <label for="member-weight">Weight (kg)</label>
+                    <input type="number" id="member-weight" name="weight" placeholder="Enter weight in kg" required>
+                </div>
+                <button type="submit" class="modal-btn">Add Member</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="history-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="width: 600px; max-height: 80vh; overflow-y: auto;">
+            <span class="close-btn" onclick="closeHistoryModal()">×</span>
+            <h2>Chat History</h2>
+            <div id="history-list" class="history-list">
+                <!-- History cards will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="send-otp-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeSendOtpModal()">×</span>
+            <h2>Reset Password</h2>
+            <form id="send-otp-form" onsubmit="handleSendOtp(event)">
+                <div class="form-group">
+                    <label for="forgot-email">Email</label>
+                    <input type="email" id="forgot-email" name="email" placeholder="Enter your email" required>
+                </div>
+                <button type="submit" class="modal-btn">Send OTP</button>
+            </form>
+            <p class="modal-link">
+                Back to <a href="#" onclick="openLoginModal(); closeSendOtpModal();">Login</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="reset-password-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeResetPasswordModal()">×</span>
+            <h2>Reset Password</h2>
+            <form id="reset-password-form" onsubmit="handleResetPassword(event)">
+                <div class="form-group">
+                    <label for="otp">OTP</label>
+                    <input type="text" id="otp" name="otp" placeholder="Enter OTP" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-password">New Password</label>
+                    <input type="password" id="new-password" name="new-password" placeholder="Enter new password"
+                        required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm-password"
+                        placeholder="Confirm new password" required>
+                </div>
+                <button type="submit" class="modal-btn">Reset Password</button>
+            </form>
+            <p class="modal-link">
+                Back to <a href="#" onclick="openLoginModal(); closeResetPasswordModal();">Login</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        let isFirstMessage = true;
+        let isLoggedIn = false;
+        let guestQuestionCount = 0;
+
+        document.querySelector(".logo").onclick = function (e) {
+            e.preventDefault(); // Prevent any default behavior if applicable
+            window.location.href = "home.html";
+        };
+
+        document.querySelector(".site-name").onclick = function (e) {
+            e.preventDefault(); // Prevent any default behavior if applicable
+            window.location.href = "home.html";
+        };
+        // Initialize on Page Load
+        window.onload = function () {
+            const storedEmail = localStorage.getItem("userEmail");
+            const storedAccountId = localStorage.getItem("accountId");
+            const storedSelectedMemberId = localStorage.getItem("selectedMemberId");
+            const storedSelectedMemberName = localStorage.getItem("selectedMemberName");
+            const storedFamilyName = localStorage.getItem("familyName");
+
+            // Set isLoggedIn if any critical data is present
+            if (storedEmail && storedAccountId && (storedSelectedMemberId || storedFamilyName)) {
+                isLoggedIn = true;
+            } else {
+                isLoggedIn = false;
+                guestQuestionCount = localStorage.getItem("guestQuestionCount") || 0; // Load guest count
+            }
+
+            updateNavButtons();
+            updateGreeting();
+
+            // Add Enter key event listeners for both input fields
+            const initialInput = document.getElementById("user-input");
+            const footerInput = document.getElementById("user-input-footer");
+
+            initialInput.addEventListener("keypress", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault(); // Prevent form submission or newline
+                    sendMessage();
+                }
+            });
+
+            footerInput.addEventListener("keypress", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault(); // Prevent form submission or newline
+                    sendMessage();
+                }
+            });
+
+            // If logged in but no member selected, prompt for member selection
+            if (isLoggedIn && !storedSelectedMemberId) {
+                const accountId = localStorage.getItem("accountId");
+                if (accountId) {
+                    fetch("http://127.0.0.1:5000/getmembers", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ account_id: accountId })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.members && data.members.length > 0) {
+                                openMemberSelectionModal(data.members);
+                            } else {
+                                openAddMemberModal();
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error fetching members:", error);
+                            alert("An error occurred while fetching members. Please try again.");
+                        });
+                }
+            }
+        };
+
+        // Scroll to Bottom of Chat
+        function scrollToBottom() {
+            let chatContainer = document.getElementById("chat-container");
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        // function removelocal()
+        // {
+        //     localStorage.clear();
+        // }
+        // Send Message to API
+
+        async function sendMessage() {
+            let inputField = isFirstMessage
+                ? document.getElementById("user-input")
+                : document.getElementById("user-input-footer");
+
+            let modelField = isFirstMessage
+                ? document.getElementById("model-select")
+                : document.getElementById("model-select-footer");
+
+            let userInput = inputField.value.trim();
+            let model = modelField.value;
+            let chatContainer = document.getElementById("chat-container");
+
+            if (userInput === "") {
+                alert("Please enter a message!");
+                return;
+            }
+
+            if (!isLoggedIn && guestQuestionCount >= 5) {
+                alert("You have reached the limit of 5 questions as a guest. Please log in or register to continue.");
+                openLoginModal();
+                return;
+            }
+
+            if (isFirstMessage) {
+                document.getElementById("greeting-container").style.display = "none";
+                document.getElementById("input-container").style.display = "none";
+                document.getElementById("chat-container").style.display = "flex";
+                document.getElementById("chat-footer").style.display = "flex";
+                document.getElementById("chat-footer").style.marginBottom = "10px";
+                isFirstMessage = false;
+            }
+
+            let userMessage = document.createElement("div");
+            userMessage.classList.add("chat-message", "user-message");
+            userMessage.textContent = userInput;
+            chatContainer.appendChild(userMessage);
+
+            scrollToBottom();
+
+            inputField.value = "";
+
+            try {
+                let endpoint = "";
+                let payload = { question: userInput }; // Default payload
+                switch (model) {
+                    case "BioGPT":
+                        endpoint = "http://127.0.0.1:5000/askbiogpt";
+                        break;
+                    case "Gemini":
+                        endpoint = "http://127.0.0.1:5000/askgemini";
+                        break;
+                    case "LRv1":
+                        endpoint = "http://127.0.0.1:5000/asklrv1";
+                        // Adjust payload if backend expects 'symptoms' instead of 'question'
+                        payload = { symptoms: userInput }; // Try this if 'question' causes 400
+                        break;
+                    case "LRv2":
+                        endpoint = "http://127.0.0.1:5000/asklrv2";
+                        payload = { symptoms: userInput }; // Try this if 'question' causes 400
+                        break;
+                    default:
+                        throw new Error("Invalid model selected.");
+                }
+
+                console.log("Sending request to:", endpoint, "with payload:", payload); // Debug log
+                let response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                let data = await response.json();
+                console.log("API Response:", data); // Debug log
+
+                let botMessage = document.createElement("div");
+                botMessage.classList.add("chat-message", "bot-message");
+
+                // Conditional rendering based on model
+                if (model === "BioGPT") {
+                    let answerList = document.createElement("ul");
+                    answerList.style.paddingLeft = "20px";
+                    let sentences = data.answer.split(". ");
+                    sentences.forEach(sentence => {
+                        if (sentence.trim()) {
+                            let listItem = document.createElement("li");
+                            listItem.textContent = sentence.trim() + ".";
+                            answerList.appendChild(listItem);
+                        }
+                    });
+                    botMessage.appendChild(answerList);
+                } else if (model === "Gemini") {
+                    let responseDiv = document.createElement("div");
+                    responseDiv.className = "gemini-response";
+                    let lines = data.answer.split("\n").map(line => line.trim()).filter(line => line.length > 0);
+                    let currentList = null;
+
+                    lines.forEach(line => {
+                        if (line.startsWith("**") && line.endsWith("**") && !line.includes(":")) {
+                            // Handle bolded section headers like "**Types of Influenza Viruses:**"
+                            let paragraph = document.createElement("p");
+                            let content = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                            paragraph.innerHTML = content;
+                            responseDiv.appendChild(paragraph);
+                            currentList = null; // Reset list since this is a new section
+                        } else if (line.startsWith("*")) {
+                            // Start or continue a list
+                            if (!currentList) {
+                                currentList = document.createElement("ul");
+                                responseDiv.appendChild(currentList);
+                            }
+                            let listItem = document.createElement("li");
+                            let content = line.replace(/^\*\s*/, "").trim();
+                            content = content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+                            if (content.startsWith("-")) {
+                                // Handle nested list item
+                                let nestedList = document.createElement("ul");
+                                let nestedItem = document.createElement("li");
+                                nestedItem.innerHTML = content.replace(/^\-\s*/, "").trim();
+                                nestedList.appendChild(nestedItem);
+                                listItem.appendChild(nestedList);
+                            } else {
+                                listItem.innerHTML = content;
+                            }
+
+                            currentList.appendChild(listItem);
+                        } else {
+                            // Handle paragraphs
+                            if (currentList) currentList = null;
+                            let paragraph = document.createElement("p");
+                            let content = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                            paragraph.innerHTML = content;
+                            responseDiv.appendChild(paragraph);
+                        }
+                    });
+                    botMessage.appendChild(responseDiv);
+                } else if (model === "LRv1") {
+                    let responseDiv = document.createElement("div");
+                    responseDiv.className = "gemini-response";
+                    let diseasePara = document.createElement("p");
+                    diseasePara.innerHTML = `<strong>Predicted Disease:</strong> ${data.predicted_disease || "No disease predicted."}`;
+                    responseDiv.appendChild(diseasePara);
+                    let descriptionPara = document.createElement("p");
+                    descriptionPara.innerHTML = `<strong>Description:</strong> ${data.description || "No description available."}`;
+                    responseDiv.appendChild(descriptionPara);
+
+                    let disclaimerPara = document.createElement("p");
+                    disclaimerPara.style.fontStyle = "italic";
+                    disclaimerPara.style.color = "#555";
+                    disclaimerPara.textContent = "Disclaimer: Niramaya is not a doctor; please consult one. Don't share information that can identify you.";
+                    responseDiv.appendChild(disclaimerPara);
+                    botMessage.appendChild(responseDiv);
+                } else if (model === "LRv2") {
+                    let responseDiv = document.createElement("div");
+                    responseDiv.className = "gemini-response";
+                    let diseasePara = document.createElement("p");
+                    diseasePara.innerHTML = `<strong>Predicted Disease:</strong> ${data.predicted_disease || "No disease predicted."}`;
+                    responseDiv.appendChild(diseasePara);
+                    let descriptionPara = document.createElement("p");
+                    descriptionPara.innerHTML = `<strong>Description:</strong> ${data.description || "No description available."}`;
+                    responseDiv.appendChild(descriptionPara);
+                    if (data.precautions && data.precautions.length > 0) {
+                        let precautionTitle = document.createElement("p");
+                        precautionTitle.innerHTML = `<strong>Precautions:</strong>`;
+                        responseDiv.appendChild(precautionTitle);
+                        let precautionList = document.createElement("ul");
+                        precautionList.style.paddingLeft = "20px";
+                        data.precautions.forEach(precaution => {
+                            let listItem = document.createElement("li");
+                            listItem.textContent = precaution;
+                            precautionList.appendChild(listItem);
+                        });
+                        responseDiv.appendChild(precautionList);
+                    }
+                    let disclaimerPara = document.createElement("p");
+                    disclaimerPara.style.fontStyle = "italic";
+                    disclaimerPara.style.color = "#555";
+                    disclaimerPara.textContent = "Disclaimer: Niramaya is not a doctor; please consult one. Don't share information that can identify you.";
+                    responseDiv.appendChild(disclaimerPara);
+                    botMessage.appendChild(responseDiv);
+                }
+
+                chatContainer.appendChild(botMessage);
+
+                // Increment guest question count if not loggedIn
+                if (!isLoggedIn) {
+                    guestQuestionCount++;
+                    localStorage.setItem("guestQuestionCount", guestQuestionCount);
+                }
+
+                // Save chat history only if loggedIn
+                if (isLoggedIn) {
+                    const accountId = localStorage.getItem("accountId");
+                    const memberId = localStorage.getItem("selectedMemberId");
+                    if (accountId && memberId) {
+                        let botResponse;
+                        if (model === "LRv1") {
+                            botResponse = JSON.stringify({
+                                Description: data.description || "No description available.",
+                                predicted_disease: data.predicted_disease || "No disease predicted."
+                            });
+                        } else if (model === "LRv2") {
+                            botResponse = JSON.stringify({
+                                predicted_disease: data.predicted_disease || "No disease predicted.",
+                                description: data.description || "No description available.",
+                                precautions: data.precautions || []
+                            });
+                        } else {
+                            botResponse = data.answer;
+                        }
+                        fetch("http://127.0.0.1:5000/savechat", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                account_id: accountId,
+                                member_id: memberId,
+                                user_input: userInput,
+                                bot_response: botResponse,
+                                model: model
+                            })
+                        })
+                            .then(saveResponse => saveResponse.json())
+                            .then(saveData => {
+                                console.log("Chat History Saved:", saveData);
+                                if (!saveData.success) {
+                                    console.error("Failed to save chat history:", saveData.message);
+                                }
+                            })
+                            .catch(saveError => {
+                                console.error("Error saving chat history:", saveError);
+                            });
+                    }
+                }
+
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 200);
+
+            } catch (error) {
+                console.error("Error:", error);
+                let errorMessage = document.createElement("div");
+                errorMessage.classList.add("chat-message", "bot-message");
+                errorMessage.style.color = "red";
+                errorMessage.textContent = `❌ ${error.message || "Unable to fetch response. Try again later!"}`;
+                chatContainer.appendChild(errorMessage);
+
+                setTimeout(() => {
+                    scrollToBottom();
+                }, 200);
+            }
+        }
+
+        // Start a New Chat
+        function newChat() {
+            console.log("New Chat button clicked");
+            document.getElementById("chat-container").innerHTML = "";
+            document.getElementById("greeting-container").style.display = "block";
+            document.getElementById("input-container").style.display = "flex";
+            document.getElementById("chat-footer").style.display = "none";
+            isFirstMessage = true;
+            if (!isLoggedIn) {
+                guestQuestionCount = 0;
+                localStorage.setItem("guestQuestionCount", guestQuestionCount);
+            }
+            updateGreeting();
+        }
+
+        // Update Navigation Buttons Based on Login Status
+        function updateNavButtons() {
+            const loginBtn = document.getElementById("login-btn");
+            const registerBtn = document.getElementById("register-btn");
+            const profileBtn = document.getElementById("profile-btn");
+            const historyBtn = document.getElementById("history-btn"); // Select the History link
+
+            if (isLoggedIn) {
+                loginBtn.style.display = "none";
+                registerBtn.style.display = "none";
+                profileBtn.style.display = "block";
+                historyBtn.style.display = "block"; // Show History button
+            } else {
+                loginBtn.style.display = "block";
+                registerBtn.style.display = "block";
+                profileBtn.style.display = "none";
+                historyBtn.style.display = "none"; // Hide History button for guests
+            }
+        }
+
+        // Update Greeting Message
+        function updateGreeting() {
+            const welcomeMessage = document.getElementById("welcome-message");
+            const familyName = localStorage.getItem("familyName");
+            const selectedMemberName = localStorage.getItem("selectedMemberName");
+
+            if (isLoggedIn) {
+                if (selectedMemberName) {
+                    welcomeMessage.textContent = `Welcome, ${selectedMemberName}`;
+                    welcomeMessage.style.display = "block";
+                } else if (familyName && familyName !== "undefined") {
+                    welcomeMessage.textContent = `Welcome, ${familyName}! Please select or add a member to continue.`;
+                    welcomeMessage.style.display = "block";
+                } else {
+                    welcomeMessage.textContent = "Welcome! Please select or add a member to continue.";
+                    welcomeMessage.style.display = "block";
+                }
+            } else {
+                welcomeMessage.style.display = "none";
+            }
+        }
+
+        // Open Login Modal
+        function openLoginModal() {
+            document.getElementById("login-modal").style.display = "flex";
+        }
+
+        // Close Login Modal
+        function closeLoginModal() {
+            document.getElementById("login-modal").style.display = "none";
+            document.getElementById("login-form").reset();
+        }
+
+        // Handle Login Form Submission
+        function handleLogin(event) {
+            event.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            fetch("http://127.0.0.1:5000/userlogin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email, password: password })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Login API Response:", data);
+                    if (data.success) {
+                        isLoggedIn = true;
+                        localStorage.setItem("userEmail", data.email);
+                        localStorage.setItem("familyName", data.familyname || "User");
+                        updateNavButtons();
+
+                        // Force member selection
+                        if (data.members && data.members.length > 0) {
+                            openMemberSelectionModal(data.members);
+                        } else {
+                            alert("No members found for this account! Please add a member.");
+                            openAddMemberModal();
+                        }
+                        closeLoginModal();
+                        updateGreeting();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("An error occurred during login. Please try again.");
+                });
+        }
+
+        // Open Register Modal
+        function openRegisterModal() {
+            document.getElementById("register-modal").style.display = "flex";
+        }
+
+        // Close Register Modal
+        function closeRegisterModal() {
+            document.getElementById("register-modal").style.display = "none";
+            document.getElementById("register-form").reset();
+        }
+
+        // Handle Registration Form Submission
+        function handleRegister(event) {
+            event.preventDefault();
+
+            const familyname = document.getElementById("familyname").value;
+            const email = document.getElementById("register-email").value;
+            const password = document.getElementById("register-password").value;
+
+            fetch("http://127.0.0.1:5000/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fname: familyname, email: email, password: password })
+            })
+                .then(response => {
+                    console.log("Raw Response:", response);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Register API Response:", data);
+                    if (data.success) {
+                        localStorage.setItem("accountId", data.account_id || "");
+                        localStorage.setItem("userEmail", email); // Store email
+                        localStorage.setItem("familyName", familyname); // Store family name
+                        isLoggedIn = true;
+                        updateNavButtons();
+
+                        // Force member addition
+                        openAddMemberModal();
+                        closeRegisterModal();
+                        updateGreeting();
+                    } else {
+                        alert(data.message || "Registration failed due to an unknown error.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Fetch Error:", error);
+                    alert("An error occurred during registration. Check the console for details. Error: " + error.message);
+                });
+        }
+
+        // Handle Logout
+        function logout() {
+            console.log("Before clearing localStorage:", localStorage);
+
+            isLoggedIn = false;
+            localStorage.removeItem("userEmail");
+            localStorage.removeItem("familyName");
+            localStorage.removeItem("selectedMemberId");
+            localStorage.removeItem("selectedMemberName");
+            localStorage.removeItem("accountId");
+            localStorage.removeItem("loginTimestamp");
+            localStorage.removeItem("memberDataTimestamp");
+
+            // Reset guest question count
+            guestQuestionCount = 0;
+            localStorage.setItem("guestQuestionCount", guestQuestionCount);
+
+            updateNavButtons();
+            newChat();
+            closeProfileModal();
+        }
+
+        // Close Modal on Outside Click
+        window.onclick = function (event) {
+            const loginModal = document.getElementById("login-modal");
+            const registerModal = document.getElementById("register-modal");
+            const memberModal = document.getElementById("member-selection-modal");
+            const addMemberModal = document.getElementById("add-member-modal");
+            const profileModal = document.getElementById("profile-modal");
+            const historyModal = document.getElementById("history-modal");
+            const forgotPasswordModal = document.getElementById("forgot-password-modal");
+
+            if (event.target === loginModal) {
+                closeLoginModal();
+            }
+            if (event.target === registerModal) {
+                closeRegisterModal();
+            }
+            if (event.target === memberModal && localStorage.getItem("selectedMemberId")) {
+                closeMemberSelectionModal();
+            }
+            if (event.target === addMemberModal && localStorage.getItem("selectedMemberId")) {
+                closeAddMemberModal();
+            }
+            if (event.target === profileModal) {
+                closeProfileModal();
+            }
+            if (event.target === historyModal) {
+                closeHistoryModal();
+            }
+            if (event.target === forgotPasswordModal) {
+                closeForgotPasswordModal();
+            }
+        };
+
+        // member display
+        function openMemberSelectionModal(members) {
+            const memberList = document.getElementById("member-list");
+            memberList.innerHTML = "";
+
+            members.forEach(member => {
+                const memberCard = document.createElement("div");
+                memberCard.classList.add("member-card");
+                memberCard.innerHTML = `
+                    <div class="member-name">${member.name}</div>
+                    <div class="member-actions">
+                        <i class="fas fa-trash" title="Delete" onclick="confirmDeleteMember('${member.member_id}')"></i>
+                    </div>
+                `;
+                // Check if this member is currently selected
+                if (member.member_id == localStorage.getItem("selectedMemberId")) {
+                    memberCard.classList.add("selected");
+                }
+                memberCard.onclick = () => selectMember(member.member_id, member.name, member.account_id);
+                memberList.appendChild(memberCard);
+            });
+
+            document.getElementById("member-selection-modal").style.display = "flex";
+        }
+
+        function confirmDeleteMember(memberId) {
+            if (confirm("Are you sure you want to delete this member? This action cannot be undone.")) {
+                deleteMember(memberId);
+            }
+        }
+
+        async function deleteMember(memberId) {
+            const accountId = localStorage.getItem("accountId");
+
+            if (!accountId || !memberId) {
+                console.error("Account ID or Member ID is missing.");
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/removeuser", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        member_id: memberId,
+                        account_id: accountId
+                    })
+                });
+
+                const data = await response.json();
+                console.log("Delete Member API Response:", data);
+
+                if (data.success) {
+                    // Fetch updated member list
+                    fetch("http://127.0.0.1:5000/getmembers", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ account_id: accountId })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const remainingMembers = data.members;
+                                if (remainingMembers.length === 0) {
+                                    // If last member is deleted, open Add Member modal and prevent closing
+                                    openAddMemberModal();
+                                    document.getElementById("add-member-modal").onclick = (event) => {
+                                        event.stopPropagation(); // Prevent modal from closing on outside click
+                                    };
+                                    // Override window.onclick to prevent closing
+                                    const originalOnClick = window.onclick;
+                                    window.onclick = (event) => {
+                                        const addMemberModal = document.getElementById("add-member-modal");
+                                        if (event.target === addMemberModal) {
+                                            return; // Do nothing, prevent closing
+                                        }
+                                        originalOnClick(event); // Call original handler for other modals
+                                    };
+                                } else {
+                                    // Clear any existing modal state
+                                    closeMemberSelectionModal();
+                                    // Open member selection modal with updated members
+                                    const memberModal = document.getElementById("member-selection-modal");
+                                    memberModal.style.display = "flex";
+                                    openMemberSelectionModal(remainingMembers);
+                                    // Clear selected member if deleted
+                                    if (localStorage.getItem("selectedMemberId") === memberId) {
+                                        localStorage.removeItem("selectedMemberId");
+                                        localStorage.removeItem("selectedMemberName");
+                                        updateGreeting(); // Update greeting to reflect no member selected
+                                    }
+                                    // Add a small delay to ensure the modal is fully rendered
+                                    setTimeout(() => {
+                                        // Re-enable outside click closing after the modal is stable
+                                        window.onclick = (event) => {
+                                            if (event.target === memberModal && localStorage.getItem("selectedMemberId")) {
+                                                closeMemberSelectionModal();
+                                            }
+                                        };
+                                    }, 500); // 500ms delay to allow modal to render
+                                }
+                            } else {
+                                console.error("Failed to fetch updated members:", data.message);
+                                alert("Failed to fetch updated members. Please try again.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error fetching updated members:", error);
+                            alert("An error occurred while fetching the updated member list. Please try again.");
+                        });
+                } else {
+                    alert(data.message || "Failed to delete member.");
+                }
+            } catch (error) {
+                console.error("Error deleting member:", error);
+                alert("An error occurred while deleting the member. Please try again.");
+            }
+        }
+
+        function closeMemberSelectionModal() {
+            document.getElementById("member-selection-modal").style.display = "none";
+        }
+
+        function selectMember(memberId, memberName, accountId) {
+            // Store selected member info in localStorage
+            localStorage.setItem("selectedMemberId", memberId);
+            localStorage.setItem("selectedMemberName", memberName);
+            localStorage.setItem("accountId", accountId);
+
+            // Update UI
+            const memberCards = document.getElementsByClassName("member-card");
+            for (let card of memberCards) {
+                card.classList.remove("selected");
+            }
+            event.currentTarget.classList.add("selected");
+
+            isFirstMessage = true; // Retain this to ensure the chat starts fresh
+
+            // Start a new chat for the newly selected member
+            newChat();
+
+            // Close modal and update greeting
+            setTimeout(() => {
+                closeMemberSelectionModal();
+                updateGreeting();
+            }, 300);
+        }
+
+        function openProfileModal() {
+            // Fetch profile details from the backend
+            const memberId = localStorage.getItem("selectedMemberId");
+            const accountId = localStorage.getItem("accountId");
+
+            if (!memberId || !accountId) {
+                alert("Please select a member first!");
+                return;
+            }
+
+            fetch("http://127.0.0.1:5000/getuser", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ member_id: memberId, account_id: accountId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Populate profile details
+                        document.getElementById("profile-name").textContent = data.name || "N/A";
+                        document.getElementById("profile-gender").textContent = data.gender || "N/A";
+                        document.getElementById("profile-age").textContent = data.age || "N/A";
+                        document.getElementById("profile-height").textContent = data.height ? `${data.height} cm` : "N/A";
+                        document.getElementById("profile-weight").textContent = data.weight ? `${data.weight} kg` : "N/A";
+
+                        // Show the modal
+                        document.getElementById("profile-modal").style.display = "flex";
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching profile:", error);
+                    alert("An error occurred while fetching profile details. Please try again.");
+                });
+        }
+
+        function closeProfileModal() {
+            document.getElementById("profile-modal").style.display = "none";
+        }
+
+        function changeMember() {
+            closeProfileModal(); // Close the profile modal first
+            const accountId = localStorage.getItem("accountId");
+            if (!accountId) {
+                alert("Account ID not found. Please log in or register again.");
+                return;
+            }
+
+            fetch("http://127.0.0.1:5000/getmembers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ account_id: accountId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.members && data.members.length > 0) {
+                        openMemberSelectionModal(data.members); // Open modal with fetched members
+                    } else {
+                        alert(data.message || "No members found for this account!");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching members:", error);
+                    alert("An error occurred while fetching members. Please try again.");
+                });
+        }
+
+        document.getElementById("profile-btn").onclick = function () {
+            openProfileModal();
+        };
+
+
+        // add member
+        function closeAddMemberModal() {
+            document.getElementById("add-member-modal").style.display = "none";
+            document.getElementById("add-member-form").reset();
+        }
+
+        async function handleAddMember(event) {
+            event.preventDefault();
+
+            const name = document.getElementById("member-name").value;
+            const gender = document.querySelector('input[name="member-gender"]:checked')?.value;
+            const age = document.getElementById("member-age").value;
+            const height = document.getElementById("member-height").value;
+            const weight = document.getElementById("member-weight").value;
+            const accountId = localStorage.getItem("accountId");
+
+            if (!accountId || !gender) {
+                alert("Account ID or gender not found. Please select a gender!");
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/addmember", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: name,
+                        gender: gender,
+                        age: age,
+                        height: height,
+                        weight: weight,
+                        accid: accountId
+                    })
+                });
+
+                const data = await response.json();
+                console.log("Add Member API Response:", data);
+
+                if (data.success) {
+                    alert("Member added successfully!");
+                    closeAddMemberModal();
+                    isLoggedIn = true;
+                    localStorage.setItem("selectedMemberId", data.member_id); // Assuming the API returns member_id
+                    localStorage.setItem("selectedMemberName", name);
+                    localStorage.setItem("userEmail", localStorage.getItem("userEmail") || "");
+                    localStorage.setItem("familyName", localStorage.getItem("familyName") || "");
+                    updateNavButtons();
+
+                    // Fetch updated member list and open the member selection modal
+                    fetch("http://127.0.0.1:5000/getmembers", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ account_id: accountId })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.members && data.members.length > 0) {
+                                openMemberSelectionModal(data.members); // Open modal with updated members
+                            } else {
+                                alert("No members found after adding. Please try again.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error fetching updated members:", error);
+                            alert("An error occurred while fetching the updated member list. Please try again.");
+                        });
+
+                    updateGreeting();
+
+                    // Restore normal modal closing behavior
+                    window.onclick = (event) => {
+                        const loginModal = document.getElementById("login-modal");
+                        const registerModal = document.getElementById("register-modal");
+                        const memberModal = document.getElementById("member-selection-modal");
+                        const addMemberModal = document.getElementById("add-member-modal");
+                        const profileModal = document.getElementById("profile-modal");
+                        const historyModal = document.getElementById("history-modal");
+
+                        if (event.target === loginModal) closeLoginModal();
+                        if (event.target === registerModal) closeRegisterModal();
+                        if (event.target === memberModal && localStorage.getItem("selectedMemberId")) closeMemberSelectionModal();
+                        if (event.target === addMemberModal && localStorage.getItem("selectedMemberId")) closeAddMemberModal();
+                        if (event.target === profileModal) closeProfileModal();
+                        if (event.target === historyModal) closeHistoryModal();
+                    };
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error("Error adding member:", error);
+                alert("An error occurred while adding the member. Please try again.");
+            }
+        }
+        function openAddMemberModal() {
+            const addMemberModal = document.getElementById("add-member-modal");
+            if (addMemberModal) {
+                addMemberModal.style.display = "flex";
+            } else {
+                console.error("Add Member Modal element not found!");
+            }
+        }
+
+        // History
+
+        // Open History Modal
+        function openHistoryModal() {
+            document.getElementById("history-modal").style.display = "flex";
+            loadHistory();
+        }
+
+        // Close History Modal
+        function closeHistoryModal() {
+            document.getElementById("history-modal").style.display = "none";
+        }
+
+        // Load and Display Chat History
+        function loadHistory() {
+            const accountId = localStorage.getItem("accountId");
+            const memberId = localStorage.getItem("selectedMemberId");
+            const historyList = document.getElementById("history-list");
+            const chatContainer = document.getElementById("chat-container");
+
+            if (accountId && memberId && isLoggedIn) {
+                fetch("http://127.0.0.1:5000/getchat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ account_id: accountId, member_id: memberId })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            historyList.innerHTML = "";
+                            if (data.history.length === 0) {
+                                historyList.innerHTML = `<p>No history found for this member.</p>`;
+                            } else {
+                                data.history.forEach(item => {
+                                    const card = document.createElement("div");
+                                    card.classList.add("history-card");
+                                    card.innerHTML = `
+                                    <h3 class="history-title">${item.question}</h3>
+                                    <p class="history-timestamp">${new Date(item.timestamp).toLocaleString()}</p>
+                                    <p><strong>Model:</strong> ${item.model}</p>
+                                    <div class="history-actions">
+                                        <i class="fas fa-trash" title="Delete" onclick="deleteHistory(event, ${item.history_id})"></i>
+                                    </div>
+                                `;
+                                    card.onclick = (e) => {
+                                        e.stopPropagation();
+                                        displayConversation(item.question, item.response, item.model);
+                                        closeHistoryModal();
+                                    };
+                                    historyList.appendChild(card);
+                                });
+                            }
+                        } else {
+                            historyList.innerHTML = `<p>No history found.</p>`;
+                            console.error("Failed to load history:", data.message);
+                        }
+                    })
+                    .catch(error => {
+                        historyList.innerHTML = `<p>Error loading history. Try again later.</p>`;
+                        console.error("Error fetching chat history:", error);
+                    });
+            } else {
+                historyList.innerHTML = `<p>Please log in and select a member to view history.</p>`;
+            }
+        }
+
+        // Display Conversation in Chat Container (Updated to Append)
+        function displayConversation(question, response, model) {
+            const chatContainer = document.getElementById("chat-container");
+
+            // Only hide greeting/input and show chat container if it's the first message
+            if (isFirstMessage) {
+                document.getElementById("greeting-container").style.display = "none";
+                document.getElementById("input-container").style.display = "none";
+                document.getElementById("chat-container").style.display = "flex";
+                document.getElementById("chat-footer").style.display = "flex";
+                document.getElementById("chat-footer").style.marginBottom = "10px";
+                isFirstMessage = false;
+            }
+
+            // Parse the response if it's a JSON string (e.g., from LRv1 or LRv2)
+            let data;
+            try {
+                data = typeof response === "string" ? JSON.parse(response) : response;
+            } catch (e) {
+                console.error("Failed to parse response:", response, e);
+                data = { answer: response }; // Fallback for non-JSON responses
+            }
+
+            // Append new conversation without clearing existing content
+            let userMessage = document.createElement("div");
+            userMessage.classList.add("chat-message", "user-message");
+            userMessage.textContent = question;
+            chatContainer.appendChild(userMessage);
+
+            let botMessage = document.createElement("div");
+            botMessage.classList.add("chat-message", "bot-message");
+
+            if (model === "BioGPT") {
+                let answerList = document.createElement("ul");
+                answerList.style.paddingLeft = "20px";
+                let sentences = data.answer.split(". ");
+                sentences.forEach(sentence => {
+                    if (sentence.trim()) {
+                        let listItem = document.createElement("li");
+                        listItem.textContent = sentence.trim() + ".";
+                        answerList.appendChild(listItem);
+                    }
+                });
+                botMessage.appendChild(answerList);
+            } else if (model === "Gemini") {
+                let responseDiv = document.createElement("div");
+                responseDiv.className = "gemini-response";
+                let lines = data.answer.split("\n").map(line => line.trim()).filter(line => line.length > 0);
+                let currentList = null;
+
+                lines.forEach(line => {
+                    if (line.startsWith("**") && line.endsWith("**") && !line.includes(":")) {
+                        // Handle bolded section headers like "**Types of Influenza Viruses:**"
+                        let paragraph = document.createElement("p");
+                        let content = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                        paragraph.innerHTML = content;
+                        responseDiv.appendChild(paragraph);
+                        currentList = null; // Reset list since this is a new section
+                    } else if (line.startsWith("*")) {
+                        // Start or continue a list
+                        if (!currentList) {
+                            currentList = document.createElement("ul");
+                            responseDiv.appendChild(currentList);
+                        }
+                        let listItem = document.createElement("li");
+                        let content = line.replace(/^\*\s*/, "").trim();
+                        content = content.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+                        if (content.startsWith("-")) {
+                            // Handle nested list item
+                            let nestedList = document.createElement("ul");
+                            let nestedItem = document.createElement("li");
+                            nestedItem.innerHTML = content.replace(/^\-\s*/, "").trim();
+                            nestedList.appendChild(nestedItem);
+                            listItem.appendChild(nestedList);
+                        } else {
+                            listItem.innerHTML = content;
+                        }
+
+                        currentList.appendChild(listItem);
+                    } else {
+                        // Handle paragraphs
+                        if (currentList) currentList = null;
+                        let paragraph = document.createElement("p");
+                        let content = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                        paragraph.innerHTML = content;
+                        responseDiv.appendChild(paragraph);
+                    }
+                });
+                botMessage.appendChild(responseDiv);
+            } else if (model === "LRv1") {
+                let responseDiv = document.createElement("div");
+                responseDiv.className = "gemini-response";
+                let diseasePara = document.createElement("p");
+                diseasePara.innerHTML = `<strong>Predicted Disease:</strong> ${data.predicted_disease || "No disease predicted."}`;
+                responseDiv.appendChild(diseasePara);
+                let descriptionPara = document.createElement("p");
+                descriptionPara.innerHTML = `<strong>Description:</strong> ${data.Description || "No description available."}`;
+                responseDiv.appendChild(descriptionPara);
+                let disclaimerPara = document.createElement("p");
+                disclaimerPara.style.fontStyle = "italic";
+                disclaimerPara.style.color = "#555";
+                disclaimerPara.textContent = "Disclaimer: Niramaya is not a doctor; please consult one. Don't share information that can identify you.";
+                responseDiv.appendChild(disclaimerPara);
+                botMessage.appendChild(responseDiv);
+            } else if (model === "LRv2") {
+                let responseDiv = document.createElement("div");
+                responseDiv.className = "gemini-response";
+                let diseasePara = document.createElement("p");
+                diseasePara.innerHTML = `<strong>Predicted Disease:</strong> ${data.predicted_disease || "No disease predicted."}`;
+                responseDiv.appendChild(diseasePara);
+                let descriptionPara = document.createElement("p");
+                descriptionPara.innerHTML = `<strong>Description:</strong> ${data.description || "No description available."}`;
+                responseDiv.appendChild(descriptionPara);
+                if (data.precautions && data.precautions.length > 0) {
+                    let precautionTitle = document.createElement("p");
+                    precautionTitle.innerHTML = `<strong>Precautions:</strong>`;
+                    responseDiv.appendChild(precautionTitle);
+                    let precautionList = document.createElement("ul");
+                    precautionList.style.paddingLeft = "20px";
+                    data.precautions.forEach(precaution => {
+                        let listItem = document.createElement("li");
+                        listItem.textContent = precaution;
+                        precautionList.appendChild(listItem);
+                    });
+                    responseDiv.appendChild(precautionList);
+                }
+                let disclaimerPara = document.createElement("p");
+                disclaimerPara.style.fontStyle = "italic";
+                disclaimerPara.style.color = "#555";
+                disclaimerPara.textContent = "Disclaimer: Niramaya is not a doctor; please consult one. Don't share information that can identify you.";
+                responseDiv.appendChild(disclaimerPara);
+                botMessage.appendChild(responseDiv);
+            }
+
+            chatContainer.appendChild(botMessage);
+            scrollToBottom();
+        }
+
+        // Delete Chat History 
+        function deleteHistory(event, historyId) {
+            event.stopPropagation(); // Prevent card click from triggering
+            const accountId = localStorage.getItem("accountId");
+            const memberId = localStorage.getItem("selectedMemberId");
+
+            if (accountId && memberId && isLoggedIn) {
+                fetch("http://127.0.0.1:5000/deletechat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ account_id: accountId, member_id: memberId, history_id: historyId })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadHistory(); // Refresh the history list
+                        } else {
+                            alert("Failed to delete history: " + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error deleting history:", error);
+                        alert("Error deleting history. Try again later.");
+                    });
+            }
+        }
+
+        // Update the History link click handler
+        document.getElementById("history-btn").onclick = function (e) {
+            e.preventDefault();
+            openHistoryModal();
+        };
+
+        // Update Profile
+        // Open Update Profile Modal
+        function openUpdateProfileModal() {
+            const memberId = localStorage.getItem("selectedMemberId");
+            const accountId = localStorage.getItem("accountId");
+
+            if (!memberId || !accountId) {
+                alert("Please select a member first!");
+                return;
+            }
+
+            // Populate the form with current profile data
+            fetch("http://127.0.0.1:5000/getuser", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ member_id: memberId, account_id: accountId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById("update-name").value = data.name || "";
+                        document.getElementById("update-age").value = data.age || "";
+                        document.getElementById("update-height").value = data.height || "";
+                        document.getElementById("update-weight").value = data.weight || "";
+                        const genderRadios = document.getElementsByName("update-gender");
+                        for (let radio of genderRadios) {
+                            if (radio.value === data.gender) {
+                                radio.checked = true;
+                                break;
+                            }
+                        }
+                        document.getElementById("update-profile-modal").style.display = "flex";
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching profile for update:", error);
+                    alert("An error occurred while fetching profile details. Please try again.");
+                });
+        }
+
+        // Close Update Profile Modal
+        function closeUpdateProfileModal() {
+            document.getElementById("update-profile-modal").style.display = "none";
+            document.getElementById("update-profile-form").reset();
+        }
+
+        // Handle Update Profile Form Submission
+        async function handleUpdateProfile(event) {
+            event.preventDefault();
+
+            const memberId = localStorage.getItem("selectedMemberId");
+            const accountId = localStorage.getItem("accountId");
+            const name = document.getElementById("update-name").value;
+            const gender = document.querySelector('input[name="update-gender"]:checked')?.value;
+            const age = document.getElementById("update-age").value;
+            const height = document.getElementById("update-height").value;
+            const weight = document.getElementById("update-weight").value;
+
+            if (!memberId || !accountId || !gender) {
+                alert("Please fill all required fields, including gender!");
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/updatemember", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        member_id: memberId,
+                        account_id: accountId,
+                        name: name,
+                        gender: gender,
+                        age: age,
+                        height: height,
+                        weight: weight
+                    })
+                });
+
+                const data = await response.json();
+                console.log("Update Member API Response:", data);
+
+                if (data.success) {
+                    // Update local storage if name changes
+                    if (localStorage.getItem("selectedMemberName") !== name) {
+                        localStorage.setItem("selectedMemberName", name);
+                    }
+                    // Close the update profile modal and open the profile modal without alert
+                    closeUpdateProfileModal();
+                    openProfileModal();
+                } else {
+                    alert(data.message || "Failed to update profile.");
+                }
+            } catch (error) {
+                console.error("Error updating profile:", error);
+                alert("An error occurred while updating the profile. Please try again.");
+            }
+        }
+
+        // Forgot Password
+        function openForgotPasswordModal() {
+            const modal = document.getElementById("send-otp-modal");
+            modal.style.display = "flex";
+            document.getElementById("send-otp-form").reset();
+            closeLoginModal();
+        }
+
+        function closeSendOtpModal() {
+            document.getElementById("send-otp-modal").style.display = "none";
+            document.getElementById("send-otp-form").reset();
+        }
+
+        async function handleSendOtp(event) {
+            event.preventDefault();
+            console.log("handleSendOtp called");
+
+            const emailInput = document.getElementById("forgot-email");
+            if (!emailInput.value.trim()) {
+                alert("Please enter a valid email!");
+                emailInput.focus();
+                return;
+            }
+
+            try {
+                console.log("Sending OTP request for:", emailInput.value);
+                const response = await fetch("http://127.0.0.1:5000/forgotpassword", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: emailInput.value.trim() })
+                });
+                const data = await response.json();
+                console.log("API response:", data);
+                if (data.success) {
+                    alert("OTP sent to your email!");
+                    sessionStorage.setItem("storedOtp", data.otp);
+                    sessionStorage.setItem("storedAccountId", data.account_id);
+                    closeSendOtpModal();
+                    openResetPasswordModal();
+                } else {
+                    alert(data.message || "Failed to send OTP.");
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                alert("Unable to connect to the server. Please check your connection or try again later.");
+            }
+        }
+
+        function openResetPasswordModal() {
+            const modal = document.getElementById("reset-password-modal");
+            modal.style.display = "flex";
+            document.getElementById("reset-password-form").reset();
+            // Ensure all inputs are enabled
+            document.getElementById("otp").disabled = false;
+            document.getElementById("new-password").disabled = false;
+            document.getElementById("confirm-password").disabled = false;
+        }
+
+        function closeResetPasswordModal() {
+            document.getElementById("reset-password-modal").style.display = "none";
+            document.getElementById("reset-password-form").reset();
+        }
+
+        async function handleResetPassword(event) {
+            event.preventDefault();
+            console.log("handleResetPassword called");
+
+            const otpInput = document.getElementById("otp");
+            const newPasswordInput = document.getElementById("new-password");
+            const confirmPasswordInput = document.getElementById("confirm-password");
+
+            const otp = otpInput.value.trim();
+            const newPassword = newPasswordInput.value.trim();
+            const confirmPassword = confirmPasswordInput.value.trim();
+
+            if (!otp || !newPassword || !confirmPassword) {
+                alert("Please fill all fields!");
+                if (!otp) otpInput.focus();
+                else if (!newPassword) newPasswordInput.focus();
+                else confirmPasswordInput.focus();
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                alert("Passwords do not match!");
+                newPasswordInput.focus();
+                return;
+            }
+
+            const storedOtp = sessionStorage.getItem("storedOtp");
+            if (otp !== storedOtp) {
+                alert("Incorrect OTP. Please try again.");
+                otpInput.focus();
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/resetpassword", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        account_id: sessionStorage.getItem("storedAccountId"),
+                        new_password: newPassword
+                    })
+                });
+                const data = await response.json();
+                console.log("Reset password response:", data);
+                if (data.success) {
+                    alert("Password reset successfully!");
+                    sessionStorage.removeItem("storedOtp");
+                    sessionStorage.removeItem("storedAccountId");
+                    closeResetPasswordModal();
+                    openLoginModal();
+                } else {
+                    alert(data.message || "Failed to reset password. Please try again.");
+                }
+            } catch (error) {
+                console.error("Fetch error:", error);
+                alert("Unable to connect to the server. Please check your connection or try again later.");
+            }
+        }
+    </script>
+</body>
+
+</html>

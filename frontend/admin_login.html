@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - Niramaya Health AI</title>
+  <link rel="icon" type="image/png" href="N-16.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script>
+    const theme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.classList.add(theme);
+  </script>
+  <style>
+    .admin-wrapper {
+      margin: 130px auto 60px;
+      max-width: 480px;
+      padding: 35px 30px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px var(--shadow-color);
+    }
+
+    .admin-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .admin-badge {
+      display: inline-block;
+      background: rgba(0, 123, 255, 0.15);
+      color: #3b82f6;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .admin-header h2 {
+      font-size: 26px;
+      color: var(--text-color);
+      margin-bottom: 8px;
+    }
+
+    .admin-header p {
+      font-size: 14px;
+      color: var(--secondary-text);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+
+    .input-with-icon {
+      position: relative;
+    }
+
+    .input-with-icon i {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--secondary-text);
+      font-size: 15px;
+    }
+
+    .input-with-icon input {
+      width: 100%;
+      padding: 12px 14px 12px 42px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      font-size: 15px;
+      transition: border-color 0.3s;
+    }
+
+    .input-with-icon input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .alert-box {
+      padding: 12px 15px;
+      border-radius: 6px;
+      font-size: 14px;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .alert-box.error {
+      background-color: rgba(239, 68, 68, 0.15);
+      border: 1px solid #ef4444;
+      color: #f87171;
+    }
+
+    .alert-box.success {
+      background-color: rgba(34, 197, 94, 0.15);
+      border: 1px solid #22c55e;
+      color: #4ade80;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      background-color: #2563eb;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .submit-btn:hover {
+      background-color: #1d4ed8;
+    }
+
+    .authenticated-panel {
+      display: none;
+      text-align: center;
+    }
+
+    .authenticated-panel h3 {
+      color: #4ade80;
+      margin-bottom: 15px;
+    }
+
+    .admin-info-card {
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      padding: 15px;
+      border-radius: 8px;
+      text-align: left;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .admin-info-card p {
+      margin-bottom: 8px;
+    }
+
+    .admin-info-card strong {
+      color: var(--text-color);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 10px;
+      background-color: var(--button-bg);
+      color: var(--button-text);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--hover-bg);
+    }
+
+    .btn-danger {
+      flex: 1;
+      padding: 10px;
+      background-color: #dc2626;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-danger:hover {
+      background-color: #b91c1c;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="logo">
+      <img id="logo-img" alt="Niramaya Logo">
+      <script>
+        const logoImg = document.getElementById('logo-img');
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+      </script>
+    </div>
+    <div class="site-name">Niramaya</div>
+    <div class="nav">
+      <button id="theme-toggle" aria-label="Toggle theme"><i class="fas fa-sun"></i></button>
+      <a href="home.html">Home</a>
+      <a href="about.html">About Niramaya</a>
+      <a href="our_model.html">Our Models</a>
+    </div>
+  </div>
+
+  <main>
+    <div class="admin-wrapper">
+      <div id="login-section">
+        <div class="admin-header">
+          <span class="admin-badge"><i class="fas fa-shield-alt"></i> Module 3.1</span>
+          <h2>Admin Authentication</h2>
+          <p>Enter your credentials to access the Niramaya Admin System</p>
+        </div>
+
+        <div id="alert-box" class="alert-box"></div>
+
+        <form id="admin-login-form">
+          <div class="form-group">
+            <label for="username_or_email">Username or Email</label>
+            <div class="input-with-icon">
+              <i class="fas fa-user"></i>
+              <input type="text" id="username_or_email" placeholder="admin@niramaya.com" required
+                autocomplete="username">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="input-with-icon">
+              <i class="fas fa-lock"></i>
+              <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn" id="login-btn">
+            <i class="fas fa-sign-in-alt"></i> Login as Admin
+          </button>
+        </form>
+      </div>
+
+      <div id="authenticated-panel" class="authenticated-panel">
+        <div class="admin-header">
+          <span class="admin-badge"><i class="fas fa-check-circle"></i> Authenticated</span>
+          <h2>Admin Session Active</h2>
+          <p>You are logged in with valid Admin authorization</p>
+        </div>
+
+        <div id="status-alert" class="alert-box"></div>
+
+        <div class="admin-info-card">
+          <p><strong>Admin ID:</strong> <span id="info-id">--</span></p>
+          <p><strong>Username:</strong> <span id="info-username">--</span></p>
+          <p><strong>Email:</strong> <span id="info-email">--</span></p>
+          <p><strong>Role:</strong> <span id="info-role">--</span></p>
+          <p><strong>Token Status:</strong> <span style="color:#4ade80;">Active & Valid</span></p>
+        </div>
+
+        <div class="btn-group" style="flex-direction:column; gap:10px;">
+          <a href="admin_dashboard.html" class="btn-primary"
+            style="background-color:#d97706; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border-radius:6px; font-size:14px; font-weight:600;"><i
+              class="fas fa-chart-line"></i> Go to System Monitoring & Reports</a>
+          <a href="admin_users.html" class="btn-primary"
+            style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border-radius:6px; font-size:14px; font-weight:600;"><i
+              class="fas fa-users-cog"></i> Go to User Management Dashboard</a>
+          <a href="admin_content.html" class="btn-primary"
+            style="background-color:#16a34a; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px; border-radius:6px; font-size:14px; font-weight:600;"><i
+              class="fas fa-book-medical"></i> Go to Health Content Management</a>
+          <div style="display:flex; gap:12px; width:100%;">
+            <button class="btn-secondary" id="verify-api-btn">
+              <i class="fas fa-shield-check"></i> Verify API Auth
+            </button>
+            <button class="btn-danger" id="logout-btn">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </div>
+        </div>
+
+
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 Niramaya Admin System. Authorized Access Only.</p>
+        <p class="footer-disclaimer">Child Module 3.1: Admin Authentication & Security Layer.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const API_BASE_URL = 'http://localhost:5000';
+
+    function showAlert(message, type = 'error') {
+      const box = document.getElementById('alert-box');
+      box.textContent = message;
+      box.className = `alert-box ${type}`;
+      box.style.display = 'block';
+    }
+
+    function hideAlert() {
+      const box = document.getElementById('alert-box');
+      box.style.display = 'none';
+    }
+
+    function showStatusAlert(message, type = 'success') {
+      const box = document.getElementById('status-alert');
+      box.textContent = message;
+      box.className = `alert-box ${type}`;
+      box.style.display = 'block';
+      setTimeout(() => { box.style.display = 'none'; }, 4000);
+    }
+
+    async function checkExistingSession() {
+      const token = sessionStorage.getItem('admin_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/verify`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.admin) {
+            displayAuthenticatedState(data.admin);
+          } else {
+            sessionStorage.removeItem('admin_token');
+          }
+        } else {
+          sessionStorage.removeItem('admin_token');
+        }
+      } catch (err) {
+        console.error("Session verification failed:", err);
+      }
+    }
+
+    function displayAuthenticatedState(admin) {
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('authenticated-panel').style.display = 'block';
+      document.getElementById('info-id').textContent = admin.admin_id;
+      document.getElementById('info-username').textContent = admin.username;
+      document.getElementById('info-email').textContent = admin.email;
+      document.getElementById('info-role').textContent = admin.role;
+    }
+
+    document.getElementById('admin-login-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      hideAlert();
+
+      const usernameOrEmail = document.getElementById('username_or_email').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!usernameOrEmail || !password) {
+        showAlert("Please fill in all fields.");
+        return;
+      }
+
+      const loginBtn = document.getElementById('login-btn');
+      loginBtn.disabled = true;
+      loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username_or_email: usernameOrEmail,
+            password: password
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          sessionStorage.setItem('admin_token', data.token);
+          displayAuthenticatedState(data.admin);
+          showStatusAlert("Admin login successful!");
+        } else {
+          showAlert(data.message || "Invalid credentials or login error.");
+        }
+      } catch (err) {
+        showAlert("Unable to connect to authentication server. Ensure backend is running.");
+        console.error("Login request error:", err);
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login as Admin';
+      }
+    });
+
+    document.getElementById('verify-api-btn').addEventListener('click', async function () {
+      const token = sessionStorage.getItem('admin_token');
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/profile`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          showStatusAlert(`API Verified! Logged in as: ${data.profile.username} (${data.profile.role})`, 'success');
+        } else {
+          showStatusAlert(`API Error: ${data.message}`, 'error');
+        }
+      } catch (err) {
+        showStatusAlert("API Call failed: " + err.message, 'error');
+      }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async function () {
+      const token = sessionStorage.getItem('admin_token');
+      if (token) {
+        try {
+          await fetch(`${API_BASE_URL}/admin/logout`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } catch (e) {
+          console.error("Logout request error:", e);
+        }
+      }
+      sessionStorage.removeItem('admin_token');
+      document.getElementById('authenticated-panel').style.display = 'none';
+      document.getElementById('login-section').style.display = 'block';
+      document.getElementById('password').value = '';
+      showAlert("You have logged out successfully.", "success");
+    });
+
+    // Initialize check on page load
+    document.addEventListener("DOMContentLoaded", checkExistingSession);
+  </script>
+</body>
+
+</html>

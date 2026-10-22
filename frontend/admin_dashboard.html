@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Monitoring & Reports - Niramaya Admin</title>
+  <link rel="icon" type="image/png" href="N-16.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script>
+    const theme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.classList.add(theme);
+  </script>
+  <style>
+    .admin-container {
+      width: 92%;
+      max-width: 1280px;
+      margin: 110px auto 50px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .page-title h1 {
+      font-size: 28px;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .page-title p {
+      color: var(--secondary-text);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .badge-module {
+      background: rgba(234, 179, 8, 0.15);
+      color: #eab308;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: bold;
+      vertical-align: middle;
+    }
+
+    /* KPI Cards Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 22px 20px;
+      box-shadow: 0 4px 12px var(--shadow-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stat-info h3 {
+      font-size: 13px;
+      color: var(--secondary-text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .stat-info .stat-value {
+      font-size: 30px;
+      font-weight: bold;
+      color: var(--text-color);
+    }
+
+    .stat-info .stat-subtext {
+      font-size: 12px;
+      color: var(--secondary-text);
+      margin-top: 4px;
+    }
+
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .icon-blue {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+    }
+
+    .icon-purple {
+      background: rgba(168, 85, 247, 0.15);
+      color: #a855f7;
+    }
+
+    .icon-green {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
+    .icon-orange {
+      background: rgba(249, 115, 22, 0.15);
+      color: #f97316;
+    }
+
+    /* Panels Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 25px;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .panel-header h2 {
+      font-size: 18px;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .table-mini {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .table-mini th {
+      text-align: left;
+      padding: 10px 12px;
+      color: var(--secondary-text);
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+    }
+
+    .table-mini td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-color);
+      vertical-align: middle;
+    }
+
+    .table-mini tbody tr:hover {
+      background: var(--hover-bg);
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .pill-success {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+    }
+
+    .pill-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+    }
+
+    .pill-info {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+    }
+
+    .btn-action {
+      padding: 9px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background-color: #2563eb;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background-color: var(--button-bg);
+      color: var(--button-text);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="logo">
+      <img id="logo-img" alt="Niramaya Logo">
+      <script>
+        const logoImg = document.getElementById('logo-img');
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+      </script>
+    </div>
+    <div class="site-name">Niramaya Admin</div>
+    <div class="nav">
+      <button id="theme-toggle" aria-label="Toggle theme"><i class="fas fa-sun"></i></button>
+      <a href="admin_users.html"><i class="fas fa-users"></i> Users</a>
+      <a href="admin_content.html"><i class="fas fa-book-medical"></i> Health Content</a>
+      <a href="admin_login.html"><i class="fas fa-key"></i> Auth Portal</a>
+      <button id="admin-logout-link"
+        style="background:none; border:none; color:var(--link-color); cursor:pointer; font-size:16px; padding:8px 16px;"><i
+          class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+  </div>
+
+  <main class="admin-container">
+    <div class="page-header">
+      <div class="page-title">
+        <h1><i class="fas fa-chart-line"></i> System Monitoring & Reports <span class="badge-module">Module 3.4</span>
+        </h1>
+        <p>Live metrics, system health, and database activity compiled from real project data.</p>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <span id="last-updated" style="font-size:12px; color:var(--secondary-text);">Last updated: Never</span>
+        <button class="btn-action btn-primary" onclick="loadMonitoringData()">
+          <i class="fas fa-sync" id="refresh-icon"></i> Refresh Metrics
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Statistics Cards Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-info">
+          <h3>Registered Users</h3>
+          <div class="stat-value" id="val-total-users">--</div>
+          <div class="stat-subtext"><span id="val-active-users">--</span> Active | <span
+              id="val-deactive-users">--</span> Deactivated</div>
+        </div>
+        <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-info">
+          <h3>Family Members</h3>
+          <div class="stat-value" id="val-total-members">--</div>
+          <div class="stat-subtext">Registered health profiles</div>
+        </div>
+        <div class="stat-icon icon-purple"><i class="fas fa-user-friends"></i></div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-info">
+          <h3>Disease Predictions</h3>
+          <div class="stat-value" id="val-total-chats">--</div>
+          <div class="stat-subtext">AI Symptoms Checker queries</div>
+        </div>
+        <div class="stat-icon icon-green"><i class="fas fa-stethoscope"></i></div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-info">
+          <h3>Published Content</h3>
+          <div class="stat-value" id="val-published-content">--</div>
+          <div class="stat-subtext"><span id="val-total-content">--</span> Total health items</div>
+        </div>
+        <div class="stat-icon icon-orange"><i class="fas fa-heartbeat"></i></div>
+      </div>
+    </div>
+
+    <!-- Dashboard Panels Grid -->
+    <div class="dashboard-grid">
+      <!-- System & DB Health Panel -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h2><i class="fas fa-server"></i> System Health & Database</h2>
+          <span id="db-status-pill" class="status-pill pill-success">Checking...</span>
+        </div>
+
+        <table class="table-mini">
+          <tbody>
+            <tr>
+              <td><strong>Database Status</strong></td>
+              <td id="sys-db-conn"><span class="status-pill pill-success">Connected</span></td>
+            </tr>
+            <tr>
+              <td><strong>PostgreSQL Database Name</strong></td>
+              <td id="sys-db-name">projectH</td>
+            </tr>
+            <tr>
+              <td><strong>AI Engine Status</strong></td>
+              <td id="sys-ai-status"><span class="status-pill pill-info">Offline & Gemini Dual-Engine Active</span></td>
+            </tr>
+            <tr>
+              <td><strong>Active Admin Sessions</strong></td>
+              <td id="sys-admin-sessions">--</td>
+            </tr>
+            <tr>
+              <td><strong>Server Timestamp</strong></td>
+              <td id="sys-server-time">--</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Database Table Row Counts -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h2><i class="fas fa-database"></i> Database Table Metrics</h2>
+          <span class="status-pill pill-info">Real Counts</span>
+        </div>
+
+        <table class="table-mini">
+          <thead>
+            <tr>
+              <th>Table Name</th>
+              <th>Description</th>
+              <th>Row Count</th>
+            </tr>
+          </thead>
+          <tbody id="tables-body">
+            <tr>
+              <td colspan="3" style="text-align:center; padding:15px;">Loading table counts...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Recent Registrations Activity -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h2><i class="fas fa-user-plus"></i> Recent User Signups</h2>
+          <a href="admin_users.html" class="btn-action btn-secondary" style="font-size:11px; padding:4px 8px;">View
+            All</a>
+        </div>
+
+        <table class="table-mini">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Family Name</th>
+              <th>Email</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="recent-reg-body">
+            <tr>
+              <td colspan="4" style="text-align:center; padding:15px;">Loading recent signups...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Recent AI Symptoms Checker Activity -->
+      <div class="panel-card">
+        <div class="panel-header">
+          <h2><i class="fas fa-robot"></i> Recent AI Symptoms Queries</h2>
+          <span class="status-pill pill-info">Live Activity</span>
+        </div>
+
+        <table class="table-mini">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Member</th>
+              <th>Query Snippet</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="recent-chats-body">
+            <tr>
+              <td colspan="4" style="text-align:center; padding:15px;">Loading recent queries...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 Niramaya Admin System. All rights reserved.</p>
+        <p class="footer-disclaimer">Child Module 3.4: Admin System Monitoring & Reports.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const API_BASE_URL = 'http://localhost:5000';
+
+    function getAuthToken() {
+      return sessionStorage.getItem('admin_token');
+    }
+
+    function checkAuth() {
+      if (!getAuthToken()) {
+        window.location.href = 'admin_login.html';
+      }
+    }
+
+    async function loadMonitoringData() {
+      checkAuth();
+      const token = getAuthToken();
+      const icon = document.getElementById('refresh-icon');
+      if (icon) icon.classList.add('fa-spin');
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/monitoring/overview`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) {
+          sessionStorage.removeItem('admin_token');
+          window.location.href = 'admin_login.html';
+          return;
+        }
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          // Update KPI Cards
+          const stats = data.stats;
+          document.getElementById('val-total-users').textContent = stats.total_users;
+          document.getElementById('val-active-users').textContent = stats.active_users;
+          document.getElementById('val-deactive-users').textContent = stats.deactivated_users;
+          document.getElementById('val-total-members').textContent = stats.total_members;
+          document.getElementById('val-total-chats').textContent = stats.total_ai_chats;
+          document.getElementById('val-published-content').textContent = stats.published_health_content;
+          document.getElementById('val-total-content').textContent = stats.total_health_content;
+
+          // Update System Status
+          const sys = data.system_status;
+          document.getElementById('sys-db-conn').innerHTML = sys.database_connected
+            ? `<span class="status-pill pill-success"><i class="fas fa-check-circle"></i> Connected</span>`
+            : `<span class="status-pill pill-danger"><i class="fas fa-times-circle"></i> Disconnected</span>`;
+
+          document.getElementById('db-status-pill').textContent = sys.database_connected ? "System Healthy" : "DB Offline";
+          document.getElementById('db-status-pill').className = sys.database_connected ? "status-pill pill-success" : "status-pill pill-danger";
+
+          document.getElementById('sys-db-name').textContent = sys.database_name || 'projectH';
+          document.getElementById('sys-admin-sessions').textContent = stats.active_admin_sessions;
+          document.getElementById('sys-server-time').textContent = sys.server_time ? sys.server_time.replace('T', ' ').split('.')[0] : 'N/A';
+
+          // Update Table Metrics
+          const tablesBody = document.getElementById('tables-body');
+          tablesBody.innerHTML = '';
+          const descMap = {
+            'account_tbl': 'User Accounts',
+            'member_tbl': 'Family Member Profiles',
+            'chat_history_tbl': 'AI Symptoms Predictions & Chats',
+            'health_content_tbl': 'Wellness Tips & Health Articles',
+            'admin_tbl': 'Admin Users',
+            'admin_tokens_tbl': 'Admin Session Tokens'
+          };
+
+          for (const [tbl, count] of Object.entries(sys.table_counts || {})) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                            <td><code>${tbl}</code></td>
+                            <td>${descMap[tbl] || 'Table'}</td>
+                            <td><strong>${count}</strong></td>
+                        `;
+            tablesBody.appendChild(tr);
+          }
+
+          // Update Recent Signups
+          const regBody = document.getElementById('recent-reg-body');
+          const regs = data.activity.recent_registrations || [];
+          if (regs.length === 0) {
+            regBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--secondary-text);">No recent signups.</td></tr>`;
+          } else {
+            regBody.innerHTML = '';
+            regs.forEach(r => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                                <td>#${r.account_id}</td>
+                                <td>${r.family_name}</td>
+                                <td>${r.email}</td>
+                                <td>${r.created_at ? r.created_at.split('T')[0] : 'N/A'}</td>
+                            `;
+              regBody.appendChild(tr);
+            });
+          }
+
+          // Update Recent Chats
+          const chatsBody = document.getElementById('recent-chats-body');
+          const chats = data.activity.recent_chats || [];
+          if (chats.length === 0) {
+            chatsBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--secondary-text);">No AI symptoms query history.</td></tr>`;
+          } else {
+            chatsBody.innerHTML = '';
+            chats.forEach(c => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                                <td>${c.user_email}</td>
+                                <td><strong>${c.member_name}</strong></td>
+                                <td>${c.query_snippet}</td>
+                                <td>${c.timestamp ? c.timestamp.split('T')[0] : 'N/A'}</td>
+                            `;
+              chatsBody.appendChild(tr);
+            });
+          }
+
+          document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        }
+      } catch (err) {
+        console.error("Error loading monitoring data:", err);
+      } finally {
+        if (icon) icon.classList.remove('fa-spin');
+      }
+    }
+
+    document.getElementById('admin-logout-link').addEventListener('click', function () {
+      sessionStorage.removeItem('admin_token');
+      window.location.href = 'admin_login.html';
+    });
+
+    document.addEventListener('DOMContentLoaded', loadMonitoringData);
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,42 @@
+Input Symptoms,Predicted Disease,Actual Disease,Result
+vomiting nausea spinning movements loss of balance unsteadiness headache,(vertigo) paroymsal  positional vertigo,(vertigo) paroymsal  positional vertigo,Correct
+skin rash blackheads scurring pus filled pimples,acne,acne,Correct
+muscle wasting high fever extra marital contacts patches in throat,paralysis (brain hemorrhage),aids,Wrong
+vomiting yellowish skin abdominal pain swelling of stomach distention of abdomen fluid overload history of alcohol consumption,paralysis (brain hemorrhage),alcoholic hepatitis,Wrong
+shivering chills watering from eyes continuous sneezing,allergy,allergy,Correct
+muscle weakness stiff neck movement stiffness painful walking swelling joints,paralysis (brain hemorrhage),arthritis,Wrong
+fatigue high fever breathlessness family history mucoid sputum cough,bronchial asthma,bronchial asthma,Correct
+back pain neck pain dizziness loss of balance weakness in limbs,hypertension,cervical spondylosis,Wrong
+itching skin rash fatigue lethargy high fever headache mild fever swelled lymph nodes malaise red spots over body loss of appetite,chicken pox,chicken pox,Correct
+itching vomiting yellowish skin loss of appetite abdominal pain yellowing of eyes nausea,chronic cholestasis,chronic cholestasis,Correct
+continuous sneezing chills fatigue high fever headache swelled lymph nodes malaise phlegm throat irritation redness of eyes sinus pressure runny nose congestion chest pain loss of smell muscle pain cough,pneumonia,common cold,Wrong
+skin rash chills vomiting fatigue high fever headache nausea loss of appetite pain behind the eyes back pain malaise muscle pain red spots over body joint pain,(vertigo) paroymsal  positional vertigo,dengue,Wrong
+fatigue weight loss restlessness lethargy irregular sugar level obesity excessive hunger increased appetite polyuria blurred and distorted vision,diabetes,diabetes,Correct
+constipation pain in anal region bloody stool irritation in anus pain during bowel movements,dimorphic hemmorhoids(piles),dimorphic hemmorhoids(piles),Correct
+itching skin rash burning micturition spotting  urination stomach pain,drug reaction,drug reaction,Correct
+skin rash nodal skin eruptions dischromic  patches itching,drug reaction,fungal infection,Wrong
+vomiting sunken eyes dehydration diarrhoea,gastroenteritis,gastroenteritis,Correct
+acidity ulcers on tongue vomiting cough chest pain stomach pain,gerd,gerd,Correct
+vomiting sweating chest pain breathlessness,heart attack,heart attack,Correct
+joint pain vomiting yellowish skin nausea loss of appetite abdominal pain diarrhoea mild fever yellowing of eyes muscle pain dark urine,(vertigo) paroymsal  positional vertigo,hepatitis a,Wrong
+itching fatigue yellowish skin dark urine loss of appetite abdominal pain yellow urine yellowing of eyes malaise receiving blood transfusion receiving unsterile injections lethargy,chicken pox,hepatitis b,Wrong
+fatigue yellowish skin nausea loss of appetite yellowing of eyes family history,(vertigo) paroymsal  positional vertigo,hepatitis c,Wrong
+joint pain vomiting fatigue yellowish skin dark urine nausea loss of appetite abdominal pain yellowing of eyes,(vertigo) paroymsal  positional vertigo,hepatitis d,Wrong
+joint pain vomiting high fever yellowish skin dark urine nausea loss of appetite abdominal pain yellowing of eyes acute liver failure coma stomach bleeding fatigue,(vertigo) paroymsal  positional vertigo,hepatitis e,Wrong
+headache chest pain loss of balance lack of concentration dizziness,hypertension,hypertension,Correct
+fatigue mood swings weight loss restlessness sweating fast heart rate excessive hunger muscle weakness irritability abnormal menstruation diarrhoea,heart attack,hyperthyroidism,Wrong
+vomiting fatigue anxiety sweating headache blurred and distorted vision excessive hunger drying and tingling lips slurred speech irritability palpitations nausea,hypoglycemia,hypoglycemia,Correct
+fatigue weight gain cold hands and feets lethargy dizziness puffy face and eyes enlarged thyroid brittle nails swollen extremeties depression irritability abnormal menstruation mood swings,hypothyroidism,hypothyroidism,Correct
+high fever blister red sore around nose yellow crust ooze skin rash,impetigo,impetigo,Correct
+itching vomiting fatigue weight loss high fever yellowish skin abdominal pain dark urine,jaundice,jaundice,Correct
+chills vomiting high fever sweating headache diarrhoea muscle pain nausea,malaria,malaria,Correct
+acidity headache blurred and distorted vision excessive hunger stiff neck depression irritability visual disturbances indigestion,migraine,migraine,Correct
+joint pain neck pain knee pain swelling joints painful walking hip joint pain,paralysis (brain hemorrhage),osteoarthristis,Wrong
+vomiting headache altered sensorium weakness of one body side,paralysis (brain hemorrhage),paralysis (brain hemorrhage),Correct
+vomiting indigestion loss of appetite abdominal pain passage of gases internal itching,peptic ulcer diseae,peptic ulcer diseae,Correct
+chills cough high fever breathlessness sweating malaise phlegm chest pain fast heart rate rusty sputum fatigue,pneumonia,pneumonia,Correct
+joint pain skin peeling silver like dusting small dents in nails inflammatory nails skin rash,paralysis (brain hemorrhage),psoriasis,Wrong
+chills vomiting fatigue cough high fever breathlessness sweating loss of appetite mild fever yellowing of eyes swelled lymph nodes malaise phlegm chest pain blood in sputum weight loss,heart attack,tuberculosis,Wrong
+chills vomiting fatigue high fever headache nausea constipation abdominal pain toxic look (typhos) belly pain diarrhoea,typhoid,typhoid,Correct
+burning micturition bladder discomfort continuous feel of urine foul smell of urine,paralysis (brain hemorrhage),urinary tract infection,Wrong
+fatigue cramps bruising swollen legs swollen blood vessels prominent veins on calf obesity,varicose veins,varicose veins,Correct

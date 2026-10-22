@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>
+        niramaya.com Verification
+    </title>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #222222;
+            color: #d1d5db;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .container {
+            padding-top: 5rem;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+            margin: 0 auto;
+        }
+
+        .title {
+            color: white;
+            font-weight: 600;
+            font-size: 50px;
+            margin-bottom: 0.5rem;
+        }
+
+        .description {
+            color: #d1d5db;
+            margin-bottom: 1.5rem;
+            font-size: 25px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            border: 1px solid #4b5563;
+            border-radius: 0.375rem;
+            font-size: 25px;
+            width: 200px;
+            height: 50px;
+            margin-bottom: 30px;
+            padding: 0.75rem;
+        }
+
+        .checkbox {
+            width: 1.25rem;
+            height: 1.25rem;
+            color: #3b82f6;
+            background-color: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 0.375rem;
+            outline: none;
+        }
+
+        .checkbox-label {
+            margin-left: 0.75rem;
+            color: #d1d5db;
+            font-size: 0.875rem;
+            user-select: none;
+        }
+
+        .footer-text {
+            color: #9ca3af;
+            font-size: 18px;
+        }
+
+        .footer-text .site-name {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">
+            niramaya.com
+        </h1>
+        <p class="description">
+            Verifying you are human. This may take a few seconds.
+        </p>
+        <div class="checkbox-container">
+            <input aria-label="I'm not a robot checkbox" class="checkbox" type="checkbox" onchange="redirectToQuestionInput()" id="human-checkbox"/>
+            <span class="checkbox-label" id="msg">
+                I'm not a robot
+            </span>
+        </div>
+        <p class="footer-text">
+            <span class="site-name">
+                niramaya.com needs to review the security of your connection before proceeding.
+            </span>
+        </p>
+    </div>
+    <script>
+        function redirectToQuestionInput() {
+            const checkbox = document.getElementById('human-checkbox');
+            const msg = document.getElementById('msg');
+            if (!checkbox.checked) {
+                alert('Please confirm you are not a robot.');
+                return;
+            }
+            msg.innerHTML = "Verifying...";
+            setTimeout(() => {
+                window.location.replace('question_input.html');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

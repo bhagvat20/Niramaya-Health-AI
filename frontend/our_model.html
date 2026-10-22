@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Models</title>
+    <link rel="icon" type="image/png" href="N-16.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root.light {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --header-bg: #f0f0f0;
+            --section-bg: #f0f0f0;
+            --card-bg: #e0e0e0;
+            --button-bg: #cccccc;
+            --button-text: #333333;
+            --link-color: #333333;
+            --hover-bg: #dddddd;
+            --secondary-text: #666666;
+            --modal-bg: #ffffff;
+            --input-bg: #f0f0f0;
+            --input-border: #cccccc;
+            --input-text: #333333;
+            --overlay-bg: rgba(0, 0, 0, 0.3);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --border-color: #cccccc;
+        }
+
+        :root.dark {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --header-bg: #1c1c1c;
+            --section-bg: #1e1e1e;
+            --card-bg: #2c2c2c;
+            --button-bg: #444;
+            --button-text: #e0e0e0;
+            --link-color: #e0e0e0;
+            --hover-bg: #333;
+            --secondary-text: #888;
+            --modal-bg: #222;
+            --input-bg: #333;
+            --input-border: #333;
+            --input-text: #e0e0e0;
+            --overlay-bg: rgba(0, 0, 0, 0.5);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --border-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            /* Improved line spacing for readability */
+        }
+
+        main {
+            padding-top: 100px;
+            margin-bottom: 40px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        .section {
+            background-color: var(--section-bg);
+            color: var(--text-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            line-height: 1.8;
+            /* Enhanced spacing within sections */
+        }
+
+        .section h1,
+        .section h2,
+        .section h3 {
+            color: var(--text-color);
+            margin-bottom: 20px;
+            /* Space below headings */
+        }
+
+        .section ul {
+            margin-left: 20px;
+            /* Indent list items */
+            margin-bottom: 15px;
+            /* Space below each list */
+        }
+
+        .section ul li {
+            margin-bottom: 10px;
+            /* Space between list items */
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+            background: var(--header-bg);
+            box-shadow: 0 2px 4px var(--shadow-color);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            height: 90px;
+        }
+
+        .logo img {
+            height: 80px;
+            width: auto;
+            margin-left: 8px;
+            margin-right: 15px;
+        }
+
+        .logo {
+            cursor: pointer;
+        }
+
+        .site-name {
+            font-size: 24px;
+            color: var(--text-color);
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            margin-left: auto;
+            margin-right: 20px;
+        }
+
+        .nav a,
+        #theme-toggle {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 16px;
+            padding: 8px 16px;
+            transition: background-color 0.3s;
+        }
+
+        #theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav a:hover,
+        #theme-toggle:hover {
+            background-color: var(--hover-bg);
+            border-radius: 5px;
+        }
+
+        .model-section {
+            margin-bottom: 30px;
+        }
+
+        .model-section img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 60px 20px 20px;
+            background: var(--header-bg);
+            position: relative;
+            width: 100%;
+            border-top: 1px solid var(--border-color);
+            margin-top: 40px;
+        }
+
+        .footer-content {
+            margin-bottom: 30px;
+        }
+
+        .footer-text {
+            font-size: 18px;
+            color: var(--secondary-text);
+            margin-bottom: 15px;
+        }
+
+        .footer-disclaimer {
+            font-size: 16px;
+            color: var(--secondary-text);
+            max-width: 800px;
+            margin: 0 auto 20px;
+            line-height: 1.8;
+        }
+
+        .footer-disclaimer a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+
+        .footer-disclaimer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--secondary-text);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-color);
+            text-decoration: underline;
+        }
+
+        .footer-bottom {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--secondary-text);
+        }
+
+        .footer-bottom p {
+            margin: 0;
+        }
+
+        #career,
+        #advertise,
+        #additional {
+            cursor: pointer;
+        }
+    </style>
+    <script>
+        const theme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.classList.add(theme);
+    </script>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">
+            <img id="logo-img" alt="Niramaya Logo">
+            <script>
+                const logoImg = document.getElementById('logo-img');
+                const initialTheme = localStorage.getItem('theme') || 'dark';
+                logoImg.src = initialTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+            </script>
+        </div>
+        <div class="site-name">Niramaya</div>
+        <div class="nav">
+            <button id="theme-toggle" aria-label="Toggle theme"><i class="fas fa-sun"></i></button>
+            <a href="home.html" aria-label="Home">Home</a>
+            <a href="about.html" aria-label="About Niramaya">About Niramaya</a>
+            <a href="wellness_tips.html" aria-label="Wellness Tips">Wellness Tips</a>
+            <a href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i class="fas fa-user-shield"></i> Admin
+                Portal</a>
+        </div>
+    </div>
+    <main>
+        <div class="container">
+            <div class="section">
+                <h1>Our Models</h1>
+                <div class="model-section">
+                    <h3>BioGPT</h3>
+                    <ul>
+                        <li><strong>Developer:</strong> Microsoft</li>
+                        <li><strong>Model Type:</strong> Transformer-based language model</li>
+                        <li><strong>Accuracy:</strong> State-of-the-art in biomedical NLP tasks</li>
+                        <li><strong>Dataset:</strong> Large corpus of PubMed articles</li>
+                        <li><strong>Description:</strong> BioGPT, fine-tuned on biomedical literature, excels at
+                            answering health questions with precision and context, leveraging its deep understanding of
+                            medical texts.</li>
+                        <li><strong>Learn More:</strong> <a href="https://github.com/microsoft/BioGPT" target="_blank"
+                                style="color: gray;">BioGPT Repository</a></li>
+                    </ul>
+                </div>
+                <div class="model-section">
+                    <h3>Gemini</h3>
+                    <ul>
+                        <li><strong>Developer:</strong> Google (assumed)</li>
+                        <li><strong>Model Type:</strong> Advanced multimodal AI model</li>
+                        <li><strong>Accuracy:</strong> High performance across diverse tasks</li>
+                        <li><strong>Dataset:</strong> Proprietary broad dataset</li>
+                        <li><strong>Description:</strong> Gemini enhances Niramaya’s capabilities with its versatile AI
+                            framework, supporting complex health queries with robust and reliable responses.</li>
+                    </ul>
+                </div>
+                <div class="model-section">
+                    <h3>LRv1</h3>
+                    <ul>
+                        <li><strong>Developer:</strong> Niramaya Team</li>
+                        <li><strong>Model Type:</strong> Logistic Regression</li>
+                        <li><strong>Accuracy:</strong> 0.91 (identical to LRv2)</li>
+                        <li><strong>F1 Score:</strong> 0.89 (identical to LRv2)</li>
+                        <li><strong>Recall:</strong> 0.91 (identical to LRv2)</li>
+                        <li><strong>Precision:</strong> 0.89 (identical to LRv2)</li>
+                        <li><strong>Cross-Validation:</strong> 0.89 (identical to LRv2)</li>
+                        <li><strong>Dataset:</strong> Kaggle’s Symptoms to Disease Dataset</li>
+                        <li><strong>Outputs:</strong> Predicted disease and description</li>
+                        <li><strong>Description:</strong> LRv1 analyzes your symptoms using a logistic regression model
+                            to predict probable diseases, providing early awareness with detailed descriptions.</li>
+                    </ul>
+                </div>
+                <div class="model-section">
+                    <h3>LRv2</h3>
+                    <ul>
+                        <li><strong>Developer:</strong> Niramaya Team</li>
+                        <li><strong>Model Type:</strong> Enhanced Logistic Regression</li>
+                        <li><strong>Accuracy:</strong> 0.91 (identical to LRv1)</li>
+                        <li><strong>F1 Score:</strong> 0.89 (identical to LRv1)</li>
+                        <li><strong>Recall:</strong> 0.91 (identical to LRv1)</li>
+                        <li><strong>Precision:</strong> 0.89 (identical to LRv1)</li>
+                        <li><strong>Cross-Validation:</strong> 0.89 (identical to LRv1)</li>
+                        <li><strong>Dataset:</strong> Kaggle’s Symptoms to Disease Dataset</li>
+                        <li><strong>Outputs:</strong> Predicted disease, description, and precautions</li>
+                        <li><strong>Description:</strong> Building on LRv1, LRv2 not only predicts diseases but also
+                            offers tailored precautions, empowering you with comprehensive health guidance.</li>
+                        <img src="model_performance_metrics.png" alt="LRv1 and LRv2 Performance Metrics">
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-text">© 2025 Niramaya. All rights reserved.</p>
+                <p class="footer-disclaimer">Niramaya is a health AI. Our website services, content, and products are
+                    for informational purposes only. Niramaya does not provide medical advice, diagnosis, or treatment.
+                    <a id="additional">See additional information</a>.</p>
+                <div class="footer-links">
+                    <a href="about.html">About</a>
+                    <a id="career">Careers</a>
+                    <a id="advertise">Advertise with us</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelector(".logo").onclick = function (e) {
+            e.preventDefault();
+            window.location.href = "home.html";
+        };
+
+        document.querySelector(".site-name").onclick = function (e) {
+            e.preventDefault();
+            window.location.href = "home.html";
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const htmlElement = document.documentElement;
+            const themeToggleButton = document.getElementById('theme-toggle');
+            const logoImg = document.getElementById('logo-img');
+            let currentTheme = localStorage.getItem('theme') || 'dark';
+
+            if (!themeToggleButton) {
+                console.error('Error: Theme toggle button not found in DOM.');
+                return;
+            }
+
+            htmlElement.classList.add(currentTheme);
+            themeToggleButton.innerHTML = currentTheme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+
+            themeToggleButton.addEventListener('click', () => {
+                if (currentTheme === 'dark') {
+                    htmlElement.classList.remove('dark');
+                    htmlElement.classList.add('light');
+                    localStorage.setItem('theme', 'light');
+                    currentTheme = 'light';
+                    themeToggleButton.innerHTML = '<i class="fas fa-moon"></i>';
+                    logoImg.src = 'N-light.png';
+                } else {
+                    htmlElement.classList.remove('light');
+                    htmlElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                    currentTheme = 'dark';
+                    themeToggleButton.innerHTML = '<i class="fas fa-sun"></i>';
+                    logoImg.src = 'N-dark.png';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Content Management - Niramaya Admin</title>
+  <link rel="icon" type="image/png" href="N-16.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script>
+    const theme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.classList.add(theme);
+  </script>
+  <style>
+    .admin-container {
+      width: 92%;
+      max-width: 1280px;
+      margin: 110px auto 50px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .page-title h1 {
+      font-size: 28px;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .page-title p {
+      color: var(--secondary-text);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .badge-module {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: bold;
+      vertical-align: middle;
+    }
+
+    .disclaimer-banner {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-left: 4px solid #3b82f6;
+      color: var(--text-color);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .controls-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 25px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .search-wrapper i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--secondary-text);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      font-size: 14px;
+    }
+
+    .filter-select {
+      padding: 10px 14px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-action {
+      padding: 10px 18px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-action:hover {
+      opacity: 0.9;
+    }
+
+    .btn-primary {
+      background-color: #2563eb;
+      color: #fff;
+    }
+
+    .btn-success {
+      background-color: #16a34a;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background-color: var(--button-bg);
+      color: var(--button-text);
+    }
+
+    .btn-warning {
+      background-color: #d97706;
+      color: #fff;
+    }
+
+    .btn-danger {
+      background-color: #dc2626;
+      color: #fff;
+    }
+
+    .table-responsive {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow-x: auto;
+      box-shadow: 0 4px 12px var(--shadow-color);
+    }
+
+    .content-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .content-table th {
+      background: var(--header-bg);
+      color: var(--text-color);
+      padding: 14px 18px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    .content-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-color);
+      vertical-align: middle;
+    }
+
+    .content-table tbody tr:hover {
+      background: var(--hover-bg);
+    }
+
+    .type-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .type-tip {
+      background: rgba(168, 85, 247, 0.15);
+      color: #c084fc;
+      border: 1px solid #a855f7;
+    }
+
+    .type-article {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid #3b82f6;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-published {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid #22c55e;
+    }
+
+    .status-draft {
+      background: rgba(234, 179, 8, 0.15);
+      color: #facc15;
+      border: 1px solid #eab308;
+    }
+
+    .status-archived {
+      background: rgba(148, 163, 184, 0.15);
+      color: #94a3b8;
+      border: 1px solid #64748b;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn-sm {
+      padding: 5px 9px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 15px;
+    }
+
+    .form-row .form-group {
+      flex: 1;
+    }
+
+    textarea.form-control {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--input-border);
+      border-radius: 6px;
+      background: var(--input-bg);
+      color: var(--input-text);
+      font-size: 14px;
+      min-height: 120px;
+      font-family: inherit;
+      resize: vertical;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <div class="logo">
+      <img id="logo-img" alt="Niramaya Logo">
+      <script>
+        const logoImg = document.getElementById('logo-img');
+        const currentTheme = localStorage.getItem('theme') || 'dark';
+        logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+      </script>
+    </div>
+    <div class="site-name">Niramaya Admin</div>
+    <div class="nav">
+      <button id="theme-toggle" aria-label="Toggle theme"><i class="fas fa-sun"></i></button>
+      <a href="admin_users.html"><i class="fas fa-users"></i> Users</a>
+      <a href="admin_login.html"><i class="fas fa-key"></i> Auth Portal</a>
+      <button id="admin-logout-link"
+        style="background:none; border:none; color:var(--link-color); cursor:pointer; font-size:16px; padding:8px 16px;"><i
+          class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+  </div>
+
+  <main class="admin-container">
+    <div class="page-header">
+      <div class="page-title">
+        <h1><i class="fas fa-book-medical"></i> Health Content Management <span class="badge-module">Module 3.3</span>
+        </h1>
+        <p>Manage, inspect, edit, publish, and archive approved Wellness Tips & Health Articles.</p>
+      </div>
+      <div>
+        <button class="btn-action btn-success" onclick="openCreateModal()">
+          <i class="fas fa-plus"></i> Add Health Content
+        </button>
+      </div>
+    </div>
+
+    <div class="disclaimer-banner">
+      <i class="fas fa-info-circle fa-lg"></i>
+      <div>
+        <strong>Medical Content Policy:</strong> All published health content is strictly for educational and
+        informational purposes. Niramaya does not provide professional medical advice, diagnosis, or treatment.
+      </div>
+    </div>
+
+    <div class="controls-card">
+      <div class="search-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" id="search-input" class="search-input" placeholder="Search by title, category, or keyword..."
+          onkeyup="if(event.key==='Enter') loadContent()">
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <select id="type-filter" class="filter-select" onchange="loadContent()">
+          <option value="all">All Content Types</option>
+          <option value="wellness_tip">Wellness Tips</option>
+          <option value="article">Health Articles</option>
+        </select>
+
+        <select id="status-filter" class="filter-select" onchange="loadContent()">
+          <option value="all">All Statuses</option>
+          <option value="published">Published</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select>
+
+        <button class="btn-action btn-secondary" onclick="loadContent()">
+          <i class="fas fa-sync"></i> Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="content-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Source / Author</th>
+            <th>Status</th>
+            <th>Updated Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="content-table-body">
+          <tr>
+            <td colspan="8" style="text-align:center; padding:30px;">
+              <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Loading health content items...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Create / Edit Content Modal -->
+  <div id="content-modal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+      <span class="close" onclick="closeModal('content-modal')">&times;</span>
+      <h2 id="modal-form-title"><i class="fas fa-file-medical"></i> Add New Health Content</h2>
+
+      <form id="content-form" onsubmit="handleSaveContent(event)" style="margin-top:15px;">
+        <input type="hidden" id="form-content-id">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="form-content-type">Content Type *</label>
+            <select id="form-content-type" class="filter-select" style="width:100%;" required>
+              <option value="wellness_tip">Wellness Tip</option>
+              <option value="article">Health Article / Research</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="form-category">Category / Season *</label>
+            <input type="text" id="form-category" placeholder="e.g. Spring, Nutrition, AI Health" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="form-title">Title *</label>
+          <input type="text" id="form-title" placeholder="Enter clear, descriptive title..." required>
+        </div>
+
+        <div class="form-group">
+          <label for="form-body">Content Body *</label>
+          <textarea id="form-body" class="form-control"
+            placeholder="Enter approved health tips or research article summary..." required></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="form-author">Author or Source</label>
+            <input type="text" id="form-author" placeholder="Niramaya Health Editorial">
+          </div>
+
+          <div class="form-group">
+            <label for="form-status">Publication Status *</label>
+            <select id="form-status" class="filter-select" style="width:100%;" required>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="form-link">External Reference Link (Optional)</label>
+          <input type="url" id="form-link" placeholder="https://">
+        </div>
+
+        <div id="form-alert" class="alert-box" style="margin-top:10px;"></div>
+
+        <div style="display:flex; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-action btn-secondary" style="flex:1;"
+            onclick="closeModal('content-modal')">Cancel</button>
+          <button type="submit" class="btn-action btn-primary" style="flex:1;"><i class="fas fa-save"></i> Save
+            Content</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Preview Content Modal -->
+  <div id="preview-modal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <span class="close" onclick="closeModal('preview-modal')">&times;</span>
+      <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center;">
+        <span id="prev-type" class="type-badge"></span>
+        <span id="prev-status" class="status-badge"></span>
+      </div>
+      <h2 id="prev-title" style="margin-bottom:8px;"></h2>
+      <p style="color:var(--secondary-text); font-size:13px; margin-bottom:15px;">
+        Category: <strong id="prev-category"></strong> | Source: <span id="prev-author"></span>
+      </p>
+
+      <div id="prev-body"
+        style="background:var(--input-bg); padding:18px; border-radius:8px; line-height:1.7; font-size:14px; margin-bottom:20px; white-space:pre-wrap;">
+      </div>
+
+      <div class="disclaimer-banner" style="margin-bottom:0;">
+        <i class="fas fa-shield-alt"></i>
+        <div style="font-size:12px;">
+          Niramaya health information is provided for educational purposes only and does not constitute professional
+          medical advice.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2025 Niramaya Admin System. All rights reserved.</p>
+        <p class="footer-disclaimer">Child Module 3.3: Health Content Management Interface.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const API_BASE_URL = 'http://localhost:5000';
+
+    function getAuthToken() {
+      return sessionStorage.getItem('admin_token');
+    }
+
+    function checkAuth() {
+      if (!getAuthToken()) {
+        window.location.href = 'admin_login.html';
+      }
+    }
+
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      m.classList.remove('show');
+      setTimeout(() => { m.style.display = 'none'; }, 300);
+    }
+
+    function openModal(id) {
+      const m = document.getElementById(id);
+      m.style.display = 'flex';
+      setTimeout(() => { m.classList.add('show'); }, 10);
+    }
+
+    async function loadContent() {
+      checkAuth();
+      const token = getAuthToken();
+      const search = document.getElementById('search-input').value.trim();
+      const type = document.getElementById('type-filter').value;
+      const status = document.getElementById('status-filter').value;
+      const tbody = document.getElementById('content-table-body');
+
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Fetching health content...</td></tr>`;
+
+      try {
+        const url = new URL(`${API_BASE_URL}/admin/health-content`);
+        if (search) url.searchParams.append('search', search);
+        if (type !== 'all') url.searchParams.append('type', type);
+        if (status !== 'all') url.searchParams.append('status', status);
+
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) {
+          sessionStorage.removeItem('admin_token');
+          window.location.href = 'admin_login.html';
+          return;
+        }
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          if (data.items.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--secondary-text);">No health content items found.</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = '';
+          data.items.forEach(item => {
+            const tr = document.createElement('tr');
+
+            const typeBadge = item.content_type === 'wellness_tip'
+              ? `<span class="type-badge type-tip"><i class="fas fa-leaf"></i> Tip</span>`
+              : `<span class="type-badge type-article"><i class="fas fa-newspaper"></i> Article</span>`;
+
+            const statusBadge = `<span class="status-badge status-${item.status}">${item.status.toUpperCase()}</span>`;
+
+            tr.innerHTML = `
+                            <td><strong>#${item.content_id}</strong></td>
+                            <td>${typeBadge}</td>
+                            <td><strong>${item.title}</strong></td>
+                            <td><span class="badge-module" style="background:var(--input-bg); color:var(--text-color);">${item.category || 'General'}</span></td>
+                            <td>${item.author_or_source || 'Niramaya Editorial'}</td>
+                            <td>${statusBadge}</td>
+                            <td>${item.updated_at ? item.updated_at.split('T')[0] : 'N/A'}</td>
+                            <td class="actions-cell">
+                                <button class="btn-sm btn-primary" onclick="previewItem(${item.content_id})"><i class="fas fa-eye"></i> View</button>
+                                <button class="btn-sm btn-secondary" onclick="openEditModal(${JSON.stringify(item).replace(/"/g, '&quot;')})"><i class="fas fa-edit"></i> Edit</button>
+                                <button class="btn-sm btn-warning" onclick="toggleStatus(${item.content_id}, '${item.status}')"><i class="fas fa-exchange-alt"></i> Toggle</button>
+                                <button class="btn-sm btn-danger" onclick="deleteItem(${item.content_id}, '${item.title.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i> Delete</button>
+                            </td>
+                        `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ef4444; padding:20px;">${data.message || 'Failed to load content'}</td></tr>`;
+        }
+      } catch (err) {
+        console.error("Load content error:", err);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ef4444; padding:20px;">Connection error. Ensure backend server is running.</td></tr>`;
+      }
+    }
+
+    function openCreateModal() {
+      document.getElementById('modal-form-title').innerHTML = `<i class="fas fa-file-medical"></i> Add New Health Content`;
+      document.getElementById('form-content-id').value = '';
+      document.getElementById('form-content-type').value = 'wellness_tip';
+      document.getElementById('form-category').value = '';
+      document.getElementById('form-title').value = '';
+      document.getElementById('form-body').value = '';
+      document.getElementById('form-author').value = 'Niramaya Health Editorial';
+      document.getElementById('form-status').value = 'published';
+      document.getElementById('form-link').value = '';
+      document.getElementById('form-alert').style.display = 'none';
+      openModal('content-modal');
+    }
+
+    function openEditModal(item) {
+      document.getElementById('modal-form-title').innerHTML = `<i class="fas fa-edit"></i> Edit Health Content #${item.content_id}`;
+      document.getElementById('form-content-id').value = item.content_id;
+      document.getElementById('form-content-type').value = item.content_type;
+      document.getElementById('form-category').value = item.category || '';
+      document.getElementById('form-title').value = item.title;
+      document.getElementById('form-body').value = item.content;
+      document.getElementById('form-author').value = item.author_or_source || '';
+      document.getElementById('form-status').value = item.status;
+      document.getElementById('form-link').value = item.external_link || '';
+      document.getElementById('form-alert').style.display = 'none';
+      openModal('content-modal');
+    }
+
+    async function handleSaveContent(e) {
+      e.preventDefault();
+      const token = getAuthToken();
+      const id = document.getElementById('form-content-id').value;
+      const alertBox = document.getElementById('form-alert');
+
+      const payload = {
+        content_type: document.getElementById('form-content-type').value,
+        category: document.getElementById('form-category').value.trim(),
+        title: document.getElementById('form-title').value.trim(),
+        content: document.getElementById('form-body').value.trim(),
+        author_or_source: document.getElementById('form-author').value.trim(),
+        status: document.getElementById('form-status').value,
+        external_link: document.getElementById('form-link').value.trim()
+      };
+
+      const url = id ? `${API_BASE_URL}/admin/health-content/${id}` : `${API_BASE_URL}/admin/health-content`;
+      const method = id ? 'PUT' : 'POST';
+
+      try {
+        const res = await fetch(url, {
+          method: method,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          closeModal('content-modal');
+          loadContent();
+        } else {
+          alertBox.textContent = data.message || 'Failed to save health content.';
+          alertBox.className = 'alert-box error';
+          alertBox.style.display = 'block';
+        }
+      } catch (err) {
+        alertBox.textContent = 'Server error saving content.';
+        alertBox.className = 'alert-box error';
+        alertBox.style.display = 'block';
+      }
+    }
+
+    async function previewItem(id) {
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/health-content?search=${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.items) {
+          const item = data.items.find(i => i.content_id === id);
+          if (item) {
+            document.getElementById('prev-title').textContent = item.title;
+            document.getElementById('prev-category').textContent = item.category || 'General';
+            document.getElementById('prev-author').textContent = item.author_or_source || 'Niramaya Editorial';
+            document.getElementById('prev-body').textContent = item.content;
+
+            document.getElementById('prev-type').textContent = item.content_type === 'wellness_tip' ? 'Wellness Tip' : 'Article';
+            document.getElementById('prev-type').className = `type-badge type-${item.content_type === 'wellness_tip' ? 'tip' : 'article'}`;
+
+            document.getElementById('prev-status').textContent = item.status.toUpperCase();
+            document.getElementById('prev-status').className = `status-badge status-${item.status}`;
+
+            openModal('preview-modal');
+          }
+        }
+      } catch (err) {
+        alert("Error loading item preview.");
+      }
+    }
+
+    async function toggleStatus(id, currentStatus) {
+      let nextStatus = 'published';
+      if (currentStatus === 'published') nextStatus = 'archived';
+      else if (currentStatus === 'archived') nextStatus = 'draft';
+      else if (currentStatus === 'draft') nextStatus = 'published';
+
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/health-content/${id}/status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status: nextStatus })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          loadContent();
+        } else {
+          alert(data.message || 'Failed to update status.');
+        }
+      } catch (err) {
+        alert("Error toggling status.");
+      }
+    }
+
+    async function deleteItem(id, title) {
+      if (!confirm(`Are you sure you want to permanently delete '${title}'?`)) return;
+
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/health-content/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          loadContent();
+        } else {
+          alert(data.message || 'Failed to delete item.');
+        }
+      } catch (err) {
+        alert("Error deleting item.");
+      }
+    }
+
+    document.getElementById('admin-logout-link').addEventListener('click', function () {
+      sessionStorage.removeItem('admin_token');
+      window.location.href = 'admin_login.html';
+    });
+
+    document.addEventListener('DOMContentLoaded', loadContent);
+  </script>
+</body>
+
+</html>

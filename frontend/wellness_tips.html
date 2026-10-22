@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wellness Tips</title>
+    <link rel="icon" type="image/png" href="N-16.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root.light {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --header-bg: #f0f0f0;
+            --section-bg: #f0f0f0;
+            --card-bg: #e0e0e0;
+            --button-bg: #cccccc;
+            --button-text: #333333;
+            --link-color: #333333;
+            --hover-bg: #dddddd;
+            --secondary-text: #666666;
+            --modal-bg: #ffffff;
+            --input-bg: #f0f0f0;
+            --input-border: #cccccc;
+            --input-text: #333333;
+            --overlay-bg: rgba(0, 0, 0, 0.3);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --border-color: #cccccc;
+        }
+
+        :root.dark {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --header-bg: #1c1c1c;
+            --section-bg: #1e1e1e;
+            --card-bg: #2c2c2c;
+            --button-bg: #444;
+            --button-text: #e0e0e0;
+            --link-color: #e0e0e0;
+            --hover-bg: #333;
+            --secondary-text: #888;
+            --modal-bg: #222;
+            --input-bg: #333;
+            --input-border: #333;
+            --input-text: #e0e0e0;
+            --overlay-bg: rgba(0, 0, 0, 0.5);
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --border-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            /* Improved line spacing for readability */
+        }
+
+        main {
+            padding-top: 100px;
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            margin-top: 30px;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            /* Space below headings */
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            padding: 0 20px;
+        }
+
+        .section {
+            background-color: var(--section-bg);
+            color: var(--text-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            line-height: 1.8;
+            /* Enhanced spacing within sections */
+        }
+
+        .section h1,
+        .section h2 {
+            color: var(--text-color);
+        }
+
+        .section p {
+            margin-bottom: 15px;
+            /* Space below paragraphs */
+        }
+
+        .section ul {
+            margin-left: 20px;
+            /* Indent list items */
+            margin-bottom: 15px;
+            /* Space below each list */
+        }
+
+        .section ul li {
+            margin-bottom: 10px;
+            /* Space between list items */
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+            background: var(--header-bg);
+            box-shadow: 0 2px 4px var(--shadow-color);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            height: 90px;
+        }
+
+        .logo img {
+            height: 80px;
+            width: auto;
+            margin-left: 8px;
+            margin-right: 15px;
+        }
+
+        .logo {
+            cursor: pointer;
+        }
+
+        .site-name {
+            font-size: 24px;
+            color: var(--text-color);
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            margin-left: auto;
+            margin-right: 20px;
+        }
+
+        .nav a,
+        #theme-toggle {
+            color: var(--link-color);
+            text-decoration: none;
+            font-size: 16px;
+            padding: 8px 16px;
+            transition: background-color 0.3s;
+        }
+
+        #theme-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav a:hover,
+        #theme-toggle:hover {
+            background-color: var(--hover-bg);
+            border-radius: 5px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 60px 20px 20px;
+            background: var(--header-bg);
+            position: relative;
+            width: 100%;
+            border-top: 1px solid var(--border-color);
+            margin-top: 40px;
+        }
+
+        .footer-content {
+            margin-bottom: 30px;
+        }
+
+        .footer-text {
+            font-size: 18px;
+            color: var(--secondary-text);
+            margin-bottom: 15px;
+        }
+
+        .footer-disclaimer {
+            font-size: 16px;
+            color: var(--secondary-text);
+            max-width: 800px;
+            margin: 0 auto 20px;
+            line-height: 1.8;
+        }
+
+        .footer-disclaimer a {
+            color: var(--link-color);
+            text-decoration: none;
+        }
+
+        .footer-disclaimer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: var(--secondary-text);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-color);
+            text-decoration: underline;
+        }
+
+        .footer-bottom {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--secondary-text);
+        }
+
+        .footer-bottom p {
+            margin: 0;
+        }
+
+        #career,
+        #advertise,
+        #additional {
+            cursor: pointer;
+        }
+    </style>
+    <script>
+        const theme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.classList.add(theme);
+    </script>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">
+            <img id="logo-img" alt="Niramaya Logo">
+            <script>
+                const logoImg = document.getElementById('logo-img');
+                const initialTheme = localStorage.getItem('theme') || 'dark';
+                logoImg.src = initialTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+            </script>
+        </div>
+        <div class="site-name">Niramaya</div>
+        <div class="nav">
+            <button id="theme-toggle" aria-label="Toggle theme"><i class="fas fa-sun"></i></button>
+            <a href="home.html" aria-label="Home">Home</a>
+            <a href="about.html" aria-label="About Niramaya">About Niramaya</a>
+            <a href="our_model.html" aria-label="Our Models">Our Models</a>
+            <a href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i class="fas fa-user-shield"></i> Admin
+                Portal</a>
+        </div>
+    </div>
+
+    <main>
+        <div class="container">
+            <div class="section" id="wellness-section">
+                <h1>Wellness Tips</h1>
+                <p>Embrace a healthier lifestyle with Niramaya’s seasonal wellness tips. Discover what to eat, what to
+                    avoid, and how to stay active throughout the year.</p>
+
+                <div id="dynamic-tips-container">
+                    <h2><i class="fas fa-leaf"></i> Spring</h2>
+                    <ul>
+                        <li><strong>Eat:</strong> Fresh greens, berries, and lean proteins to boost energy.</li>
+                        <li><strong>Avoid:</strong> Heavy, oily foods that can cause sluggishness.</li>
+                        <li><strong>Stay Active:</strong> Enjoy outdoor hikes or cycling in the crisp air.</li>
+                    </ul>
+
+                    <h2><i class="fas fa-sun"></i> Summer</h2>
+                    <ul>
+                        <li><strong>Eat:</strong> Hydrating fruits like watermelon and light salads.</li>
+                        <li><strong>Avoid:</strong> Excessive caffeine and sugary drinks that dehydrate.</li>
+                        <li><strong>Stay Active:</strong> Swim or jog early to beat the heat.</li>
+                    </ul>
+
+                    <h2><i class="fas fa-tree"></i> Autumn</h2>
+                    <ul>
+                        <li><strong>Eat:</strong> Root vegetables, apples, and warm soups for comfort.</li>
+                        <li><strong>Avoid:</strong> Processed snacks and excess sugar.</li>
+                        <li><strong>Stay Active:</strong> Try yoga or pilates as the days cool down.</li>
+                    </ul>
+
+                    <h2><i class="fas fa-snowflake"></i> Winter</h2>
+                    <ul>
+                        <li><strong>Eat:</strong> Hearty stews, citrus fruits, and whole grains for warmth.</li>
+                        <li><strong>Avoid:</strong> High-fat comfort foods and excessive alcohol.</li>
+                        <li><strong>Stay Active:</strong> Indoor workouts or winter sports like skiing.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-text">© 2025 Niramaya. All rights reserved.</p>
+                <p class="footer-disclaimer">Niramaya is a health AI. Our website services, content, and products are
+                    for informational purposes only. Niramaya does not provide medical advice, diagnosis, or treatment.
+                    <a id="additional">See additional information</a>.
+                </p>
+                <div class="footer-links">
+                    <a href="about.html">About</a>
+                    <a id="career">Careers</a>
+                    <a id="advertise">Advertise with us</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.querySelector(".logo").onclick = function (e) {
+            e.preventDefault();
+            window.location.href = "home.html";
+        };
+
+        document.querySelector(".site-name").onclick = function (e) {
+            e.preventDefault();
+            window.location.href = "home.html";
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const htmlElement = document.documentElement;
+            const themeToggleButton = document.getElementById('theme-toggle');
+            const logoImg = document.getElementById('logo-img');
+            let currentTheme = localStorage.getItem('theme') || 'dark';
+
+            if (!themeToggleButton) {
+                console.error('Error: Theme toggle button not found in DOM.');
+                return;
+            }
+
+            htmlElement.classList.add(currentTheme);
+            themeToggleButton.innerHTML = currentTheme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+
+            themeToggleButton.addEventListener('click', () => {
+                if (currentTheme === 'dark') {
+                    htmlElement.classList.remove('dark');
+                    htmlElement.classList.add('light');
+                    localStorage.setItem('theme', 'light');
+                    currentTheme = 'light';
+                    themeToggleButton.innerHTML = '<i class="fas fa-moon"></i>';
+                    logoImg.src = 'N-light.png';
+                } else {
+                    htmlElement.classList.remove('light');
+                    htmlElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                    currentTheme = 'dark';
+                    themeToggleButton.innerHTML = '<i class="fas fa-sun"></i>';
+                    logoImg.src = 'N-dark.png';
+                }
+            });
+
+            // Fetch dynamic wellness tips from backend API
+            async function fetchWellnessTips() {
+                try {
+                    const res = await fetch('http://localhost:5000/api/health-content/tips');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.tips && data.tips.length > 0) {
+                            const container = document.getElementById('dynamic-tips-container');
+                            if (container) {
+                                let html = '';
+                                const iconMap = {
+                                    'spring': 'fa-leaf',
+                                    'summer': 'fa-sun',
+                                    'autumn': 'fa-tree',
+                                    'winter': 'fa-snowflake'
+                                };
+                                data.tips.forEach(t => {
+                                    const icon = iconMap[(t.category || '').toLowerCase()] || 'fa-heartbeat';
+                                    html += `
+                                        <h2><i class="fas ${icon}"></i> ${t.title} (${t.category || 'General'})</h2>
+                                        <p>${t.content}</p>
+                                    `;
+                                });
+                                container.innerHTML = html;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.log("Using static default wellness tips (backend offline or un-seeded).");
+                }
+            }
+
+            fetchWellnessTips();
+        });
+    </script>
+
+</body>
+
+</html>
