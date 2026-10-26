@@ -62,68 +62,86 @@ def setup_database():
         else:
             print("Admin user(s) already exist.")
 
-        # Step 4: Seed initial approved Health Content if health_content_tbl is empty
+        # Step 4: Seed initial approved Health Content if health_content_tbl is empty or partial
+        try:
+            from seed_data import SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT
+        except ImportError:
+            SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT = [], [], [], []
+
+        # Seed user accounts if account_tbl is empty
+        cursor_proj.execute("SELECT COUNT(*) FROM account_tbl;")
+        account_count = cursor_proj.fetchone()[0]
+        if account_count == 0 and SEED_ACCOUNTS:
+            print("Seeding initial user accounts...")
+            for a in SEED_ACCOUNTS:
+                cursor_proj.execute("""
+                    INSERT INTO account_tbl (account_id, family_name, email, password_hash, created_at, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (email) DO NOTHING;
+                """, (a[0], a[1], a[2], a[3], a[4], a[5]))
+            conn_proj.commit()
+            print(f"Seeded {len(SEED_ACCOUNTS)} user accounts successfully.")
+
+        # Seed members if member_tbl is empty
+        cursor_proj.execute("SELECT COUNT(*) FROM member_tbl;")
+        member_count = cursor_proj.fetchone()[0]
+        if member_count == 0 and SEED_MEMBERS:
+            print("Seeding initial family members...")
+            for m in SEED_MEMBERS:
+                cursor_proj.execute("""
+                    INSERT INTO member_tbl (member_id, account_id, name, gender, age, height, weight, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (member_id) DO NOTHING;
+                """, (m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]))
+            conn_proj.commit()
+            print(f"Seeded {len(SEED_MEMBERS)} family members successfully.")
+
+        # Seed chat history if chat_history_tbl is empty
+        cursor_proj.execute("SELECT COUNT(*) FROM chat_history_tbl;")
+        chat_count = cursor_proj.fetchone()[0]
+        if chat_count == 0 and SEED_CHATS:
+            print("Seeding initial disease predictions...")
+            for c in SEED_CHATS:
+                cursor_proj.execute("""
+                    INSERT INTO chat_history_tbl (history_id, account_id, member_id, user_input, bot_response, model, timestamp)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (history_id) DO NOTHING;
+                """, (c[0], c[1], c[2], c[3], c[4], c[5], c[6]))
+            conn_proj.commit()
+            print(f"Seeded {len(SEED_CHATS)} chats successfully.")
+
+        # Seed full health content if health_content_tbl has fewer than 25 items
         cursor_proj.execute("SELECT COUNT(*) FROM health_content_tbl;")
         content_count = cursor_proj.fetchone()[0]
-        if content_count == 0:
-            print("Seeding initial approved health content...")
-            initial_tips = [
-                (
-                    "wellness_tip",
-                    "Spring Seasonal Wellness",
-                    "Spring",
-                    "Eat fresh greens, berries, and lean proteins to boost energy. Avoid heavy, oily foods that can cause sluggishness. Stay active with outdoor hikes or cycling.",
-                    "Niramaya Health Editorial Team",
-                    "published"
-                ),
-                (
-                    "wellness_tip",
-                    "Summer Hydration & Energy",
-                    "Summer",
-                    "Eat hydrating fruits like watermelon and light salads. Avoid excessive caffeine and sugary drinks that dehydrate. Stay active by swimming or jogging early to beat the heat.",
-                    "Niramaya Health Editorial Team",
-                    "published"
-                ),
-                (
-                    "wellness_tip",
-                    "Autumn Warmth & Active Care",
-                    "Autumn",
-                    "Eat root vegetables, apples, and warm soups for comfort. Avoid processed snacks and excess sugar. Stay active with indoor yoga or pilates as the days cool down.",
-                    "Niramaya Health Editorial Team",
-                    "published"
-                ),
-                (
-                    "wellness_tip",
-                    "Winter Vitality & Defense",
-                    "Winter",
-                    "Eat hearty stews, citrus fruits, and whole grains for warmth. Avoid high-fat comfort foods and excessive alcohol. Stay active with indoor workouts or winter sports.",
-                    "Niramaya Health Editorial Team",
-                    "published"
-                ),
-                (
-                    "article",
-                    "Artificial Intelligence in Early Health Screening",
-                    "AI Health",
-                    "Recent studies highlight the transformative potential of machine learning and natural language processing in assisting early symptom analysis and preventative wellness monitoring.",
-                    "Europe PMC / Niramaya Research",
-                    "published"
-                )
-            ]
-
-            for item in initial_tips:
+        if content_count < 25 and SEED_HEALTH_CONTENT:
+            print("Seeding full health content items...")
+            for h in SEED_HEALTH_CONTENT:
                 cursor_proj.execute("""
-                    INSERT INTO health_content_tbl (content_type, title, category, content, author_or_source, status)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, item)
+                    INSERT INTO health_content_tbl (content_id, content_type, title, category, content, author_or_source, external_link, image_url, status, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (content_id) DO UPDATE SET
+                        content_type = EXCLUDED.content_type,
+                        title = EXCLUDED.title,
+                        category = EXCLUDED.category,
+                        content = EXCLUDED.content,
+                        status = EXCLUDED.status;
+                """, (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10]))
             conn_proj.commit()
-            print("Initial health content seeded successfully!")
-        else:
-            print("Health content items already exist.")
+            print(f"Seeded {len(SEED_HEALTH_CONTENT)} health content items successfully.")
+
+        # Update PostgreSQL sequence values to prevent auto-increment conflicts
+        try:
+            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('account_tbl', 'account_id'), COALESCE(MAX(account_id), 1)) FROM account_tbl;")
+            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('member_tbl', 'member_id'), COALESCE(MAX(member_id), 1)) FROM member_tbl;")
+            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('chat_history_tbl', 'history_id'), COALESCE(MAX(history_id), 1)) FROM chat_history_tbl;")
+            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('health_content_tbl', 'content_id'), COALESCE(MAX(content_id), 1)) FROM health_content_tbl;")
+            conn_proj.commit()
+        except Exception:
+            pass
 
         cursor_proj.close()
         conn_proj.close()
         print("Database initialization complete!")
-
 
     except Exception as e:
         print(f"Error during database initialization: {e}")

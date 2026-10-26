@@ -149,20 +149,46 @@ def init_sqlite_db(db_path):
             VALUES ('admin', 'admin@niramaya.com', ?, 'admin', 1)
         """, (hashed,))
 
-    # Seed health content if empty
-    cur.execute("SELECT COUNT(*) FROM health_content_tbl")
-    if cur.fetchone()[0] == 0:
-        tips = [
-            ("wellness_tip", "Spring Seasonal Wellness", "Spring", "Eat fresh greens, berries, and lean proteins to boost energy. Stay active with outdoor hikes."),
-            ("wellness_tip", "Summer Hydration & Energy", "Summer", "Eat hydrating fruits like watermelon and salads. Drink plenty of water and stay cool."),
-            ("wellness_tip", "Autumn Warmth & Active Care", "Autumn", "Eat root vegetables and warm soups. Practice daily stretching or yoga."),
-            ("wellness_tip", "Winter Vitality & Defense", "Winter", "Eat citrus fruits, warm stews, and stay physically active indoors.")
-        ]
-        for t in tips:
+    try:
+        from seed_data import SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT
+    except ImportError:
+        SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT = [], [], [], []
+
+    # Seed accounts
+    cur.execute("SELECT COUNT(*) FROM account_tbl")
+    if cur.fetchone()[0] == 0 and SEED_ACCOUNTS:
+        for a in SEED_ACCOUNTS:
             cur.execute("""
-                INSERT INTO health_content_tbl (content_type, title, category, content, author_or_source, status)
-                VALUES (?, ?, ?, ?, 'Niramaya Health Team', 'published')
-            """, t)
+                INSERT OR IGNORE INTO account_tbl (account_id, family_name, email, password_hash, created_at, is_active)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (a[0], a[1], a[2], a[3], a[4], 1 if a[5] else 0))
+
+    # Seed members
+    cur.execute("SELECT COUNT(*) FROM member_tbl")
+    if cur.fetchone()[0] == 0 and SEED_MEMBERS:
+        for m in SEED_MEMBERS:
+            cur.execute("""
+                INSERT OR IGNORE INTO member_tbl (member_id, account_id, name, gender, age, height, weight, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]))
+
+    # Seed chats
+    cur.execute("SELECT COUNT(*) FROM chat_history_tbl")
+    if cur.fetchone()[0] == 0 and SEED_CHATS:
+        for c in SEED_CHATS:
+            cur.execute("""
+                INSERT OR IGNORE INTO chat_history_tbl (history_id, account_id, member_id, user_input, bot_response, model, timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (c[0], c[1], c[2], c[3], c[4], c[5], c[6]))
+
+    # Seed health content
+    cur.execute("SELECT COUNT(*) FROM health_content_tbl")
+    if cur.fetchone()[0] < 25 and SEED_HEALTH_CONTENT:
+        for h in SEED_HEALTH_CONTENT:
+            cur.execute("""
+                INSERT OR REPLACE INTO health_content_tbl (content_id, content_type, title, category, content, author_or_source, external_link, image_url, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8], h[9], h[10]))
 
     conn.commit()
     conn.close()
