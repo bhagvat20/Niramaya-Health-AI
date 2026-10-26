@@ -229,13 +229,17 @@
 
         <div id="alert-box" class="alert-box"></div>
 
-        <form id="admin-login-form">
+        <form id="admin-login-form" autocomplete="off">
+          <!-- Prevent browser autofill from prefilling admin fields -->
+          <input type="text" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1" autocomplete="off" />
+          <input type="password" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1" autocomplete="new-password" />
+
           <div class="form-group">
             <label for="username_or_email">Username or Email</label>
             <div class="input-with-icon">
               <i class="fas fa-user"></i>
-              <input type="text" id="username_or_email" placeholder="admin@niramaya.com" required
-                autocomplete="username">
+              <input type="text" id="username_or_email" name="adm_usr_empty" placeholder="Enter username or email" required
+                autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" value="">
             </div>
           </div>
 
@@ -243,7 +247,8 @@
             <label for="password">Password</label>
             <div class="input-with-icon">
               <i class="fas fa-lock"></i>
-              <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+              <input type="password" id="password" name="adm_pwd_empty" placeholder="Enter password" required
+                autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" value="">
             </div>
           </div>
 
@@ -305,7 +310,6 @@
     </div>
   </footer>
 
-  <script src="script.js"></script>
   <script>
     const API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:5000';
 
@@ -464,8 +468,34 @@
       showAlert("You have logged out successfully.", "success");
     });
 
-    // Initialize check on page load
-    document.addEventListener("DOMContentLoaded", checkExistingSession);
+    function clearAdminInputs() {
+      const form = document.getElementById('admin-login-form');
+      if (form) form.reset();
+      const uField = document.getElementById('username_or_email');
+      const pField = document.getElementById('password');
+      if (uField) {
+        uField.value = '';
+        uField.setAttribute('readonly', 'readonly');
+      }
+      if (pField) {
+        pField.value = '';
+        pField.setAttribute('readonly', 'readonly');
+      }
+    }
+
+    // Initialize check on page load and ensure inputs are completely empty
+    document.addEventListener("DOMContentLoaded", () => {
+      clearAdminInputs();
+      checkExistingSession();
+    });
+
+    // Handle any delayed browser password manager autofill
+    window.addEventListener("load", () => {
+      clearAdminInputs();
+      setTimeout(clearAdminInputs, 50);
+      setTimeout(clearAdminInputs, 200);
+      setTimeout(clearAdminInputs, 500);
+    });
   </script>
 </body>
 

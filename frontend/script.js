@@ -178,13 +178,16 @@ document.addEventListener("DOMContentLoaded", function () {
 function syncHomeAuthState() {
     const accountId = localStorage.getItem('accountId');
     const loginLink = document.getElementById('login-link');
+    const registerLink = document.getElementById('register-link');
     const logoutLink = document.getElementById('logout-link');
 
     if (accountId) {
         if (loginLink) loginLink.style.display = 'none';
+        if (registerLink) registerLink.style.display = 'none';
         if (logoutLink) logoutLink.style.display = 'inline-block';
     } else {
         if (loginLink) loginLink.style.display = 'inline-block';
+        if (registerLink) registerLink.style.display = 'inline-block';
         if (logoutLink) logoutLink.style.display = 'none';
     }
 }
@@ -195,5 +198,6 @@ function handleHomeLogout() {
     localStorage.removeItem('familyName');
     localStorage.removeItem('selectedMemberId');
     localStorage.removeItem('selectedMemberName');
+    sessionStorage.clear();
     syncHomeAuthState();
 }
