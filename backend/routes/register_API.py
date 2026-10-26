@@ -33,26 +33,18 @@ def register_user():
         # Check existing email case-insensitively
         cursor.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s", (email,))
         if cursor.fetchone():
-            return jsonify({"success": False, "message": "Email already exists"}), 400
+            return jsonify({"success": False, "message": "This email is already registered. Please login or use a different email."}), 400
 
         cursor.execute(
             "INSERT INTO account_tbl (email, password_hash, family_name) VALUES (%s, %s, %s) RETURNING account_id",
             (email, hashed_psw.decode('utf-8'), fname)
         )
         account_id = cursor.fetchone()[0]
-
-        # Auto-create primary member so account always has a valid member
-        cursor.execute(
-            "INSERT INTO member_tbl (account_id, name, gender, age, height, weight) VALUES (%s, %s, 'Other', 25, '170', '65') RETURNING member_id",
-            (account_id, fname)
-        )
-        member_id = cursor.fetchone()[0]
         conn.commit()
 
         return jsonify({
             "success": True,
             "account_id": str(account_id),
-            "member_id": str(member_id),
             "familyname": fname,
             "email": email,
             "message": "Registration successful"

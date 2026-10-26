@@ -1811,33 +1811,27 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ fname: familyname, email: email, password: password })
             })
-                .then(response => {
-                    console.log("Raw Response:", response);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
+                .then(async response => {
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data.success) {
+                        alert(data.message || `Registration error (Status ${response.status}). Please try again.`);
+                        return;
                     }
-                    return response.json();
-                })
-                .then(data => {
                     console.log("Register API Response:", data);
-                    if (data.success) {
-                        localStorage.setItem("accountId", data.account_id || "");
-                        localStorage.setItem("userEmail", email); // Store email
-                        localStorage.setItem("familyName", familyname); // Store family name
-                        isLoggedIn = true;
-                        updateNavButtons();
+                    localStorage.setItem("accountId", data.account_id || "");
+                    localStorage.setItem("userEmail", email);
+                    localStorage.setItem("familyName", familyname);
+                    isLoggedIn = true;
+                    updateNavButtons();
 
-                        // Force member addition
-                        openAddMemberModal();
-                        closeRegisterModal();
-                        updateGreeting();
-                    } else {
-                        alert(data.message || "Registration failed due to an unknown error.");
-                    }
+                    // Prompt to add member
+                    closeRegisterModal();
+                    updateGreeting();
+                    openAddMemberModal();
                 })
                 .catch(error => {
                     console.error("Fetch Error:", error);
-                    alert("An error occurred during registration. Check the console for details. Error: " + error.message);
+                    alert("Unable to reach the server. Please check your connection and try again.");
                 });
         }
 

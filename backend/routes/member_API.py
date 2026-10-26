@@ -18,15 +18,21 @@ def add_member():
     cursor = None
     try:
         data = request.json or {}
-        name = data.get('name')
-        gender = data.get('gender')
+        name = (data.get('name') or '').strip()
+        gender = (data.get('gender') or '').strip()
         age = data.get('age')
-        height = data.get('height')
-        weight = data.get('weight')
-        account_id = data.get('accid')
+        height = (data.get('height') or 'N/A').strip()
+        weight = (data.get('weight') or 'N/A').strip()
+        account_id = data.get('accid') or data.get('account_id')
 
-        if not all([name, gender, age, height, weight, account_id]):
-            return jsonify({"success": False, "message": "All fields are required"}), 400
+        if not name or not gender or not age or not account_id:
+            return jsonify({"success": False, "message": "Name, gender, age and account ID are required"}), 400
+
+        try:
+            age = int(age)
+            account_id = int(account_id)
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "message": "Invalid age or account ID format"}), 400
 
         conn = connect_db()
         cursor = conn.cursor()
