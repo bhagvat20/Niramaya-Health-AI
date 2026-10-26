@@ -11,7 +11,7 @@ def get_db_connection(dbname="projectH"):
         # Handles postgres:// to postgresql:// for compatibility with newer psycopg2
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql://", 1)
-        return psycopg2.connect(database_url)
+        return psycopg2.connect(database_url, connect_timeout=4)
 
     host = os.environ.get("DB_HOST", "localhost")
     port = os.environ.get("DB_PORT", "5432")
@@ -31,7 +31,8 @@ def get_db_connection(dbname="projectH"):
                 user=user,
                 password=pwd,
                 host=host,
-                port=port
+                port=port,
+                connect_timeout=3
             )
             return conn
         except Exception as e:

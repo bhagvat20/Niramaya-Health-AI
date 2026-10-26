@@ -46,12 +46,16 @@ app.register_blueprint(admin_users_bp)
 app.register_blueprint(health_content_bp)
 app.register_blueprint(admin_monitoring_bp)
 
-# Automatic database setup on startup (initializes schema and default admin if database is reachable)
-try:
-    from init_db import setup_database
-    setup_database()
-except Exception as _e:
-    print(f"Database auto-setup notice: {_e}")
+# Automatic database setup in background (does not block gunicorn worker boot)
+def _background_db_init():
+    try:
+        from init_db import setup_database
+        setup_database()
+    except Exception as _e:
+        print(f"Database auto-setup notice: {_e}")
+
+import threading
+threading.Thread(target=_background_db_init, daemon=True).start()
 
 if __name__ == "__main__":
     import sys
