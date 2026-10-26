@@ -54,20 +54,9 @@ def user_login():
             FROM member_tbl 
             WHERE account_id = %s
         """, (account_id,))
-        members = cursor.fetchall()
+        members = cursor.fetchall() or []
 
-        # If account has no members, auto-create one
-        if not members:
-            cursor.execute("""
-                INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
-                VALUES (%s, %s, 'Other', 25, '170', '65')
-                RETURNING member_id, name
-            """, (account_id, familyname or "Primary Member"))
-            new_m = cursor.fetchone()
-            conn.commit()
-            members = [new_m]
-
-        # Prepare member data for response
+        # Prepare member data for response (empty if user has not added any member)
         members_list = [
             {"member_id": str(member[0]), "name": member[1], "account_id": str(account_id)}
             for member in members

@@ -139,9 +139,7 @@ body {
 .cta-buttons {
     display: flex;
     justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
+    gap: 20px;
 }
 
 /* Button Styles */
@@ -151,84 +149,18 @@ body {
     padding: 12px 24px;
     background-color: var(--button-bg);
     border: none;
-    border-radius: 8px;
+    border-radius: 5px;
     color: var(--button-text);
     cursor: pointer;
     text-decoration: none;
     font-size: 16px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.25s ease;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s;
 }
 
 .button:hover,
 .modal-button:hover,
 .social-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
-}
-
-.cta-primary {
-    background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
-    color: #ffffff !important;
-}
-
-.button-login {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-    color: #ffffff !important;
-}
-
-.button-register {
-    background: linear-gradient(135deg, #059669, #047857) !important;
-    color: #ffffff !important;
-}
-
-/* Header Nav Buttons */
-.nav-btn {
-    padding: 6px 14px;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-}
-
-.nav-btn-login {
-    background: #2563eb;
-    color: #ffffff;
-}
-
-.nav-btn-login:hover {
-    background: #1d4ed8;
-    transform: translateY(-1px);
-}
-
-.nav-btn-register {
-    background: #059669;
-    color: #ffffff;
-}
-
-.nav-btn-register:hover {
-    background: #047857;
-    transform: translateY(-1px);
-}
-
-.nav-btn-logout {
-    background: rgba(239, 68, 68, 0.15);
-    color: #f87171;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.nav-btn-logout:hover {
-    background: #dc2626;
-    color: #ffffff;
+    background-color: var(--hover-bg);
 }
 
 /* Research Section */

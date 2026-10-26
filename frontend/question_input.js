@@ -32,6 +32,15 @@ function initPage() {
         guestQuestionCount = parseInt(localStorage.getItem("guestQuestionCount") || "0", 10);
     }
 
+    // Safety: If selectedMemberName equals familyName or has no valid member ID, clear it so no unwanted name is shown
+    const selectedMemberId = localStorage.getItem("selectedMemberId");
+    const selectedMemberName = localStorage.getItem("selectedMemberName");
+    const familyName = localStorage.getItem("familyName");
+    if (!selectedMemberId || selectedMemberName === familyName) {
+        localStorage.removeItem("selectedMemberId");
+        localStorage.removeItem("selectedMemberName");
+    }
+
     updateNavButtons();
     updateGreeting();
 
@@ -368,14 +377,15 @@ function updateNavButtons() {
 function updateGreeting() {
     const welcomeEl = document.getElementById("welcome-message");
     const memberName = localStorage.getItem("selectedMemberName");
-    const familyName = localStorage.getItem("familyName");
 
-    if (isLoggedIn && (memberName || familyName)) {
+    // Only display greeting name if a member has been explicitly added or selected
+    if (isLoggedIn && memberName && memberName.trim() !== "") {
         if (welcomeEl) {
             welcomeEl.style.display = "block";
-            welcomeEl.textContent = `Hello, ${memberName || familyName}!`;
+            welcomeEl.textContent = `Hello, ${memberName.trim()}!`;
         }
     } else {
+        // If member is not added or selected, DO NOT show any name!
         if (welcomeEl) {
             welcomeEl.style.display = "none";
             welcomeEl.textContent = "";
@@ -422,16 +432,18 @@ async function handleLogin(e) {
         if (res.ok && data.success) {
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
-            localStorage.setItem("familyName", data.familyname || "User");
+            localStorage.setItem("familyName", data.familyname || "");
+            // Ensure no member name is pre-set without explicit user selection
+            localStorage.removeItem("selectedMemberId");
+            localStorage.removeItem("selectedMemberName");
             isLoggedIn = true;
 
             closeLoginModal();
             updateNavButtons();
+            updateGreeting();
 
             if (data.members && data.members.length > 0) {
                 openMemberSelectionModal(data.members);
-            } else {
-                updateGreeting();
             }
         } else {
             alert(data.message || "Invalid login credentials.");

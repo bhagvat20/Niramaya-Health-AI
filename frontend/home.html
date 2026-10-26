@@ -30,15 +30,8 @@
             <a id="about" href="about.html">About Niramaya</a>
             <a id="ourmodel" href="our_model.html">Our Models</a>
             <a id="wellnesstips" href="wellness_tips.html">Wellness Tips</a>
-            <!-- Dual Auth Functionality near Wellness Tips -->
-            <span id="nav-guest-actions" style="display:inline-flex; gap:8px;">
-                <button type="button" id="header-login-btn" onclick="openHomeLoginModal()" class="nav-btn nav-btn-login"><i class="fas fa-sign-in-alt"></i> Login</button>
-                <button type="button" id="header-register-btn" onclick="openHomeRegisterModal()" class="nav-btn nav-btn-register"><i class="fas fa-user-plus"></i> Register</button>
-            </span>
-            <span id="nav-user-actions" style="display:none; gap:10px; align-items:center;">
-                <a href="question_input.html" id="nav-user-greeting" style="color:#38bdf8; font-weight:600;"><i class="fas fa-user-circle"></i> <span id="home-family-name">User</span></a>
-                <button type="button" onclick="handleHomeLogout()" class="nav-btn nav-btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
-            </span>
+            <a id="login-link" href="question_input.html?action=login" style="font-weight:600;"><i class="fas fa-sign-in-alt"></i> Login</a>
+            <a id="logout-link" href="javascript:void(0)" onclick="handleHomeLogout()" style="display:none; color:#ef4444; font-weight:600;"><i class="fas fa-sign-out-alt"></i> Logout</a>
             <a id="adminportal" href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i
                     class="fas fa-user-shield"></i> Admin Portal</a>
         </div>
@@ -48,79 +41,8 @@
         <div class="hero">
             <h1>Niramaya: Your Personal Health Assistant</h1>
             <p>Empower your wellness journey with AI-driven insights, health tracking, and personalized advice.</p>
-            <div class="cta-buttons" id="hero-guest-cta">
-                <a href="verify_human.html" class="button cta-primary"><i class="fas fa-heartbeat"></i> Try Niramaya Now</a>
-                <button type="button" onclick="openHomeLoginModal()" class="button button-login"><i class="fas fa-sign-in-alt"></i> Login</button>
-                <button type="button" onclick="openHomeRegisterModal()" class="button button-register"><i class="fas fa-user-plus"></i> Register</button>
-            </div>
-            <div class="cta-buttons" id="hero-user-cta" style="display:none;">
-                <a href="question_input.html" class="button cta-primary" style="background:linear-gradient(135deg, #2563eb, #1d4ed8);"><i class="fas fa-comments-medical"></i> Continue Consultation</a>
-                <a href="question_input.html?action=history" class="button" style="background:#374151;"><i class="fas fa-history"></i> View History</a>
-                <button type="button" onclick="handleHomeLogout()" class="button" style="background:#dc2626;"><i class="fas fa-sign-out-alt"></i> Logout</button>
-            </div>
-        </div>
-
-        <!-- Interactive Home Login Modal -->
-        <div id="home-login-modal" class="modal" style="display:none;">
-            <div class="modal-content">
-                <span class="close" onclick="closeHomeLoginModal()">&times;</span>
-                <h2><i class="fas fa-sign-in-alt" style="color:#3b82f6;"></i> Login to Niramaya</h2>
-                <div id="home-login-msg" style="min-height:22px; margin-bottom:12px; font-size:14px; text-align:center;"></div>
-                <form id="home-login-form" onsubmit="handleHomeLoginSubmit(event)">
-                    <div class="form-group">
-                        <label for="home-login-email">Email Address</label>
-                        <input type="email" id="home-login-email" placeholder="Enter your email" required autocomplete="email">
-                    </div>
-                    <div class="form-group" style="position:relative;">
-                        <label for="home-login-password">Password</label>
-                        <input type="password" id="home-login-password" placeholder="Enter your password" required autocomplete="current-password" style="padding-right:40px;">
-                        <i class="fas fa-eye" id="toggle-home-login-pass" onclick="togglePasswordVisibility('home-login-password', this)" style="position:absolute; right:12px; top:36px; cursor:pointer; color:#9ca3af;"></i>
-                        <p class="modal-link" style="margin-top:6px; font-size:13px; text-align:right;">
-                            <a href="question_input.html?action=forgot" style="color:#60a5fa;">Forgot Password?</a>
-                        </p>
-                    </div>
-                    <button type="submit" id="home-login-submit-btn" class="modal-button" style="background:linear-gradient(135deg, #2563eb, #1d4ed8); width:100%; margin-top:10px; font-weight:600;">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </button>
-                </form>
-                <p class="modal-link" style="margin-top:20px; font-size:14px; text-align:center;">
-                    Don't have an Account? <a href="javascript:void(0)" onclick="closeHomeLoginModal(); openHomeRegisterModal();" style="color:#34d399; font-weight:600;">Register Here</a>
-                </p>
-            </div>
-        </div>
-
-        <!-- Interactive Home Register Modal -->
-        <div id="home-register-modal" class="modal" style="display:none;">
-            <div class="modal-content">
-                <span class="close" onclick="closeHomeRegisterModal()">&times;</span>
-                <h2><i class="fas fa-user-plus" style="color:#10b981;"></i> Register for Niramaya</h2>
-                <div id="home-register-msg" style="min-height:22px; margin-bottom:12px; font-size:14px; text-align:center;"></div>
-                <form id="home-register-form" onsubmit="handleHomeRegisterSubmit(event)">
-                    <div class="form-group">
-                        <label for="home-reg-familyname">Family / Full Name</label>
-                        <input type="text" id="home-reg-familyname" placeholder="Enter your family or full name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="home-reg-email">Email Address</label>
-                        <input type="email" id="home-reg-email" placeholder="Enter valid email" required autocomplete="email">
-                    </div>
-                    <div class="form-group" style="position:relative;">
-                        <label for="home-reg-password">Password (min 6 chars)</label>
-                        <input type="password" id="home-reg-password" placeholder="Create strong password" required minlength="6" autocomplete="new-password" style="padding-right:40px;">
-                        <i class="fas fa-eye" onclick="togglePasswordVisibility('home-reg-password', this)" style="position:absolute; right:12px; top:36px; cursor:pointer; color:#9ca3af;"></i>
-                    </div>
-                    <div class="form-group" style="position:relative;">
-                        <label for="home-reg-confirm-password">Confirm Password</label>
-                        <input type="password" id="home-reg-confirm-password" placeholder="Confirm your password" required minlength="6" autocomplete="new-password" style="padding-right:40px;">
-                        <i class="fas fa-eye" onclick="togglePasswordVisibility('home-reg-confirm-password', this)" style="position:absolute; right:12px; top:36px; cursor:pointer; color:#9ca3af;"></i>
-                    </div>
-                    <button type="submit" id="home-reg-submit-btn" class="modal-button" style="background:linear-gradient(135deg, #059669, #047857); width:100%; margin-top:10px; font-weight:600;">
-                        <i class="fas fa-user-plus"></i> Create Account
-                    </button>
-                </form>
-                <p class="modal-link" style="margin-top:20px; font-size:14px; text-align:center;">
-                    Already have an account? <a href="javascript:void(0)" onclick="closeHomeRegisterModal(); openHomeLoginModal();" style="color:#60a5fa; font-weight:600;">Login Here</a>
-                </p>
+            <div class="cta-buttons">
+                <a href="verify_human.html" class="button">Try Niramaya Now</a>
             </div>
         </div>
 

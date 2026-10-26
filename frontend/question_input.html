@@ -18,13 +18,13 @@
         </div>
         <div class="site-name">Niramaya</div>
         <nav class="nav">
-            <a href="home.html"><i class="fas fa-home"></i> <span class="nav-text">Home</span></a>
-            <a onclick="newChat()" href="javascript:void(0)"><i class="fas fa-plus"></i> <span class="nav-text">New chat</span></a>
-            <a id="history-btn" onclick="openHistoryModal()" style="cursor:pointer;"><i class="fas fa-history"></i> <span class="nav-text">History</span></a>
-            <a id="profile-btn" onclick="openProfileModal()" style="display:none; cursor:pointer;"><i class="fas fa-user-circle"></i> <span class="nav-text">Profile</span></a>
-            <a id="login-btn" onclick="openLoginModal()" style="font-weight:600; cursor:pointer;"><i class="fas fa-sign-in-alt"></i> <span class="nav-text">Login</span></a>
-            <a id="register-btn" onclick="openRegisterModal()" style="font-weight:600; cursor:pointer;"><i class="fas fa-user-plus"></i> <span class="nav-text">Register</span></a>
-            <a href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i class="fas fa-user-shield"></i> <span class="nav-text">Admin</span></a>
+            <a href="home.html"><i class="fas fa-home"></i> Home</a>
+            <a onclick="newChat()" href="javascript:void(0)"><i class="fas fa-plus"></i> New chat</a>
+            <a id="history-btn" onclick="openHistoryModal()" style="cursor:pointer;"><i class="fas fa-history"></i> History</a>
+            <a id="profile-btn" onclick="openProfileModal()" style="display:none; cursor:pointer;"><i class="fas fa-user"></i> Profile</a>
+            <a id="login-btn" onclick="openLoginModal()" style="font-weight:600; cursor:pointer;"><i class="fas fa-sign-in-alt"></i> Login</a>
+            <a id="register-btn" onclick="openRegisterModal()" style="font-weight:600; cursor:pointer;"><i class="fas fa-user-plus"></i> Register</a>
+            <a href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i class="fas fa-user-shield"></i> Admin Portal</a>
         </nav>
     </header>
 
@@ -36,16 +36,14 @@
 
     <!-- Center Prompt Input Container -->
     <div class="input-container" id="input-container">
-        <input type="text" id="user-input" placeholder="What do you want to know about your health?" autocomplete="off">
+        <input type="text" id="user-input" placeholder="What do you want to know?" autocomplete="off">
         <select class="model-select" id="model-select" title="Select AI Model">
-            <option value="BioGPT">BioGPT (Biomedical)</option>
-            <option value="Gemini">Gemini (Clinical AI)</option>
-            <option value="LRv1">LRv1 (Disease ML)</option>
-            <option value="LRv2">LRv2 (Disease + Precautions)</option>
+            <option value="BioGPT">BioGPT</option>
+            <option value="Gemini">Gemini</option>
+            <option value="LRv1">LRv1</option>
+            <option value="LRv2">LRv2</option>
         </select>
-        <button type="button" onclick="sendMessage()" title="Send Message" aria-label="Send">
-            <i class="fas fa-arrow-up"></i>
-        </button>
+        <button type="button" onclick="sendMessage()" title="Send Message" aria-label="Send">➤</button>
     </div>
 
     <!-- Chat Messages Container -->
@@ -54,16 +52,14 @@
     <!-- Fixed Bottom Chat Footer Input -->
     <footer class="chat-footer" id="chat-footer">
         <div class="input-container">
-            <input type="text" id="user-input-footer" placeholder="Type your health question or symptoms..." autocomplete="off">
+            <input type="text" id="user-input-footer" placeholder="Type your message..." autocomplete="off">
             <select class="model-select" id="model-select-footer" title="Select AI Model">
                 <option value="BioGPT">BioGPT</option>
                 <option value="Gemini">Gemini</option>
                 <option value="LRv1">LRv1</option>
                 <option value="LRv2">LRv2</option>
             </select>
-            <button type="button" onclick="sendMessage()" title="Send Message" aria-label="Send">
-                <i class="fas fa-arrow-up"></i>
-            </button>
+            <button type="button" onclick="sendMessage()" title="Send Message" aria-label="Send">➤</button>
         </div>
     </footer>
 
