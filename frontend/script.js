@@ -170,4 +170,276 @@ document.addEventListener("DOMContentLoaded", function () {
             logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
         }
     });
+
+    // Synchronize authentication state on home page
+    syncHomeAuthState();
+
+    // Close modals on escape key or backdrop click
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeHomeLoginModal();
+            closeHomeRegisterModal();
+        }
+    });
+
+    window.addEventListener('click', (e) => {
+        const loginModal = document.getElementById('home-login-modal');
+        const regModal = document.getElementById('home-register-modal');
+        if (e.target === loginModal) closeHomeLoginModal();
+        if (e.target === regModal) closeHomeRegisterModal();
+    });
 });
+
+// API Base detection
+const HOME_API_BASE = (window.location.origin && window.location.origin.startsWith('http')) 
+    ? window.location.origin 
+    : 'http://127.0.0.1:5000';
+
+function syncHomeAuthState() {
+    const accountId = localStorage.getItem('accountId');
+    const familyName = localStorage.getItem('familyName') || 'User';
+
+    const guestNav = document.getElementById('nav-guest-actions');
+    const userNav = document.getElementById('nav-user-actions');
+    const guestCta = document.getElementById('hero-guest-cta');
+    const userCta = document.getElementById('hero-user-cta');
+    const nameSpan = document.getElementById('home-family-name');
+
+    if (accountId) {
+        if (guestNav) guestNav.style.display = 'none';
+        if (userNav) userNav.style.display = 'inline-flex';
+        if (guestCta) guestCta.style.display = 'none';
+        if (userCta) userCta.style.display = 'flex';
+        if (nameSpan) nameSpan.textContent = familyName;
+    } else {
+        if (guestNav) guestNav.style.display = 'inline-flex';
+        if (userNav) userNav.style.display = 'none';
+        if (guestCta) guestCta.style.display = 'flex';
+        if (userCta) userCta.style.display = 'none';
+    }
+}
+
+function openHomeLoginModal() {
+    closeHomeRegisterModal();
+    const modal = document.getElementById('home-login-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('show'), 10);
+        const emailInput = document.getElementById('home-login-email');
+        if (emailInput) emailInput.focus();
+    }
+}
+
+function closeHomeLoginModal() {
+    const modal = document.getElementById('home-login-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => { modal.style.display = 'none'; }, 200);
+        const form = document.getElementById('home-login-form');
+        if (form) form.reset();
+        const msg = document.getElementById('home-login-msg');
+        if (msg) msg.textContent = '';
+    }
+}
+
+function openHomeRegisterModal() {
+    closeHomeLoginModal();
+    const modal = document.getElementById('home-register-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        setTimeout(() => modal.classList.add('show'), 10);
+        const nameInput = document.getElementById('home-reg-familyname');
+        if (nameInput) nameInput.focus();
+    }
+}
+
+function closeHomeRegisterModal() {
+    const modal = document.getElementById('home-register-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => { modal.style.display = 'none'; }, 200);
+        const form = document.getElementById('home-register-form');
+        if (form) form.reset();
+        const msg = document.getElementById('home-register-msg');
+        if (msg) msg.textContent = '';
+    }
+}
+
+function togglePasswordVisibility(inputId, iconEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        iconEl.classList.remove('fa-eye');
+        iconEl.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        iconEl.classList.remove('fa-eye-slash');
+        iconEl.classList.add('fa-eye');
+    }
+}
+
+async function handleHomeLoginSubmit(e) {
+    e.preventDefault();
+    const email = document.getElementById('home-login-email').value.trim();
+    const password = document.getElementById('home-login-password').value;
+    const msgEl = document.getElementById('home-login-msg');
+    const submitBtn = document.getElementById('home-login-submit-btn');
+
+    if (!email || !password) {
+        if (msgEl) {
+            msgEl.style.color = '#ef4444';
+            msgEl.textContent = 'Please enter both email and password.';
+        }
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+    }
+
+    try {
+        const res = await fetch(HOME_API_BASE + '/userlogin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            localStorage.setItem('accountId', data.account_id);
+            localStorage.setItem('userEmail', data.email || email);
+            localStorage.setItem('familyName', data.familyname || 'User');
+            if (data.members && data.members.length > 0) {
+                localStorage.setItem('selectedMemberId', data.members[0].member_id);
+                localStorage.setItem('selectedMemberName', data.members[0].name);
+            }
+
+            if (msgEl) {
+                msgEl.style.color = '#10b981';
+                msgEl.innerHTML = '<i class="fas fa-check-circle"></i> Login successful! Redirecting...';
+            }
+
+            setTimeout(() => {
+                window.location.href = 'question_input.html';
+            }, 800);
+        } else {
+            if (msgEl) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = data.message || 'Login failed. Please check your credentials.';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+            }
+        }
+    } catch (err) {
+        console.error('Home login error:', err);
+        if (msgEl) {
+            msgEl.style.color = '#ef4444';
+            msgEl.textContent = 'Network or server error. Please try again.';
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+        }
+    }
+}
+
+async function handleHomeRegisterSubmit(e) {
+    e.preventDefault();
+    const familyname = document.getElementById('home-reg-familyname').value.trim();
+    const email = document.getElementById('home-reg-email').value.trim();
+    const password = document.getElementById('home-reg-password').value;
+    const confirmPassword = document.getElementById('home-reg-confirm-password').value;
+    const msgEl = document.getElementById('home-register-msg');
+    const submitBtn = document.getElementById('home-reg-submit-btn');
+
+    if (!familyname || !email || !password || !confirmPassword) {
+        if (msgEl) {
+            msgEl.style.color = '#ef4444';
+            msgEl.textContent = 'Please fill out all fields.';
+        }
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        if (msgEl) {
+            msgEl.style.color = '#ef4444';
+            msgEl.textContent = 'Passwords do not match.';
+        }
+        return;
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
+    }
+
+    try {
+        const res = await fetch(HOME_API_BASE + '/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fname: familyname, email, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            localStorage.setItem('accountId', data.account_id);
+            localStorage.setItem('userEmail', data.email || email);
+            localStorage.setItem('familyName', data.familyname || familyname);
+
+            if (msgEl) {
+                msgEl.style.color = '#10b981';
+                msgEl.innerHTML = '<i class="fas fa-check-circle"></i> Registration successful! Setting up session...';
+            }
+
+            // Auto-login to fetch primary member
+            try {
+                const loginRes = await fetch(HOME_API_BASE + '/userlogin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const loginData = await loginRes.json();
+                if (loginData.success && loginData.members && loginData.members.length > 0) {
+                    localStorage.setItem('selectedMemberId', loginData.members[0].member_id);
+                    localStorage.setItem('selectedMemberName', loginData.members[0].name);
+                }
+            } catch (_) {}
+
+            setTimeout(() => {
+                window.location.href = 'question_input.html';
+            }, 900);
+        } else {
+            if (msgEl) {
+                msgEl.style.color = '#ef4444';
+                msgEl.textContent = data.message || 'Registration failed. Please try a different email.';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            }
+        }
+    } catch (err) {
+        console.error('Home register error:', err);
+        if (msgEl) {
+            msgEl.style.color = '#ef4444';
+            msgEl.textContent = 'Server connection error. Please try again.';
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+        }
+    }
+}
+
+function handleHomeLogout() {
+    localStorage.removeItem('accountId');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('familyName');
+    localStorage.removeItem('selectedMemberId');
+    localStorage.removeItem('selectedMemberName');
+    syncHomeAuthState();
+}

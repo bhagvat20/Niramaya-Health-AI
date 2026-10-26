@@ -49,9 +49,11 @@ def get_all_users():
             params.extend([search_param, search_param, search_query])
             
         if status_filter == 'active':
-            sql += " AND (a.is_active = TRUE OR a.is_active = 1)"
+            sql += " AND a.is_active = %s"
+            params.append(True)
         elif status_filter == 'deactivated':
-            sql += " AND (a.is_active = FALSE OR a.is_active = 0)"
+            sql += " AND a.is_active = %s"
+            params.append(False)
             
         sql += " GROUP BY a.account_id, a.family_name, a.email, a.is_active, a.created_at ORDER BY a.created_at DESC"
         
