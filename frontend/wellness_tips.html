@@ -381,7 +381,7 @@
             // Fetch dynamic wellness tips from backend API
             async function fetchWellnessTips() {
                 try {
-                    const res = await fetch('http://localhost:5000/api/health-content/tips');
+                    const res = await fetch((window.location.origin.startsWith('http') ? window.location.origin : 'http://localhost:5000') + '/api/health-content/tips');
                     if (res.ok) {
                         const data = await res.json();
                         if (data.success && data.tips && data.tips.length > 0) {

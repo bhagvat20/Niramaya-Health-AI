@@ -19,8 +19,8 @@ def user_login():
     cursor = None
     try:
         data = request.json or {}
-        email = data.get('email')
-        password = data.get('password')
+        email = (data.get('email') or '').strip().lower()
+        password = (data.get('password') or '').strip()
 
         if not email or not password:
             return jsonify({"success": False, "message": "Email and password are required"}), 400
@@ -28,11 +28,11 @@ def user_login():
         conn = connect_db()
         cursor = conn.cursor()
         
-        # First, get account details
+        # First, get account details (case-insensitive email)
         cursor.execute("""
             SELECT account_id, password_hash, family_name, is_active 
             FROM account_tbl 
-            WHERE email = %s
+            WHERE LOWER(email) = %s
         """, (email,))
         account_row = cursor.fetchone()
         
@@ -48,7 +48,6 @@ def user_login():
         if not bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
             return jsonify({"success": False, "message": "Incorrect password"}), 400
 
-
         # Fetch members associated with this account
         cursor.execute("""
             SELECT member_id, name 
@@ -56,6 +55,17 @@ def user_login():
             WHERE account_id = %s
         """, (account_id,))
         members = cursor.fetchall()
+
+        # If account has no members, auto-create one
+        if not members:
+            cursor.execute("""
+                INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
+                VALUES (%s, %s, 'Other', 25, '170', '65')
+                RETURNING member_id, name
+            """, (account_id, familyname or "Primary Member"))
+            new_m = cursor.fetchone()
+            conn.commit()
+            members = [new_m]
 
         # Prepare member data for response
         members_list = [

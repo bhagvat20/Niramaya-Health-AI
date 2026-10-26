@@ -1,6 +1,13 @@
+import os
+import sys
+
+# Ensure backend directory is in sys.path regardless of working directory
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
 from flask import Flask, send_from_directory, redirect
 from flask_cors import CORS
-import os
 from routes.register_API import register_bp
 from routes.user_login_API import login_bp
 from routes.ask_AI_API import AI_bp
@@ -38,6 +45,13 @@ app.register_blueprint(admin_auth_bp)
 app.register_blueprint(admin_users_bp)
 app.register_blueprint(health_content_bp)
 app.register_blueprint(admin_monitoring_bp)
+
+# Automatic database setup on startup (initializes schema and default admin if database is reachable)
+try:
+    from init_db import setup_database
+    setup_database()
+except Exception as _e:
+    print(f"Database auto-setup notice: {_e}")
 
 if __name__ == "__main__":
     import sys

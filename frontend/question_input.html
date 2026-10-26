@@ -1268,6 +1268,9 @@
 
 
     <script>
+        // Auto-detect backend API URL (supports localhost, 127.0.0.1, or cloud domain like Render)
+        const API_BASE = (window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'http://127.0.0.1:5000';
+
         // Global Variables
         let isFirstMessage = true;
         let isLoggedIn = false;
@@ -1350,7 +1353,7 @@
             if (isLoggedIn && !storedSelectedMemberId) {
                 const accountId = localStorage.getItem("accountId");
                 if (accountId) {
-                    fetch("http://127.0.0.1:5000/getmembers", {
+                    fetch(API_BASE + "/getmembers", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ account_id: accountId })
@@ -1449,18 +1452,18 @@
                 let payload = { question: userInput }; // Default payload
                 switch (model) {
                     case "BioGPT":
-                        endpoint = "http://127.0.0.1:5000/askbiogpt";
+                        endpoint = API_BASE + "/askbiogpt";
                         break;
                     case "Gemini":
-                        endpoint = "http://127.0.0.1:5000/askgemini";
+                        endpoint = API_BASE + "/askgemini";
                         break;
                     case "LRv1":
-                        endpoint = "http://127.0.0.1:5000/asklrv1";
+                        endpoint = API_BASE + "/asklrv1";
                         // Adjust payload if backend expects 'symptoms' instead of 'question'
                         payload = { symptoms: userInput }; // Try this if 'question' causes 400
                         break;
                     case "LRv2":
-                        endpoint = "http://127.0.0.1:5000/asklrv2";
+                        endpoint = API_BASE + "/asklrv2";
                         payload = { symptoms: userInput }; // Try this if 'question' causes 400
                         break;
                     default:
@@ -1626,7 +1629,7 @@
                         } else {
                             botResponse = data.answer;
                         }
-                        fetch("http://127.0.0.1:5000/savechat", {
+                        fetch(API_BASE + "/savechat", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({
@@ -1746,7 +1749,7 @@
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
 
-            fetch("http://127.0.0.1:5000/userlogin", {
+            fetch(API_BASE + "/userlogin", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: email, password: password })
@@ -1803,7 +1806,7 @@
             const email = document.getElementById("register-email").value;
             const password = document.getElementById("register-password").value;
 
-            fetch("http://127.0.0.1:5000/register", {
+            fetch(API_BASE + "/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ fname: familyname, email: email, password: password })
@@ -1937,7 +1940,7 @@
             }
 
             try {
-                const response = await fetch("http://127.0.0.1:5000/removeuser", {
+                const response = await fetch(API_BASE + "/removeuser", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -1951,7 +1954,7 @@
 
                 if (data.success) {
                     // Fetch updated member list
-                    fetch("http://127.0.0.1:5000/getmembers", {
+                    fetch(API_BASE + "/getmembers", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ account_id: accountId })
@@ -2055,7 +2058,7 @@
                 return;
             }
 
-            fetch("http://127.0.0.1:5000/getuser", {
+            fetch(API_BASE + "/getuser", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ member_id: memberId, account_id: accountId })
@@ -2094,7 +2097,7 @@
                 return;
             }
 
-            fetch("http://127.0.0.1:5000/getmembers", {
+            fetch(API_BASE + "/getmembers", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ account_id: accountId })
@@ -2140,7 +2143,7 @@
             }
 
             try {
-                const response = await fetch("http://127.0.0.1:5000/addmember", {
+                const response = await fetch(API_BASE + "/addmember", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2167,7 +2170,7 @@
                     updateNavButtons();
 
                     // Fetch updated member list and open the member selection modal
-                    fetch("http://127.0.0.1:5000/getmembers", {
+                    fetch(API_BASE + "/getmembers", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ account_id: accountId })
@@ -2241,7 +2244,7 @@
             const chatContainer = document.getElementById("chat-container");
 
             if (accountId && memberId && isLoggedIn) {
-                fetch("http://127.0.0.1:5000/getchat", {
+                fetch(API_BASE + "/getchat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ account_id: accountId, member_id: memberId })
@@ -2432,7 +2435,7 @@
             const memberId = localStorage.getItem("selectedMemberId");
 
             if (accountId && memberId && isLoggedIn) {
-                fetch("http://127.0.0.1:5000/deletechat", {
+                fetch(API_BASE + "/deletechat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ account_id: accountId, member_id: memberId, history_id: historyId })
@@ -2470,7 +2473,7 @@
             }
 
             // Populate the form with current profile data
-            fetch("http://127.0.0.1:5000/getuser", {
+            fetch(API_BASE + "/getuser", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ member_id: memberId, account_id: accountId })
@@ -2524,7 +2527,7 @@
             }
 
             try {
-                const response = await fetch("http://127.0.0.1:5000/updatemember", {
+                const response = await fetch(API_BASE + "/updatemember", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2615,7 +2618,7 @@
             msgEl.style.color = "#aaa";
 
             try {
-                const response = await fetch("http://127.0.0.1:5000/changepassword", {
+                const response = await fetch(API_BASE + "/changepassword", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2658,7 +2661,7 @@
 
             try {
                 console.log("Sending OTP request for:", emailInput.value);
-                const response = await fetch("http://127.0.0.1:5000/forgotpassword", {
+                const response = await fetch(API_BASE + "/forgotpassword", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email: emailInput.value.trim() })
@@ -2729,7 +2732,7 @@
             }
 
             try {
-                const response = await fetch("http://127.0.0.1:5000/resetpassword", {
+                const response = await fetch(API_BASE + "/resetpassword", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

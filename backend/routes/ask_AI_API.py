@@ -296,13 +296,41 @@ def generate_any_health_response(prompt):
     )
     return response
 
+GREETINGS_LIST = {'hi', 'hello', 'hey', 'greetings', 'namaste', 'good morning', 'good afternoon', 'good evening', 'help', 'who are you', 'test'}
+
+def check_greeting_response(text):
+    if not text:
+        return None
+    clean = text.strip().lower().rstrip('?!.')
+    if clean in GREETINGS_LIST or any(clean.startswith(g + ' ') for g in ['hi', 'hello', 'hey', 'namaste']):
+        return {
+            'predicted_disease': 'Niramaya AI Health Assistant',
+            'matched_symptoms': [],
+            'description': 'Hello! I am your Niramaya AI Health Assistant. Please describe any symptoms you are experiencing (e.g., fever, headache, cough, fatigue, skin rash) or ask any health question to receive clinical insights and precautions.',
+            'precautions': [
+                'List all specific symptoms you are experiencing',
+                'Track symptom onset, severity, and progression',
+                'Stay well-hydrated and ensure adequate physical rest',
+                'Seek prompt medical consultation for severe or persistent conditions'
+            ],
+            'answer': 'Hello! I am your Niramaya AI Health Assistant. Please describe any symptoms you are experiencing (e.g., fever, headache, cough, rash) or ask any medical question to receive instant AI guidance.'
+        }
+    return None
+
 @AI_bp.route("/askbiogpt", methods=["POST"])
 def ask_biogpt():
     """Handles medical questions using BioGPT with dynamic knowledge fallback."""
     data = request.get_json() or {}
-    question = data.get("question", "").strip()
+    question = (data.get("question") or data.get("symptoms") or "").strip()
     if not question:
-        return jsonify({"error": "The 'question' field is required."}), 400
+        return jsonify({
+            "question": "",
+            "answer": "Please enter your health symptoms or a question to receive AI guidance."
+        }), 200
+
+    greet = check_greeting_response(question)
+    if greet:
+        return jsonify({"question": question, "answer": greet['answer']}), 200
 
     # Try local BioGPT if cached
     generator = get_biogpt_generator()
@@ -317,38 +345,42 @@ def ask_biogpt():
 
     # Dynamic medical answer for any query
     ans = generate_any_health_response(question)
-    return jsonify({"question": question, "answer": ans})
+    return jsonify({"question": question, "answer": ans}), 200
 
 @AI_bp.route("/askgemini", methods=["POST"])
 def ask_gemini():
     """Handles user medical questions and generates answers using Gemini API or Dynamic AI."""
     data = request.get_json() or {}
-    question = data.get("question", "").strip()
+    question = (data.get("question") or data.get("symptoms") or "").strip()
     if not question:
-        return jsonify({"error": "The 'question' field is required."}), 400
+        return jsonify({
+            "question": "",
+            "answer": "Please enter your health symptoms or a question to receive AI guidance."
+        }), 200
+
+    greet = check_greeting_response(question)
+    if greet:
+        return jsonify({"question": question, "answer": greet['answer']}), 200
 
     answer = generate_any_health_response(question)
-    return jsonify({"question": question, "answer": answer})
+    return jsonify({"question": question, "answer": answer}), 200
 
 @AI_bp.route('/asklrv1', methods=['POST'])
 def askLRv1():
     data = request.get_json() or {}
-    symptom_text = data.get("symptoms") or data.get("question") or ""
-    if not isinstance(symptom_text, str) or not symptom_text.strip():
-        return jsonify({'error': 'Please enter your symptoms or health query.'}), 400
-
-    cond_title, wiki_desc = fetch_medical_encyclopedia(symptom_text)
-    is_specific_disease = wiki_desc and cond_title.lower() not in ['fever', 'headache', 'cough', 'vomiting', 'nausea']
-
-    # 1. If user queried a specific disease (e.g. Dengue, Typhoid, Chikungunya, COVID, etc.)
-    if is_specific_disease:
+    symptom_text = (data.get("symptoms") or data.get("question") or "").strip()
+    if not symptom_text:
         return jsonify({
-            'predicted_disease': cond_title,
-            'matched_symptoms': [symptom_text],
-            'description': wiki_desc
-        })
+            'predicted_disease': 'Input Required',
+            'matched_symptoms': [],
+            'description': 'Please enter your health symptoms (e.g. fever, headache, cough) to run disease prediction.'
+        }), 200
 
-    # 2. Check if user entered symptom list for ML model
+    greet = check_greeting_response(symptom_text)
+    if greet:
+        return jsonify(greet), 200
+
+    # 1. Check if user entered symptom list for ML model
     symptoms_list = parse_symptoms(symptom_text)
     predicted_disease = predict_disease_from_symptoms(symptoms_list)
 
@@ -359,36 +391,33 @@ def askLRv1():
             'predicted_disease': str(predicted_disease),
             'matched_symptoms': symptoms_list,
             'description': description
-        })
+        }), 200
 
+    cond_title, wiki_desc = fetch_medical_encyclopedia(symptom_text)
     desc = wiki_desc or f"Health guidance regarding '{symptom_text}'. Please monitor symptom duration and consult a physician."
     return jsonify({
-        'predicted_disease': cond_title,
+        'predicted_disease': cond_title or symptom_text.title(),
         'matched_symptoms': [symptom_text],
         'description': desc
-    })
+    }), 200
 
 @AI_bp.route('/asklrv2', methods=['POST'])
 def askLRv2():
     data = request.get_json() or {}
-    symptom_text = data.get("symptoms") or data.get("question") or ""
-    if not isinstance(symptom_text, str) or not symptom_text.strip():
-        return jsonify({'error': 'Please enter your symptoms or health query.'}), 400
-
-    cond_title, wiki_desc = fetch_medical_encyclopedia(symptom_text)
-    is_specific_disease = wiki_desc and cond_title.lower() not in ['fever', 'headache', 'cough', 'vomiting', 'nausea']
-
-    # 1. If user queried a specific disease (e.g. Dengue, Typhoid, Chikungunya, COVID, etc.)
-    if is_specific_disease:
-        precautions = get_dynamic_precautions(cond_title, symptom_text)
+    symptom_text = (data.get("symptoms") or data.get("question") or "").strip()
+    if not symptom_text:
         return jsonify({
-            'predicted_disease': cond_title,
-            'matched_symptoms': [symptom_text],
-            'description': wiki_desc,
-            'precautions': precautions
-        })
+            'predicted_disease': 'Input Required',
+            'matched_symptoms': [],
+            'description': 'Please enter your health symptoms to run disease prediction and get precaution advice.',
+            'precautions': ['Enter symptom names like fever, headache, body pain, nausea']
+        }), 200
 
-    # 2. Check if user entered symptom list for ML model
+    greet = check_greeting_response(symptom_text)
+    if greet:
+        return jsonify(greet), 200
+
+    # 1. Check if user entered symptom list for ML model
     symptoms_list = parse_symptoms(symptom_text)
     predicted_disease = predict_disease_from_symptoms(symptoms_list)
 
@@ -401,14 +430,15 @@ def askLRv2():
             'matched_symptoms': symptoms_list,
             'description': description,
             'precautions': precautions
-        })
+        }), 200
 
+    cond_title, wiki_desc = fetch_medical_encyclopedia(symptom_text)
     desc = wiki_desc or f"Health guidance regarding '{symptom_text}'. Clinical evaluation is recommended."
     precautions = get_dynamic_precautions(cond_title, symptom_text)
 
     return jsonify({
-        'predicted_disease': cond_title,
+        'predicted_disease': cond_title or symptom_text.title(),
         'matched_symptoms': [symptom_text],
         'description': desc,
         'precautions': precautions
-    })
+    }), 200
