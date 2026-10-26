@@ -137,3 +137,55 @@ def reset_password():
             cursor.close()
         if conn:
             conn.close()
+
+
+# Change Password API (for logged-in users — verifies current password first)
+@password_reset_bp.route('/changepassword', methods=['POST'])
+def change_password():
+    conn = None
+    cursor = None
+    try:
+        data = request.json or {}
+        account_id = data.get('account_id')
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+
+        if not account_id or not current_password or not new_password:
+            return jsonify({"success": False, "message": "All fields are required."}), 400
+
+        if len(new_password) < 6:
+            return jsonify({"success": False, "message": "New password must be at least 6 characters."}), 400
+
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        # Fetch current hashed password
+        cursor.execute("SELECT password_hash FROM account_tbl WHERE account_id = %s", (account_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({"success": False, "message": "Account not found."}), 404
+
+        stored_hash = user[0]
+
+        # Verify current password
+        if not bcrypt.checkpw(current_password.encode('utf-8'), stored_hash.encode('utf-8')):
+            return jsonify({"success": False, "message": "Current password is incorrect."}), 401
+
+        # Hash and save the new password
+        new_hashed = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        cursor.execute(
+            "UPDATE account_tbl SET password_hash = %s WHERE account_id = %s",
+            (new_hashed.decode('utf-8'), account_id)
+        )
+        conn.commit()
+
+        return jsonify({"success": True, "message": "Password changed successfully."}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()

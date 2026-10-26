@@ -80,11 +80,11 @@ def get_chat():
         if not account_id or not member_id:
             return jsonify({"success": False, "message": "Account ID and Member ID are required"}), 400
 
-        account_id = int(account_id)
-        member_id = int(member_id)
+        account_id_str = str(account_id)
+        member_id_str = str(member_id)
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("select history_id,user_input,bot_response,model,timestamp from chat_history_tbl where account_id=%s and member_id=%s ORDER BY timestamp DESC",(account_id,member_id))
+        cursor.execute("SELECT history_id, user_input, bot_response, model, timestamp FROM chat_history_tbl WHERE account_id::text = %s AND member_id::text = %s ORDER BY timestamp DESC", (account_id_str, member_id_str))
         history = cursor.fetchall()
 
         history_list = [
@@ -124,15 +124,15 @@ def delete_chat():
         if not account_id or not member_id or not history_id:
             return jsonify({"success": False, "message": "Account ID, Member ID, and History ID are required"}), 400
 
-        account_id = int(account_id)
-        member_id = int(member_id)
+        account_id_str = str(account_id)
+        member_id_str = str(member_id)
         history_id = int(history_id)
         conn = connect_db()
         cursor = conn.cursor()
         cursor.execute("""
             DELETE FROM chat_history_tbl 
-            WHERE account_id = %s AND member_id = %s AND history_id = %s
-        """, (account_id, member_id, history_id))
+            WHERE account_id::text = %s AND member_id::text = %s AND history_id = %s
+        """, (account_id_str, member_id_str, history_id))
         conn.commit()
 
         if cursor.rowcount == 0:

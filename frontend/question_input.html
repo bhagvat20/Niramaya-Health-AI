@@ -7,7 +7,7 @@
     <title>Niramaya</title>
     <link rel="icon" type="image/png" href="N-16.png">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"
+    <script src="vendor/fontawesome/all.min.js"
         crossorigin="anonymous"></script>
 
     <style>
@@ -972,11 +972,12 @@
         </div>
         <div class="site-name">Niramaya</div>
         <div class="nav">
-            <a onclick="newChat()" href="question_input.html">New chat</a>
-            <a id="history-btn">History</a>
-            <a id="profile-btn" style="display: none;">Profile</a>
-            <a id="login-btn" onclick="openLoginModal()">Login</a>
-            <a id="register-btn" onclick="openRegisterModal()">Register</a>
+            <a href="home.html"><i class="fas fa-home"></i> Home</a>
+            <a onclick="newChat()" href="question_input.html"><i class="fas fa-plus"></i> New chat</a>
+            <a id="history-btn"><i class="fas fa-history"></i> History</a>
+            <a id="profile-btn" style="display: none;"><i class="fas fa-user"></i> Profile</a>
+            <a id="login-btn" onclick="openLoginModal()" style="font-weight:600;"><i class="fas fa-sign-in-alt"></i> Login</a>
+            <a id="register-btn" onclick="openRegisterModal()" style="font-weight:600;"><i class="fas fa-user-plus"></i> Register</a>
             <a href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i class="fas fa-user-shield"></i> Admin
                 Portal</a>
         </div>
@@ -1095,6 +1096,7 @@
             <div class="profile-actions">
                 <button class="modal-btn" onclick="openUpdateProfileModal()">Update Profile</button>
                 <button class="modal-btn" onclick="changeMember()">Change Member</button>
+                <button class="modal-btn" id="reset-password-profile-btn" onclick="openChangePasswordModal()" style="background: linear-gradient(90deg, #4a3f6b, #6b4fa0);">🔑 Reset Password</button>
                 <button class="modal-btn" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -1236,6 +1238,35 @@
         </div>
     </div>
 
+    <!-- Change Password Modal (for logged-in users) -->
+    <div id="change-password-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="width:450px;max-width:90%;padding:40px;display:flex;flex-direction:column;align-items:center;">
+            <span class="close-btn" onclick="closeChangePasswordModal()">×</span>
+            <h2 style="margin-bottom:8px;">🔑 Reset Password</h2>
+            <p style="color:#aaa;font-size:14px;margin-bottom:24px;text-align:center;">Enter your current password, then choose a new one.</p>
+            <form id="change-password-form" onsubmit="handleChangePassword(event)" style="width:100%;">
+                <div class="form-group">
+                    <label for="cp-current">Current Password</label>
+                    <input type="password" id="cp-current" placeholder="Enter current password" required>
+                </div>
+                <div class="form-group">
+                    <label for="cp-new">New Password</label>
+                    <input type="password" id="cp-new" placeholder="Enter new password" required>
+                </div>
+                <div class="form-group">
+                    <label for="cp-confirm">Confirm New Password</label>
+                    <input type="password" id="cp-confirm" placeholder="Confirm new password" required>
+                </div>
+                <div id="cp-message" style="min-height:20px;margin-bottom:10px;font-size:14px;text-align:center;"></div>
+                <button type="submit" class="modal-btn" style="background:linear-gradient(90deg,#4a3f6b,#6b4fa0);">Update Password</button>
+            </form>
+            <p class="modal-link" style="margin-top:16px;">
+                <a href="#" onclick="closeChangePasswordModal(); openProfileModal();">← Back to Profile</a>
+            </p>
+        </div>
+    </div>
+
+
     <script>
         // Global Variables
         let isFirstMessage = true;
@@ -1270,6 +1301,14 @@
             updateNavButtons();
             updateGreeting();
 
+            // Open login or register modal if specified in URL query
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get("action") === "login") {
+                openLoginModal();
+            } else if (urlParams.get("action") === "register") {
+                openRegisterModal();
+            }
+
             // Add Enter key event listeners for both input fields
             const initialInput = document.getElementById("user-input");
             const footerInput = document.getElementById("user-input-footer");
@@ -1287,6 +1326,25 @@
                     sendMessage();
                 }
             });
+
+            function syncModelPlaceholder(selectEl, inputEl) {
+                if (!selectEl || !inputEl) return;
+                if (selectEl.value === "LRv1" || selectEl.value === "LRv2") {
+                    inputEl.placeholder = "Enter symptoms (e.g. fever, headache, nausea)...";
+                } else {
+                    inputEl.placeholder = "What do you want to know about your health?";
+                }
+            }
+
+            const modelSelect = document.getElementById("model-select");
+            const modelSelectFooter = document.getElementById("model-select-footer");
+            if (modelSelect && initialInput) {
+                modelSelect.addEventListener("change", () => syncModelPlaceholder(modelSelect, initialInput));
+                syncModelPlaceholder(modelSelect, initialInput);
+            }
+            if (modelSelectFooter && footerInput) {
+                modelSelectFooter.addEventListener("change", () => syncModelPlaceholder(modelSelectFooter, footerInput));
+            }
 
             // If logged in but no member selected, prompt for member selection
             if (isLoggedIn && !storedSelectedMemberId) {
@@ -1365,6 +1423,23 @@
             userMessage.textContent = userInput;
             chatContainer.appendChild(userMessage);
 
+            // Show loading indicator
+            let loadingMessage = document.createElement("div");
+            loadingMessage.classList.add("chat-message", "bot-message");
+            loadingMessage.id = "loading-indicator";
+            loadingMessage.innerHTML = `<span style="display:inline-flex;gap:4px;align-items:center;">
+                <span style="animation:blink 1.2s infinite 0s;font-size:22px;color:#888">●</span>
+                <span style="animation:blink 1.2s infinite 0.4s;font-size:22px;color:#888">●</span>
+                <span style="animation:blink 1.2s infinite 0.8s;font-size:22px;color:#888">●</span>
+            </span>`;
+            if (!document.getElementById('blink-style')) {
+                let blinkStyle = document.createElement('style');
+                blinkStyle.id = 'blink-style';
+                blinkStyle.textContent = '@keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }';
+                document.head.appendChild(blinkStyle);
+            }
+            chatContainer.appendChild(loadingMessage);
+
             scrollToBottom();
 
             inputField.value = "";
@@ -1405,6 +1480,15 @@
 
                 let data = await response.json();
                 console.log("API Response:", data); // Debug log
+
+                // Remove loading indicator
+                let loader = document.getElementById("loading-indicator");
+                if (loader) loader.remove();
+
+                // Check for backend error in response
+                if (data.error) {
+                    throw new Error(data.error);
+                }
 
                 let botMessage = document.createElement("div");
                 botMessage.classList.add("chat-message", "bot-message");
@@ -1572,10 +1656,13 @@
 
             } catch (error) {
                 console.error("Error:", error);
+                // Remove loading indicator if still present
+                let loader = document.getElementById("loading-indicator");
+                if (loader) loader.remove();
                 let errorMessage = document.createElement("div");
                 errorMessage.classList.add("chat-message", "bot-message");
-                errorMessage.style.color = "red";
-                errorMessage.textContent = `❌ ${error.message || "Unable to fetch response. Try again later!"}`;
+                errorMessage.style.color = "#ff6b6b";
+                errorMessage.innerHTML = `❌ <strong>Error:</strong> ${error.message || "Unable to fetch response. Try again later!"}`;
                 chatContainer.appendChild(errorMessage);
 
                 setTimeout(() => {
@@ -1671,6 +1758,11 @@
                         isLoggedIn = true;
                         localStorage.setItem("userEmail", data.email);
                         localStorage.setItem("familyName", data.familyname || "User");
+                        if (data.account_id) {
+                            localStorage.setItem("accountId", data.account_id);
+                        } else if (data.members && data.members[0] && data.members[0].account_id) {
+                            localStorage.setItem("accountId", data.members[0].account_id);
+                        }
                         updateNavButtons();
 
                         // Force member selection
@@ -1777,6 +1869,7 @@
             const profileModal = document.getElementById("profile-modal");
             const historyModal = document.getElementById("history-modal");
             const forgotPasswordModal = document.getElementById("forgot-password-modal");
+            const changePasswordModal = document.getElementById("change-password-modal");
 
             if (event.target === loginModal) {
                 closeLoginModal();
@@ -1798,6 +1891,9 @@
             }
             if (event.target === forgotPasswordModal) {
                 closeForgotPasswordModal();
+            }
+            if (event.target === changePasswordModal) {
+                closeChangePasswordModal();
             }
         };
 
@@ -2287,7 +2383,7 @@
                 diseasePara.innerHTML = `<strong>Predicted Disease:</strong> ${data.predicted_disease || "No disease predicted."}`;
                 responseDiv.appendChild(diseasePara);
                 let descriptionPara = document.createElement("p");
-                descriptionPara.innerHTML = `<strong>Description:</strong> ${data.Description || "No description available."}`;
+                descriptionPara.innerHTML = `<strong>Description:</strong> ${data.description || "No description available."}`;
                 responseDiv.appendChild(descriptionPara);
                 let disclaimerPara = document.createElement("p");
                 disclaimerPara.style.fontStyle = "italic";
@@ -2469,6 +2565,80 @@
             document.getElementById("send-otp-form").reset();
             closeLoginModal();
         }
+
+        // ── Change Password (logged-in users) ──────────────────────────────────
+        function openChangePasswordModal() {
+            closeProfileModal();
+            document.getElementById("change-password-form").reset();
+            document.getElementById("cp-message").textContent = "";
+            document.getElementById("cp-message").style.color = "";
+            document.getElementById("change-password-modal").style.display = "flex";
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById("change-password-modal").style.display = "none";
+            document.getElementById("change-password-form").reset();
+            document.getElementById("cp-message").textContent = "";
+        }
+
+        async function handleChangePassword(event) {
+            event.preventDefault();
+            const currentPwd = document.getElementById("cp-current").value.trim();
+            const newPwd     = document.getElementById("cp-new").value.trim();
+            const confirmPwd = document.getElementById("cp-confirm").value.trim();
+            const msgEl      = document.getElementById("cp-message");
+
+            if (!currentPwd || !newPwd || !confirmPwd) {
+                msgEl.textContent = "Please fill in all fields.";
+                msgEl.style.color = "#ff6b6b";
+                return;
+            }
+            if (newPwd !== confirmPwd) {
+                msgEl.textContent = "New passwords do not match.";
+                msgEl.style.color = "#ff6b6b";
+                return;
+            }
+            if (newPwd.length < 6) {
+                msgEl.textContent = "Password must be at least 6 characters.";
+                msgEl.style.color = "#ff6b6b";
+                return;
+            }
+
+            const accountId = localStorage.getItem("accountId");
+            if (!accountId) {
+                msgEl.textContent = "Session expired. Please log in again.";
+                msgEl.style.color = "#ff6b6b";
+                return;
+            }
+
+            msgEl.textContent = "Updating...";
+            msgEl.style.color = "#aaa";
+
+            try {
+                const response = await fetch("http://127.0.0.1:5000/changepassword", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        account_id: accountId,
+                        current_password: currentPwd,
+                        new_password: newPwd
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    msgEl.textContent = "✅ Password updated successfully!";
+                    msgEl.style.color = "#6bff9e";
+                    setTimeout(() => { closeChangePasswordModal(); openProfileModal(); }, 1500);
+                } else {
+                    msgEl.textContent = "❌ " + (data.message || "Failed to update password.");
+                    msgEl.style.color = "#ff6b6b";
+                }
+            } catch (err) {
+                msgEl.textContent = "❌ Connection error. Please try again.";
+                msgEl.style.color = "#ff6b6b";
+            }
+        }
+        // ──────────────────────────────────────────────────────────────────────
 
         function closeSendOtpModal() {
             document.getElementById("send-otp-modal").style.display = "none";

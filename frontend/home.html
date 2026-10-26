@@ -7,7 +7,7 @@
     <title>Niramaya</title>
     <link rel="icon" type="image/png" href="N-16.png">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
     <script>
         const theme = localStorage.getItem('theme') || 'dark';
         document.documentElement.classList.add(theme);
@@ -30,6 +30,8 @@
             <a id="about" href="about.html">About Niramaya</a>
             <a id="ourmodel" href="our_model.html">Our Models</a>
             <a id="wellnesstips" href="wellness_tips.html">Wellness Tips</a>
+            <a id="login-link" href="question_input.html?action=login" style="font-weight:600;"><i class="fas fa-sign-in-alt"></i> Login</a>
+            <a id="register-link" href="question_input.html?action=register" style="font-weight:600;"><i class="fas fa-user-plus"></i> Register</a>
             <a id="adminportal" href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i
                     class="fas fa-user-shield"></i> Admin Portal</a>
         </div>
@@ -41,6 +43,8 @@
             <p>Empower your wellness journey with AI-driven insights, health tracking, and personalized advice.</p>
             <div class="cta-buttons">
                 <a href="verify_human.html" class="button">Try Niramaya Now</a>
+                <a href="question_input.html?action=login" class="button" style="background:#2563eb; margin-left:10px;"><i class="fas fa-sign-in-alt"></i> Login</a>
+                <a href="question_input.html?action=register" class="button" style="background:#059669; margin-left:10px;"><i class="fas fa-user-plus"></i> Register</a>
             </div>
         </div>
 

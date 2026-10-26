@@ -6,6 +6,13 @@ def get_db_connection(dbname="projectH"):
     Establishes a PostgreSQL database connection using configured environment variables
     or fallback passwords ('1234', 'postgres').
     """
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        # Handles postgres:// to postgresql:// for compatibility with newer psycopg2
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        return psycopg2.connect(database_url)
+
     host = os.environ.get("DB_HOST", "localhost")
     port = os.environ.get("DB_PORT", "5432")
     user = os.environ.get("DB_USER", "postgres")

@@ -1,0 +1,26 @@
+# Python Virtual Environment
+backend/venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+backend/**/__pycache__/
+backend/routes/__pycache__/
+
+# Testing
+.pytest_cache/
+.coverage
+
+# Logs
+*.log
+app.log
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

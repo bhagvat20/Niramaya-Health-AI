@@ -40,4 +40,21 @@ app.register_blueprint(health_content_bp)
 app.register_blueprint(admin_monitoring_bp)
 
 if __name__ == "__main__":
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import sys
+    # Get the site-packages directory to exclude from watchdog reloader
+    site_packages = None
+    for p in sys.path:
+        if 'site-packages' in p:
+            site_packages = p
+            break
+    
+    exclude = []
+    if site_packages:
+        exclude.append(site_packages.replace('\\', '/') + '/*')
+    
+    app.run(
+        debug=True,
+        host='0.0.0.0',
+        port=5000,
+        exclude_patterns=exclude
+    )

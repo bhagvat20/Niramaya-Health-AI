@@ -67,6 +67,7 @@ def user_login():
         return jsonify({
             "success": True,
             "message": "Login successful",
+            "account_id": str(account_id),
             "email": email,
             "familyname": familyname,
             "members": members_list
