@@ -118,59 +118,91 @@ body {
     display: flex;
     align-items: center;
     background-color: #333333;
-    padding: 15px;
+    padding: 6px 8px 6px 22px;
     border-radius: 30px;
-    width: 550px;
+    width: 680px;
     max-width: 90vw;
+    min-height: 56px;
+    box-sizing: border-box;
     margin-top: 30px;
     margin-bottom: 10px;
-    transition: margin 0.3s ease-in-out, box-shadow 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    transition: margin 0.3s ease-in-out, box-shadow 0.2s, border-color 0.2s;
+}
+
+.input-container:focus-within {
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
 .input-container input {
     flex: 1;
+    min-width: 0;
     background: transparent;
     border: none;
     outline: none;
     color: #ffffff;
     font-size: 16px;
-    padding: 12px;
-    height: 100%;
+    line-height: 24px;
+    padding: 8px 12px 8px 0;
+    height: 42px;
+    box-sizing: border-box;
 }
 
 .input-container input::placeholder {
-    color: #888888;
+    color: #999999;
+    font-size: 15px;
 }
 
 .model-select {
     background: #444444;
-    border: 1px solid #666666;
+    border: 1px solid #5a5a5a;
     color: #ffffff;
-    font-size: 16px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
-    margin-left: 15px;
-    padding: 5px 10px;
+    margin-left: 10px;
+    padding: 0 14px;
+    height: 38px;
     border-radius: 20px;
     outline: none;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.model-select:hover,
+.model-select:focus {
+    background: #4e4e4e;
+    border-color: #777777;
 }
 
 .input-container button {
     background: #555555;
     color: #ffffff;
     border: none;
-    padding: 10px 15px;
-    border-radius: 20px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
     cursor: pointer;
-    margin-left: 15px;
+    margin-left: 10px;
     font-size: 16px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, transform 0.15s;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
 }
 
 .input-container button:hover {
     background: #666666;
+    transform: scale(1.05);
+}
+
+.input-container button:active {
+    transform: scale(0.95);
 }
 
 /* ==========================================================================
@@ -273,13 +305,15 @@ body {
 }
 
 .chat-footer .input-container {
-    width: 600px;
-    padding: 10px;
+    width: 680px;
+    max-width: 90vw;
+    padding: 6px 8px 6px 22px;
     display: flex;
     align-items: center;
     background-color: #333333;
     border-radius: 30px;
-    height: 50px;
+    min-height: 56px;
+    height: 56px;
     margin-top: 0;
 }
 
