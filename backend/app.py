@@ -70,9 +70,9 @@ if __name__ == "__main__":
     if site_packages:
         exclude.append(site_packages.replace('\\', '/') + '/*')
     
+    run_port = int(os.environ.get("PORT", 5000))
     app.run(
-        debug=True,
+        debug=False,
         host='0.0.0.0',
-        port=5000,
-        exclude_patterns=exclude
+        port=run_port
     )
