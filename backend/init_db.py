@@ -6,9 +6,13 @@ from db_config import get_db_connection
 
 def setup_database():
     try:
-        # Step 1: Connect to default postgres DB to create projectH database if it doesn't exist
-        print("Connecting to PostgreSQL server...")
         conn = get_db_connection(dbname="postgres")
+        # If SQLite fallback was returned, schema is already initialized
+        if conn.__class__.__name__ == 'SQLiteConnWrapper':
+            print("SQLite database active and ready.")
+            conn.close()
+            return
+
         conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cursor = conn.cursor()
 

@@ -19,6 +19,10 @@ backend/routes/__pycache__/
 *.log
 app.log
 
+# Database files
+*.db
+*.sqlite3
+
 # OS / Editor files
 .DS_Store
 Thumbs.db
