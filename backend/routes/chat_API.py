@@ -43,7 +43,8 @@ def save_chat():
             RETURNING history_id
         """, (account_id, member_id, user_input, bot_response,model))
         
-        history_id = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        history_id = row[0] if (row and len(row) > 0) else 1
         conn.commit()
 
         # Close cursor and connection
@@ -74,23 +75,50 @@ def get_chat():
     conn = None
     cursor = None
     try:
-        data = request.json
+        data = request.json or {}
         account_id = data.get('account_id')
         member_id = data.get('member_id')
-        if not account_id or not member_id:
-            return jsonify({"success": False, "message": "Account ID and Member ID are required"}), 400
+        if not account_id:
+            return jsonify({"success": False, "message": "Account ID is required"}), 400
 
-        account_id_str = str(account_id)
-        member_id_str = str(member_id)
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT history_id, user_input, bot_response, model, timestamp FROM chat_history_tbl WHERE account_id::text = %s AND member_id::text = %s ORDER BY timestamp DESC", (account_id_str, member_id_str))
-        history = cursor.fetchall()
 
-        history_list = [
-            {"history_id": h[0], "question": h[1], "response": h[2], "model": h[3], "timestamp": h[4].isoformat()}
-            for h in history
-        ]
+        acc_id = int(account_id)
+
+        if member_id and str(member_id).lower() not in ['all', 'null', 'undefined', '']:
+            mem_id = int(member_id)
+            cursor.execute("""
+                SELECT c.history_id, c.user_input, c.bot_response, c.model, c.timestamp, m.name, c.member_id
+                FROM chat_history_tbl c
+                LEFT JOIN member_tbl m ON c.member_id = m.member_id
+                WHERE c.account_id = %s AND c.member_id = %s
+                ORDER BY c.timestamp DESC
+            """, (acc_id, mem_id))
+        else:
+            cursor.execute("""
+                SELECT c.history_id, c.user_input, c.bot_response, c.model, c.timestamp, m.name, c.member_id
+                FROM chat_history_tbl c
+                LEFT JOIN member_tbl m ON c.member_id = m.member_id
+                WHERE c.account_id = %s
+                ORDER BY c.timestamp DESC
+            """, (acc_id,))
+
+        history = cursor.fetchall() or []
+
+        history_list = []
+        for h in history:
+            ts = h[4]
+            ts_str = ts.isoformat() if hasattr(ts, 'isoformat') else (str(ts) if ts else '')
+            history_list.append({
+                "history_id": h[0],
+                "question": h[1],
+                "response": h[2],
+                "model": h[3],
+                "timestamp": ts_str,
+                "member_name": h[5] or "Family Member",
+                "member_id": h[6]
+            })
 
         cursor.close()
         conn.close()
@@ -103,6 +131,8 @@ def get_chat():
 
     except psycopg2.Error as e:
         return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
+    except ValueError as e:
+        return jsonify({"success": False, "message": "Invalid ID format"}), 400
     except Exception as e:
         return jsonify({"success": False, "message": f"Server error: {str(e)}"}), 500
     finally:
@@ -117,22 +147,32 @@ def delete_chat():
     conn = None
     cursor = None
     try:
-        data = request.json
+        data = request.json or {}
         account_id = data.get('account_id')
-        member_id = data.get('member_id')
         history_id = data.get('history_id')
-        if not account_id or not member_id or not history_id:
-            return jsonify({"success": False, "message": "Account ID, Member ID, and History ID are required"}), 400
+        member_id = data.get('member_id')
 
-        account_id_str = str(account_id)
-        member_id_str = str(member_id)
-        history_id = int(history_id)
+        if not account_id or not history_id:
+            return jsonify({"success": False, "message": "Account ID and History ID are required"}), 400
+
+        acc_id = int(account_id)
+        hist_id = int(history_id)
+
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("""
-            DELETE FROM chat_history_tbl 
-            WHERE account_id::text = %s AND member_id::text = %s AND history_id = %s
-        """, (account_id_str, member_id_str, history_id))
+
+        if member_id and str(member_id).lower() not in ['all', 'null', 'undefined', '']:
+            mem_id = int(member_id)
+            cursor.execute("""
+                DELETE FROM chat_history_tbl 
+                WHERE account_id = %s AND member_id = %s AND history_id = %s
+            """, (acc_id, mem_id, hist_id))
+        else:
+            cursor.execute("""
+                DELETE FROM chat_history_tbl 
+                WHERE account_id = %s AND history_id = %s
+            """, (acc_id, hist_id))
+
         conn.commit()
 
         if cursor.rowcount == 0:

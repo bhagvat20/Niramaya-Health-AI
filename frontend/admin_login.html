@@ -329,8 +329,22 @@
       setTimeout(() => { box.style.display = 'none'; }, 4000);
     }
 
+    function getAdminToken() {
+      return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+    }
+
+    function setAdminToken(t) {
+      localStorage.setItem('admin_token', t);
+      sessionStorage.setItem('admin_token', t);
+    }
+
+    function clearAdminToken() {
+      localStorage.removeItem('admin_token');
+      sessionStorage.removeItem('admin_token');
+    }
+
     async function checkExistingSession() {
-      const token = sessionStorage.getItem('admin_token');
+      const token = getAdminToken();
       if (!token) return;
 
       try {
@@ -346,10 +360,10 @@
           if (data.success && data.admin) {
             displayAuthenticatedState(data.admin);
           } else {
-            sessionStorage.removeItem('admin_token');
+            clearAdminToken();
           }
         } else {
-          sessionStorage.removeItem('admin_token');
+          clearAdminToken();
         }
       } catch (err) {
         console.error("Session verification failed:", err);
@@ -396,9 +410,12 @@
         const data = await response.json();
 
         if (response.ok && data.success) {
-          sessionStorage.setItem('admin_token', data.token);
+          setAdminToken(data.token);
           displayAuthenticatedState(data.admin);
-          showStatusAlert("Admin login successful!");
+          showStatusAlert("Admin login successful! Redirecting to Dashboard...");
+          setTimeout(() => {
+            window.location.href = 'admin_dashboard.html';
+          }, 1000);
         } else {
           showAlert(data.message || "Invalid credentials or login error.");
         }
@@ -412,7 +429,7 @@
     });
 
     document.getElementById('verify-api-btn').addEventListener('click', async function () {
-      const token = sessionStorage.getItem('admin_token');
+      const token = getAdminToken();
       try {
         const res = await fetch(`${API_BASE_URL}/admin/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -429,7 +446,7 @@
     });
 
     document.getElementById('logout-btn').addEventListener('click', async function () {
-      const token = sessionStorage.getItem('admin_token');
+      const token = getAdminToken();
       if (token) {
         try {
           await fetch(`${API_BASE_URL}/admin/logout`, {
@@ -440,7 +457,7 @@
           console.error("Logout request error:", e);
         }
       }
-      sessionStorage.removeItem('admin_token');
+      clearAdminToken();
       document.getElementById('authenticated-panel').style.display = 'none';
       document.getElementById('login-section').style.display = 'block';
       document.getElementById('password').value = '';

@@ -478,7 +478,12 @@
     const API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:5000';
 
     function getAuthToken() {
-      return sessionStorage.getItem('admin_token');
+      return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+    }
+
+    function clearAuthToken() {
+      localStorage.removeItem('admin_token');
+      sessionStorage.removeItem('admin_token');
     }
 
     function checkAuth() {
@@ -502,6 +507,7 @@
     async function loadContent() {
       checkAuth();
       const token = getAuthToken();
+      if (!token) return;
       const search = document.getElementById('search-input').value.trim();
       const type = document.getElementById('type-filter').value;
       const status = document.getElementById('status-filter').value;
@@ -520,7 +526,7 @@
         });
 
         if (res.status === 401) {
-          sessionStorage.removeItem('admin_token');
+          clearAuthToken();
           window.location.href = 'admin_login.html';
           return;
         }
@@ -719,7 +725,7 @@
     }
 
     document.getElementById('admin-logout-link').addEventListener('click', function () {
-      sessionStorage.removeItem('admin_token');
+      clearAuthToken();
       window.location.href = 'admin_login.html';
     });
 

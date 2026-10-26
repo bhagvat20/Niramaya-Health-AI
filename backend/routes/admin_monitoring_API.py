@@ -97,15 +97,14 @@ def get_recent_activity():
                 "family_name": r[1],
                 "email": r[2],
                 "is_active": r[3],
-                "created_at": r[4].isoformat() if r[4] else None
+                "created_at": r[4].isoformat() if hasattr(r[4], 'isoformat') else str(r[4]) if r[4] else None
             }
             for r in reg_rows
         ]
 
         # Recent AI queries (last 5)
         cursor.execute("""
-            SELECT c.history_id, a.email, m.name, c.model, c.timestamp,
-                   LEFT(c.user_input, 80) as query_snippet
+            SELECT c.history_id, a.email, m.name, c.model, c.timestamp, c.user_input
             FROM chat_history_tbl c
             JOIN account_tbl a ON c.account_id = a.account_id
             JOIN member_tbl m ON c.member_id = m.member_id
@@ -113,17 +112,19 @@ def get_recent_activity():
             LIMIT 5;
         """)
         chat_rows = cursor.fetchall()
-        recent_chats = [
-            {
+        recent_chats = []
+        for r in chat_rows:
+            raw_text = r[5] or ""
+            snippet = raw_text[:80] + ("..." if len(raw_text) > 80 else "")
+            ts = r[4].isoformat() if hasattr(r[4], 'isoformat') else str(r[4]) if r[4] else None
+            recent_chats.append({
                 "history_id": r[0],
                 "user_email": r[1],
                 "member_name": r[2],
                 "model": r[3],
-                "timestamp": r[4].isoformat() if r[4] else None,
-                "query_snippet": r[5] + ("..." if len(r[5]) >= 80 else "")
-            }
-            for r in chat_rows
-        ]
+                "timestamp": ts,
+                "query_snippet": snippet
+            })
 
         # Recent content updates (last 5)
         cursor.execute("""
@@ -140,7 +141,7 @@ def get_recent_activity():
                 "title": r[2],
                 "category": r[3],
                 "status": r[4],
-                "updated_at": r[5].isoformat() if r[5] else None
+                "updated_at": r[5].isoformat() if hasattr(r[5], 'isoformat') else str(r[5]) if r[5] else None
             }
             for r in content_rows
         ]

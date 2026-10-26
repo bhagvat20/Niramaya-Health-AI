@@ -66,8 +66,28 @@ def verify_admin_token_db(token_str):
         if not is_active:
             return None
             
-        if expires_at < datetime.utcnow():
-            # Optionally clean up expired token
+        is_expired = False
+        if expires_at is not None:
+            if isinstance(expires_at, str):
+                try:
+                    clean_str = expires_at.replace('Z', '').split('+')[0].strip()
+                    if 'T' in clean_str:
+                        exp_dt = datetime.fromisoformat(clean_str)
+                    else:
+                        exp_dt = datetime.strptime(clean_str[:19], '%Y-%m-%d %H:%M:%S')
+                    is_expired = exp_dt < datetime.utcnow()
+                except Exception as _e:
+                    print(f"Token date parse warning: {_e}")
+                    is_expired = False
+            elif isinstance(expires_at, datetime):
+                if hasattr(expires_at, 'tzinfo') and expires_at.tzinfo is not None:
+                    from datetime import timezone
+                    is_expired = expires_at < datetime.now(timezone.utc)
+                else:
+                    is_expired = expires_at < datetime.utcnow()
+
+        if is_expired:
+            # Clean up expired token
             cursor.execute("DELETE FROM admin_tokens_tbl WHERE token = %s", (token_str,))
             conn.commit()
             return None
