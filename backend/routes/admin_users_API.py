@@ -49,14 +49,14 @@ def get_all_users():
             params.extend([search_param, search_param, search_query])
             
         if status_filter == 'active':
-            sql += " AND a.is_active = TRUE"
+            sql += " AND (a.is_active = TRUE OR a.is_active = 1)"
         elif status_filter == 'deactivated':
-            sql += " AND a.is_active = FALSE"
+            sql += " AND (a.is_active = FALSE OR a.is_active = 0)"
             
-        sql += " GROUP BY a.account_id ORDER BY a.created_at DESC"
+        sql += " GROUP BY a.account_id, a.family_name, a.email, a.is_active, a.created_at ORDER BY a.created_at DESC"
         
         cursor.execute(sql, tuple(params))
-        rows = cursor.fetchall()
+        rows = cursor.fetchall() or []
         
         users_list = []
         for r in rows:
@@ -64,10 +64,10 @@ def get_all_users():
                 "account_id": r[0],
                 "family_name": r[1],
                 "email": r[2],
-                "is_active": r[3],
-                "created_at": r[4].isoformat() if r[4] else None,
-                "member_count": r[5],
-                "chat_count": r[6]
+                "is_active": bool(r[3]),
+                "created_at": r[4].isoformat() if hasattr(r[4], 'isoformat') else str(r[4]) if r[4] else None,
+                "member_count": r[5] or 0,
+                "chat_count": r[6] or 0
             })
             
         return jsonify({
@@ -113,8 +113,8 @@ def get_user_details(account_id):
             "account_id": user_row[0],
             "family_name": user_row[1],
             "email": user_row[2],
-            "is_active": user_row[3],
-            "created_at": user_row[4].isoformat() if user_row[4] else None
+            "is_active": bool(user_row[3]),
+            "created_at": user_row[4].isoformat() if hasattr(user_row[4], 'isoformat') else str(user_row[4]) if user_row[4] else None
         }
         
         # Get associated members
@@ -124,7 +124,7 @@ def get_user_details(account_id):
             WHERE account_id = %s
             ORDER BY member_id ASC
         """, (account_id,))
-        members_rows = cursor.fetchall()
+        members_rows = cursor.fetchall() or []
         
         members_list = [
             {
@@ -134,7 +134,7 @@ def get_user_details(account_id):
                 "age": m[3],
                 "height": m[4],
                 "weight": m[5],
-                "created_at": m[6].isoformat() if m[6] else None
+                "created_at": m[6].isoformat() if hasattr(m[6], 'isoformat') else str(m[6]) if m[6] else None
             }
             for m in members_rows
         ]

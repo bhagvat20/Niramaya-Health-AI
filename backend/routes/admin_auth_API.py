@@ -336,8 +336,8 @@ def admin_profile():
             "email": row[2],
             "role": row[3],
             "is_active": row[4],
-            "created_at": row[5].isoformat() if row[5] else None,
-            "last_login": row[6].isoformat() if row[6] else None
+            "created_at": row[5].isoformat() if hasattr(row[5], 'isoformat') else str(row[5]) if row[5] else None,
+            "last_login": row[6].isoformat() if hasattr(row[6], 'isoformat') else str(row[6]) if row[6] else None
         }
         return jsonify({
             "success": True,

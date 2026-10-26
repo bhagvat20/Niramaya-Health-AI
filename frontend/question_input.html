@@ -2267,7 +2267,13 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(reqBody)
             })
-                .then(response => response.json())
+                .then(async response => {
+                    const data = await response.json().catch(() => null);
+                    if (!response.ok || !data) {
+                        throw new Error((data && data.message) ? data.message : `Server error (Status ${response.status})`);
+                    }
+                    return data;
+                })
                 .then(data => {
                     if (data.success && data.history) {
                         historyList.innerHTML = "";
@@ -2511,7 +2517,13 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             })
-                .then(response => response.json())
+                .then(async response => {
+                    const data = await response.json().catch(() => null);
+                    if (!response.ok || !data) {
+                        throw new Error((data && data.message) ? data.message : `Server error (Status ${response.status})`);
+                    }
+                    return data;
+                })
                 .then(data => {
                     if (data.success) {
                         loadHistory(); // Refresh the history list

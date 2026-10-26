@@ -12,6 +12,7 @@ class SQLiteCursorWrapper:
         has_returning = bool(re.search(r'RETURNING\s+\w+', sql, re.IGNORECASE))
         clean_sql = re.sub(r'RETURNING\s+\w+', '', sql, flags=re.IGNORECASE)
         clean_sql = clean_sql.replace('::text', '')
+        clean_sql = re.sub(r'\bILIKE\b', 'LIKE', clean_sql, flags=re.IGNORECASE)
         clean_sql = clean_sql.replace('%s', '?')
         if params is None:
             self.cursor.execute(clean_sql)
@@ -34,11 +35,17 @@ class SQLiteCursorWrapper:
         return self.cursor.fetchall()
 
     def close(self):
-        self.cursor.close()
+        try:
+            self.cursor.close()
+        except Exception:
+            pass
 
     @property
     def rowcount(self):
-        return self.cursor.rowcount
+        try:
+            return self.cursor.rowcount
+        except Exception:
+            return 0
 
 class SQLiteConnWrapper:
     def __init__(self, conn):
@@ -48,13 +55,22 @@ class SQLiteConnWrapper:
         return SQLiteCursorWrapper(self.conn.cursor())
 
     def commit(self):
-        self.conn.commit()
+        try:
+            self.conn.commit()
+        except Exception:
+            pass
 
     def rollback(self):
-        self.conn.rollback()
+        try:
+            self.conn.rollback()
+        except Exception:
+            pass
 
     def close(self):
-        self.conn.close()
+        try:
+            self.conn.close()
+        except Exception:
+            pass
 
     def set_isolation_level(self, level):
         pass

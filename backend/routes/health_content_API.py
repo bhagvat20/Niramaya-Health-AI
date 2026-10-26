@@ -9,6 +9,11 @@ CORS(health_content_bp)
 
 MEDICAL_DISCLAIMER = "Niramaya health information is provided for educational and informational purposes only and does not constitute professional medical advice, diagnosis, or treatment."
 
+def format_dt(dt):
+    if not dt:
+        return None
+    return dt.isoformat() if hasattr(dt, 'isoformat') else str(dt)
+
 # ==========================================
 # PUBLIC READ-ONLY ENDPOINTS (NORMAL USERS)
 # ==========================================
@@ -39,7 +44,7 @@ def get_public_wellness_tips():
         sql += " ORDER BY content_id ASC"
         
         cursor.execute(sql, tuple(params))
-        rows = cursor.fetchall()
+        rows = cursor.fetchall() or []
         
         tips = [
             {
@@ -48,8 +53,8 @@ def get_public_wellness_tips():
                 "category": r[2],
                 "content": r[3],
                 "author_or_source": r[4],
-                "created_at": r[5].isoformat() if r[5] else None,
-                "updated_at": r[6].isoformat() if r[6] else None
+                "created_at": format_dt(r[5]),
+                "updated_at": format_dt(r[6])
             }
             for r in rows
         ]
@@ -107,8 +112,8 @@ def get_public_articles():
                 "author_or_source": r[4],
                 "external_link": r[5],
                 "image_url": r[6],
-                "created_at": r[7].isoformat() if r[7] else None,
-                "updated_at": r[8].isoformat() if r[8] else None
+                "created_at": format_dt(r[7]),
+                "updated_at": format_dt(r[8])
             }
             for r in rows
         ]
@@ -160,8 +165,8 @@ def get_single_content(content_id):
             "external_link": r[6],
             "image_url": r[7],
             "status": r[8],
-            "created_at": r[9].isoformat() if r[9] else None,
-            "updated_at": r[10].isoformat() if r[10] else None
+            "created_at": format_dt(r[9]),
+            "updated_at": format_dt(r[10])
         }
         
         return jsonify({
@@ -237,8 +242,8 @@ def admin_get_all_content():
                 "external_link": r[6],
                 "image_url": r[7],
                 "status": r[8],
-                "created_at": r[9].isoformat() if r[9] else None,
-                "updated_at": r[10].isoformat() if r[10] else None
+                "created_at": format_dt(r[9]),
+                "updated_at": format_dt(r[10])
             }
             for r in rows
         ]
@@ -315,8 +320,8 @@ def admin_create_content():
                 "external_link": external_link,
                 "image_url": image_url,
                 "status": status,
-                "created_at": created_at.isoformat() if created_at else None,
-                "updated_at": updated_at.isoformat() if updated_at else None
+                "created_at": format_dt(created_at),
+                "updated_at": format_dt(updated_at)
             }
         }), 201
         

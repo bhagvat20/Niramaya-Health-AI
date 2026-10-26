@@ -47,10 +47,6 @@ def save_chat():
         history_id = row[0] if (row and len(row) > 0) else 1
         conn.commit()
 
-        # Close cursor and connection
-        cursor.close()
-        conn.close()
-
         return jsonify({
             "success": True,
             "message": "Chat history saved successfully",
@@ -120,9 +116,6 @@ def get_chat():
                 "member_id": h[6]
             })
 
-        cursor.close()
-        conn.close()
-
         return jsonify({
             "success": True,
             "message": "Chat history retrieved successfully",
@@ -177,9 +170,6 @@ def delete_chat():
 
         if cursor.rowcount == 0:
             return jsonify({"success": False, "message": "No matching history found"}), 404
-
-        cursor.close()
-        conn.close()
 
         return jsonify({
             "success": True,
