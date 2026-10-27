@@ -5,65 +5,71 @@ for symptoms, diseases, diet, precautions, and emergency guidance in English, Hi
 """
 
 import re
+import difflib
 
-# Comprehensive Multilingual Symptom Dictionary (English, Hindi, Hinglish)
+# Comprehensive Multilingual Symptom Dictionary (English, Hindi, Hinglish + Typos & Variations)
 SYMPTOM_PATTERNS = {
     'fever': [
-        r'\bfever\b', r'\bbukhar\b', r'\btaap\b', r'\bpyrexia\b', r'\bhigh temperature\b',
-        r'\bfeverish\b', r'\bbody is hot\b', r'\bgaram\b', r'\btez bukhar\b', r'\bhalka bukhar\b'
+        r'\bfever\b', r'\bfevr\b', r'\bfevar\b', r'\bfeveer\b', r'\bbukhar\b', r'\bbukharr\b',
+        r'\btaap\b', r'\bpyrexia\b', r'\bhigh temperature\b', r'\bfeverish\b', r'\bbody is hot\b',
+        r'\bgaram\b', r'\btez bukhar\b', r'\bhalka bukhar\b'
     ],
     'chills': [
-        r'\bchills\b', r'\bshivering\b', r'\bthand\b', r'\bthand lagna\b', r'\bkapkapi\b',
+        r'\bchills\b', r'\bchill\b', r'\bshivering\b', r'\bthand\b', r'\bthand lagna\b', r'\bkapkapi\b',
         r'\brigors\b', r'\bcold chills\b'
     ],
     'headache': [
-        r'\bheadache\b', r'\bhead ache\b', r'\bsir dard\b', r'\bsar dard\b', r'\bforehead pain\b',
-        r'\bheaviness in head\b', r'\bsir ghumna\b', r'\badha sir dard\b'
+        r'\bheadache\b', r'\bheadche\b', r'\bheadach\b', r'\bhedache\b', r'\bhedach\b',
+        r'\bhead ache\b', r'\bhead-ache\b', r'\bhead pain\b', r'\bhead hurts\b',
+        r'\bsir dard\b', r'\bsar dard\b', r'\bforehead pain\b', r'\bheaviness in head\b',
+        r'\bsir ghumna\b', r'\badha sir dard\b'
     ],
     'cough': [
-        r'\bcough\b', r'\bkhansi\b', r'\bkhasi\b', r'\bcoughing\b', r'\bdry cough\b',
-        r'\bsukhi khansi\b', r'\bwet cough\b', r'\bbalgam\b', r'\bmucus\b', r'\bphlegm\b'
+        r'\bcough\b', r'\bcoughing\b', r'\bcaugh\b', r'\bkough\b', r'\bkhansi\b', r'\bkhasi\b',
+        r'\bdry cough\b', r'\bsukhi khansi\b', r'\bwet cough\b', r'\bbalgam\b', r'\bmucus\b', r'\bphlegm\b'
     ],
     'cold': [
-        r'\bcold\b', r'\bsardi\b', r'\bjukaam\b', r'\bjukam\b', r'\bnazla\b', r'\brunny nose\b',
-        r'\brunning nose\b', r'\bnaak behna\b', r'\bblocked nose\b', r'\bstuffy nose\b',
-        r'\bsneezing\b', r'\bchheenk\b', r'\bcheenk\b', r'\bcongestion\b'
+        r'\bcold\b', r'\bcld\b', r'\bsardi\b', r'\bjukaam\b', r'\bjukam\b', r'\bnazla\b',
+        r'\brunny nose\b', r'\brunning nose\b', r'\bnaak behna\b', r'\bblocked nose\b',
+        r'\bstuffy nose\b', r'\bsneezing\b', r'\bsnizing\b', r'\bchheenk\b', r'\bcheenk\b', r'\bcongestion\b'
     ],
     'sore_throat': [
-        r'\bsore throat\b', r'\bgale me dard\b', r'\bgala kharab\b', r'\bthroat pain\b',
-        r'\bgale me kharash\b', r'\bthroat irritation\b', r'\bpain swallowing\b', r'\bpharyngitis\b'
+        r'\bsore throat\b', r'\bsore throt\b', r'\bgale me dard\b', r'\bgala kharab\b', r'\bthroat pain\b',
+        r'\bgale me kharash\b', r'\bthroat irritation\b', r'\bpain swallowing\b', r'\bpharyngitis\b', r'\bgala dard\b'
     ],
     'body_pain': [
-        r'\bbody pain\b', r'\bbadan dard\b', r'\bbody ache\b', r'\bmuscle pain\b',
+        r'\bbody pain\b', r'\bbody ache\b', r'\bbodyache\b', r'\bbadan dard\b', r'\bmuscle pain\b',
         r'\bmuscle ache\b', r'\bmyalgia\b', r'\bang ang dard\b'
     ],
     'fatigue': [
-        r'\bfatigue\b', r'\bweakness\b', r'\bkamzori\b', r'\bkamzori lag rahi\b', r'\bthakan\b',
-        r'\btiredness\b', r'\bexhaustion\b', r'\blethargy\b', r'\bsusti\b', r'\bfeeling weak\b'
+        r'\bfatigue\b', r'\bfatique\b', r'\bweakness\b', r'\bkamzori\b', r'\bkamzori lag rahi\b',
+        r'\bthakan\b', r'\btiredness\b', r'\bexhaustion\b', r'\blethargy\b', r'\bsusti\b', r'\bfeeling weak\b'
     ],
     'stomach_pain': [
-        r'\bstomach pain\b', r'\bpet dard\b', r'\bpet me dard\b', r'\babdominal pain\b',
-        r'\btummy ache\b', r'\bcramps\b', r'\bpet me marod\b', r'\bbelly pain\b', r'\bstomach ache\b'
+        r'\bstomach pain\b', r'\bstomach ache\b', r'\bstomache\b', r'\bstomac pain\b',
+        r'\bpet dard\b', r'\bpet me dard\b', r'\babdominal pain\b', r'\btummy ache\b',
+        r'\btummy pain\b', r'\bcramps\b', r'\bpet me marod\b', r'\bbelly pain\b'
     ],
     'vomiting': [
-        r'\bvomiting\b', r'\bulti\b', r'\bthrow up\b', r'\bpuking\b', r'\bvomit\b', r'\bemesis\b'
+        r'\bvomiting\b', r'\bvomting\b', r'\bvomitting\b', r'\bulti\b', r'\bthrow up\b',
+        r'\bthrowing up\b', r'\bpuking\b', r'\bvomit\b', r'\bemesis\b'
     ],
     'nausea': [
-        r'\bnausea\b', r'\bulti jaisa\b', r'\bmatli\b', r'\bjee ghabrana\b', r'\bfeeling sick\b',
-        r'\bqueasy\b'
+        r'\bnausea\b', r'\bnauseous\b', r'\bulti jaisa\b', r'\bmatli\b', r'\bjee ghabrana\b',
+        r'\bfeeling sick\b', r'\bqueasy\b'
     ],
     'diarrhea': [
-        r'\bdiarrhea\b', r'\bdiarrhoea\b', r'\bloose motion\b', r'\bdast\b', r'\bloose motions\b',
-        r'\bwatery stool\b', r'\bpet kharab\b', r'\bfrequent motions\b'
+        r'\bdiarrhea\b', r'\bdiarrhoea\b', r'\bdiarhea\b', r'\bdiareha\b', r'\bloose motion\b',
+        r'\bloose motions\b', r'\bdast\b', r'\bwatery stool\b', r'\bpet kharab\b', r'\bfrequent motions\b'
     ],
     'acidity': [
-        r'\bacidity\b', r'\bheartburn\b', r'\bgas\b', r'\bpet phoolna\b', r'\bbloating\b',
-        r'\bseene me jalan\b', r'\bkhatti dakar\b', r'\bindigestion\b', r'\bbadhazmi\b',
-        r'\bgerd\b', r'\bacid reflux\b'
+        r'\bacidity\b', r'\bacidty\b', r'\bheartburn\b', r'\bgas\b', r'\bpet phoolna\b',
+        r'\bbloating\b', r'\bseene me jalan\b', r'\bkhatti dakar\b', r'\bindigestion\b',
+        r'\bbadhazmi\b', r'\bgerd\b', r'\bacid reflux\b'
     ],
     'chest_pain': [
-        r'\bchest pain\b', r'\bchhati me dard\b', r'\bseene me dard\b', r'\bchest tightness\b',
-        r'\bchest pressure\b', r'\bheavy chest\b'
+        r'\bchest pain\b', r'\bchest ache\b', r'\bchhati me dard\b', r'\bseene me dard\b',
+        r'\bchest tightness\b', r'\bchest pressure\b', r'\bheavy chest\b'
     ],
     'shortness_of_breath': [
         r'\bshortness of breath\b', r'\bsaans phoolna\b', r'\bsaans lene me takleef\b',
@@ -75,7 +81,7 @@ SYMPTOM_PATTERNS = {
         r'\bjoint swelling\b', r'\bswollen joints\b', r'\bstiffness\b', r'\bback pain\b', r'\bkamar dard\b'
     ],
     'dizziness': [
-        r'\bdizziness\b', r'\bchakkar\b', r'\bsir ghumna\b', r'\bfeeling faint\b',
+        r'\bdizziness\b', r'\bdizzy\b', r'\bchakkar\b', r'\bsir ghumna\b', r'\bfeeling faint\b',
         r'\blightheaded\b', r'\bvertigo\b', r'\bunsteady\b'
     ],
     'rash': [
@@ -88,17 +94,17 @@ SYMPTOM_PATTERNS = {
     ],
     'yellow_eyes_skin': [
         r'\byellow eyes\b', r'\byellow skin\b', r'\bpili aankhein\b', r'\bpeela peshab\b',
-        r'\bdark yellow urine\b'
+        r'\bdark yellow urine\b', r'\bjaundice\b'
     ],
     'high_blood_sugar': [
         r'\bhigh sugar\b', r'\bsugar level\b', r'\bhigh glucose\b', r'\bblood sugar\b',
-        r'\bexcessive thirst\b', r'\bbaar baar pyaas\b'
+        r'\bexcessive thirst\b', r'\bbaar baar pyaas\b', r'\bdiabetes\b'
     ],
     'high_bp': [
-        r'\bhigh bp\b', r'\bhigh blood pressure\b', r'\bbp badhna\b'
+        r'\bhigh bp\b', r'\bhigh blood pressure\b', r'\bbp badhna\b', r'\bhypertension\b'
     ],
     'low_bp': [
-        r'\blow bp\b', r'\blow blood pressure\b', r'\bbp kam\b'
+        r'\blow bp\b', r'\blow blood pressure\b', r'\bbp kam\b', r'\bhypotension\b'
     ],
     'loss_of_appetite': [
         r'\bloss of appetite\b', r'\bbhook na lagna\b', r'\bkam bhook\b', r'\bno appetite\b'
@@ -116,11 +122,61 @@ SYMPTOM_PATTERNS = {
         r'\bsweating\b', r'\bprofuse sweating\b', r'\bpasina\b', r'\bcold sweat\b'
     ],
     'weight_gain': [
-        r'\bweight gain\b', r'\bweight gaining\b', r'\bvazan badhna\b', r'\brapid weight gain\b', r'\bgaining weight\b'
+        r'\bweight\s*gain[ing]*\b', r'\bgain\s*weight\b', r'\bgaining\s*weight\b',
+        r'\bweight\s*gaine\b', r'\bvazan\s*badhna\b', r'\bvajan\s*badhna\b',
+        r'\bput\s*on\s*weight\b', r'\bweight\s*increase\b'
     ],
     'weight_loss': [
-        r'\bweight loss\b', r'\bvazan ghatna\b', r'\bunexplained weight loss\b', r'\blosing weight\b'
+        r'\bweight\s*los[se]+\b', r'\blose\s*weight\b', r'\bloose\s*weight\b',
+        r'\blosing\s*weight\b', r'\bvazan\s*ghatna\b', r'\bvajan\s*kam\b',
+        r'\bunexplained\s*weight\s*loss\b', r'\bweight\s*drop\b', r'\bweight\s*decrease\b'
     ]
+}
+
+# Canonical dictionary for typo-tolerant fuzzy token matching
+FUZZY_SYMPTOM_MAP = {
+    'headache': 'headache',
+    'headaches': 'headache',
+    'headche': 'headache',
+    'headach': 'headache',
+    'hedache': 'headache',
+    'fever': 'fever',
+    'fevr': 'fever',
+    'fevar': 'fever',
+    'feveer': 'fever',
+    'bukhar': 'fever',
+    'cough': 'cough',
+    'coughing': 'cough',
+    'caugh': 'cough',
+    'kough': 'cough',
+    'khansi': 'cough',
+    'vomiting': 'vomiting',
+    'vomting': 'vomiting',
+    'vomitting': 'vomiting',
+    'vomit': 'vomiting',
+    'diarrhea': 'diarrhea',
+    'diarrhoea': 'diarrhea',
+    'diarhea': 'diarrhea',
+    'dast': 'diarrhea',
+    'nausea': 'nausea',
+    'fatigue': 'fatigue',
+    'fatique': 'fatigue',
+    'weakness': 'fatigue',
+    'chills': 'chills',
+    'shivering': 'chills',
+    'dizziness': 'dizziness',
+    'dizzy': 'dizziness',
+    'constipation': 'constipation',
+    'kabz': 'constipation',
+    'insomnia': 'insomnia',
+    'anxiety': 'anxiety',
+    'sweating': 'sweating',
+    'sneezing': 'cold',
+    'jukaam': 'cold',
+    'sardi': 'cold',
+    'acidity': 'acidity',
+    'heartburn': 'acidity',
+    'bloating': 'acidity'
 }
 
 # Clean display names for symptoms
@@ -192,7 +248,7 @@ CLINICAL_DISEASES = {
     'headache_migraine': {
         'name': 'Tension Headache & Migraine / Cephalea (सिर दर्द एवं माइग्रेन)',
         'category': 'Neurological / Primary Cephalalgia',
-        'keywords': ['headache', 'head ache', 'migraine', 'migrane', 'cephalea', 'sir dard', 'sar dard', 'adha sishi', 'cluster headache', 'forehead pain', 'head pain'],
+        'keywords': ['headache', 'headche', 'headach', 'hedache', 'head ache', 'migraine', 'migrane', 'cephalea', 'sir dard', 'sar dard', 'adha sishi', 'cluster headache', 'forehead pain', 'head pain'],
         'primary_symptoms': ['headache'],
         'secondary_symptoms': ['nausea', 'dizziness', 'fatigue', 'insomnia'],
         'overview': (
@@ -851,12 +907,47 @@ CLINICAL_DISEASES = {
             "Weight gain accompanied by severe breathlessness or chest tightness",
             "Extreme mental confusion, slowed speech, or extreme cold intolerance"
         ]
+    },
+
+    'unexplained_weight_loss': {
+        'name': 'Unexplained Weight Loss & Metabolic Evaluation (असामान्य वजन घटना / हाइपरथायरायडिज्म)',
+        'category': 'Endocrine & Metabolic Disorder',
+        'keywords': ['weight loss', 'weight lose', 'losing weight', 'loose weight', 'lose weight', 'unexplained weight loss', 'vazan ghatna', 'vajan kam', 'hyperthyroidism', 'weight decrease'],
+        'primary_symptoms': ['weight_loss'],
+        'secondary_symptoms': ['fatigue', 'sweating', 'anxiety', 'loss_of_appetite', 'diarrhea'],
+        'overview': (
+            "Unexplained, rapid, or involuntary weight loss (losing >5% of body weight without dieting or exercise changes) "
+            "often signifies an underlying endocrine, metabolic, gastrointestinal, or chronic systemic condition. "
+            "Common causes include Hyperthyroidism (overactive thyroid), Type 1 or Type 2 Diabetes Mellitus, malabsorption disorders (Celiac, Crohn's), "
+            "chronic infections, or heightened metabolic states."
+        ),
+        'causes': "Hyperthyroidism, early-stage Diabetes Mellitus, malabsorption syndromes, chronic systemic inflammation, peptic ulcer, or psychological stressors/depression.",
+        'diet_and_home_care': [
+            "Consume nutrient-dense, calorie-sufficient meals: avocados, whole nuts, seeds, nut butters, whole grains, eggs, paneer, and full-cream milk.",
+            "Eat smaller, frequent meals throughout the day (5 to 6 meals) rather than 2-3 large meals to ensure optimal nutrient absorption.",
+            "Stay well-hydrated with nutrient-rich liquids like tender coconut water, milkshakes, homemade fruit smoothies, and vegetable soups.",
+            "Avoid skipping meals and avoid relying solely on empty calorie junk food or high-sugar sodas."
+        ],
+        'precautions': [
+            "Schedule a comprehensive metabolic health checkup including Complete Blood Count (CBC), Thyroid Profile, and Blood Sugar.",
+            "Keep an accurate weekly log of your weight recorded at the same time every morning after voiding.",
+            "Consult an endocrinologist or internal medicine specialist for an objective diagnostic evaluation.",
+            "Do not consume unverified herbal weight-gain powders, steroid tonics, or stimulant supplements without a physician's prescription."
+        ],
+        'recommended_tests': ['Thyroid Profile (TSH, Free T3, Free T4)', 'Fasting Blood Sugar & HbA1c', 'Complete Blood Count (CBC) & ESR', 'Liver Function Test (LFT) & Kidney Function Test (KFT)', 'Stool Routine & Occult Blood Test'],
+        'warning_signs': [
+            "Rapid unintentional weight loss of more than 5% of body weight within 4 to 6 weeks",
+            "Weight loss accompanied by persistent fever, night sweats, or swollen lymph nodes",
+            "Severe persistent abdominal pain, vomiting blood, or black tarry stools",
+            "Extreme weakness, fainting spells, or inability to perform daily activities"
+        ]
     }
 }
 
 def extract_symptoms_from_text(text):
     """
     Extracts all recognized symptoms from text across English, Hindi, and Hinglish.
+    Supports regex patterns, n-grams, common spelling typos, and fuzzy matching.
     Returns list of standard symptom keys.
     """
     if not text:
@@ -865,13 +956,45 @@ def extract_symptoms_from_text(text):
     clean_text = re.sub(r'[\r\n\t,.;:!?\-/]+', ' ', clean_text)
     clean_text = re.sub(r'\s+', ' ', clean_text)
 
-    matched = []
+    matched = set()
+
+    # 1. Regex pattern matching
     for sym_key, patterns in SYMPTOM_PATTERNS.items():
         for pat in patterns:
             if re.search(pat, clean_text, flags=re.IGNORECASE):
-                matched.append(sym_key)
+                matched.add(sym_key)
                 break
-    return matched
+
+    # 2. Sub-phrase & bi-gram matching for common symptom phrases and variations
+    words = [w for w in re.findall(r'\b[a-zA-Z]{3,}\b', clean_text)]
+    for i in range(len(words) - 1):
+        bigram = f"{words[i]} {words[i+1]}"
+        if bigram in ['weight lose', 'weight los', 'lose weight', 'loose weight', 'losing weight', 'weight drop', 'vajan kam', 'vazan kam']:
+            matched.add('weight_loss')
+        elif bigram in ['weight gain', 'weight gaine', 'gain weight', 'gaining weight', 'weight increase', 'vajan badhna', 'vazan badhna']:
+            matched.add('weight_gain')
+        elif bigram in ['head pain', 'head hurts', 'head ache', 'head che']:
+            matched.add('headache')
+        elif bigram in ['stomach ache', 'stomach pain', 'tummy pain', 'belly pain']:
+            matched.add('stomach_pain')
+        elif bigram in ['chest pain', 'chest pressure', 'chest ache']:
+            matched.add('chest_pain')
+        elif bigram in ['body pain', 'body ache', 'muscle pain']:
+            matched.add('body_pain')
+        elif bigram in ['joint pain', 'knee pain']:
+            matched.add('joint_pain')
+        elif bigram in ['throat pain', 'sore throat', 'throat infection']:
+            matched.add('sore_throat')
+
+    # 3. Fuzzy single token matching using difflib for common typos
+    candidate_tokens = list(FUZZY_SYMPTOM_MAP.keys())
+    for w in words:
+        if len(w) >= 4 and w not in ['have', 'from', 'with', 'what', 'help', 'give', 'tell', 'feel', 'some']:
+            close = difflib.get_close_matches(w, candidate_tokens, n=1, cutoff=0.72)
+            if close:
+                matched.add(FUZZY_SYMPTOM_MAP[close[0]])
+
+    return list(matched)
 
 def match_disease_from_query(text, detected_symptoms):
     """
@@ -1026,24 +1149,118 @@ def generate_clinical_response(query_text):
         return response
 
     else:
+        q_lower = text.lower()
+        if any(k in q_lower for k in ['mental', 'stress', 'depress', 'anxiety', 'mind', 'mood', 'sad', 'tension', 'panic']):
+            topic_category = "Mental Wellness & Cognitive Health (मानसिक स्वास्थ्य)"
+            overview = (
+                f"Regarding your query on '{text}', mental well-being directly influences hormonal regulation, immune resilience, "
+                f"and autonomic nervous system function. Chronic mental distress, emotional strain, or prolonged anxiety disrupts sleep patterns "
+                f"and elevates cortisol levels."
+            )
+            care_points = [
+                "Engage in 15-20 minutes of daily mindfulness, box breathing, or guided progressive muscle relaxation.",
+                "Maintain a structured daily routine with consistent sleep and wake-up times.",
+                "Limit evening screen time, caffeine intake, and digital overstimulation before bedtime.",
+                "Stay socially connected with supportive friends or family to alleviate cognitive load."
+            ]
+            precautions = [
+                "Do not rely on unprescribed sedatives, alcohol, or stimulant substances for temporary stress relief.",
+                "Consult a licensed clinical psychologist, psychiatrist, or counselor for professional behavioral guidance."
+            ]
+        elif any(k in q_lower for k in ['skin', 'derma', 'hair', 'scalp', 'nail', 'itch', 'face', 'pimple', 'acne', 'daane']):
+            topic_category = "Dermatology & Skin Barrier Health (त्वचा संबंधी परामर्श)"
+            overview = (
+                f"Regarding your query on '{text}', dermatological manifestations frequently reflect local skin barrier disruption, "
+                f"allergic sensitivities, microbial exposure, or systemic inflammatory triggers."
+            )
+            care_points = [
+                "Cleanse gently with lukewarm water and mild, hypoallergenic, fragrance-free cleansers.",
+                "Apply pure aloe vera gel or a ceramide-based moisturizer to maintain epidermal hydration.",
+                "Avoid scratching or popping skin lesions to prevent secondary bacterial infection or permanent scarring.",
+                "Wear clean, breathable, lightweight cotton clothing to avoid friction and excessive perspiration."
+            ]
+            precautions = [
+                "Never apply unverified over-the-counter corticosteroid creams without a dermatologist's formal prescription.",
+                "Consult a certified dermatologist if skin lesions spread, become painful, or develop discharge."
+            ]
+        elif any(k in q_lower for k in ['heart', 'cardio', 'bp', 'pressure', 'pulse', 'circulation', 'palpitation']):
+            topic_category = "Cardiovascular & Circulatory Assessment (हृदय एवं रक्तचाप परामर्श)"
+            overview = (
+                f"Regarding your query on '{text}', cardiovascular equilibrium is fundamental for organ perfusion and vascular vitality. "
+                f"Fluctuations in blood pressure or pulse warrant objective monitoring and clinical verification."
+            )
+            care_points = [
+                "Adopt a DASH-aligned diet low in refined sodium (<2g/day) and rich in potassium, leafy greens, and nuts.",
+                "Engage in 30 minutes of moderate aerobic activity (e.g. brisk walking) at least 5 days a week.",
+                "Avoid smoking, second-hand smoke, and excessive alcohol consumption.",
+                "Record baseline blood pressure twice daily in a calm, seated position."
+            ]
+            precautions = [
+                "Seek immediate emergency care if you experience central crushing chest pain, breathlessness, or left arm numbness.",
+                "Consult a cardiologist or general physician for an ECG and cardiovascular risk profile."
+            ]
+        elif any(k in q_lower for k in ['diet', 'nutrition', 'food', 'weight', 'fat', 'calorie', 'vitamin', 'protein', 'supplement']):
+            topic_category = "Clinical Nutrition & Metabolic Optimization (पोषण एवं मेटाबॉलिक स्वास्थ्य)"
+            overview = (
+                f"Regarding your query on '{text}', dietary nutrition governs basal metabolic rate, gut microbiome balance, "
+                f"and sustained cellular energy production. Sustainable nutritional habits yield far superior outcomes compared to crash dieting."
+            )
+            care_points = [
+                "Focus on whole, minimally processed ingredients: lentils, beans, whole grains, seasonal fruits, and colorful vegetables.",
+                "Ensure sufficient clean protein intake (0.8 to 1.2g per kg body weight) and healthy fats (seeds, nuts, olive oil).",
+                "Drink 2.5 to 3 liters of water throughout the day to support optimal nutrient absorption and cellular clearance.",
+                "Avoid ultra-processed convenience foods, refined trans-fats, and sugary soft drinks."
+            ]
+            precautions = [
+                "Do not start severe calorie restriction or unverified metabolic supplements without clinical supervision.",
+                "Consult a registered clinical dietitian or endocrinologist for a personalized dietary protocol."
+            ]
+        elif any(k in q_lower for k in ['stomach', 'pet', 'digestion', 'gut', 'gas', 'acid', 'liver', 'bowel', 'constipation']):
+            topic_category = "Gastrointestinal & Digestive Health (पाचन एवं उदर स्वास्थ्य)"
+            overview = (
+                f"Regarding your query on '{text}', digestive homeostasis relies on healthy gut motility, balanced gastric enzymes, "
+                f"and adequate dietary fiber. Persistent digestive discomfort warrants systematic clinical evaluation."
+            )
+            care_points = [
+                "Consume light, freshly cooked, easily digestible meals (warm soups, khichdi, steamed vegetables).",
+                "Incorporate probiotic-rich natural foods (plain yogurt, buttermilk) to enhance beneficial gut flora.",
+                "Eat slowly, chew food thoroughly, and avoid lying down flat immediately after meals.",
+                "Stay well-hydrated with warm fluids and herbal infusions (such as fennel or ginger tea)."
+            ]
+            precautions = [
+                "Avoid heavy, greasy, deep-fried, or excessively spiced foods that irritate gastric mucosa.",
+                "Consult a gastroenterologist or physician if experiencing severe persistent abdominal pain, vomiting, or blood in stool."
+            ]
+        else:
+            topic_category = f"Clinical Health Guidance: {text.title()}"
+            overview = (
+                f"Regarding your inquiry on '{text}', Niramaya AI provides evidence-based clinical insights to guide your health decisions. "
+                f"Accurate health assessment depends on symptom duration, onset intensity, and objective medical evaluation."
+            )
+            care_points = [
+                "Log your specific symptoms, timing, and any factors that relieve or worsen the condition.",
+                "Maintain adequate physical rest and drink 2.5 to 3 liters of fluids daily.",
+                "Eat balanced, nutrient-rich, home-prepared meals to support immune resilience.",
+                "Avoid strenuous physical overexertion until symptoms stabilize."
+            ]
+            precautions = [
+                "Do not consume unprescribed medications or antibiotics without clinical diagnosis.",
+                "Consult a qualified medical doctor or primary healthcare center for an in-person physical examination."
+            ]
+
+        care_str = "\n".join([f"- {c}" for c in care_points])
+        prec_str = "\n".join([f"- {p}" for p in precautions])
+
         response = (
-            f"**Health Information & Guidance:**\n\n"
-            f"**Topic / Inquiry:** {text.title()}\n\n"
+            f"**Clinical Health Information & Guidance:**\n\n"
+            f"**Topic / Inquiry:** {topic_category}\n\n"
             f"**Medical Overview:**\n"
-            f"Niramaya Health AI assists in symptom assessment, health education, and self-care precautions. "
-            f"Regarding your query on '{text}', optimal health relies on early symptom recognition, clinical verification, "
-            f"and evidence-based lifestyle habits.\n\n"
-            f"**General Health Recommendations:**\n"
-            f"- Maintain consistent daily hydration (minimum 2 to 3 liters of water).\n"
-            f"- Consume a balanced diet rich in dietary fiber, whole grains, colorful vegetables, and adequate protein.\n"
-            f"- Engage in at least 30 minutes of moderate physical activity (such as brisk walking) most days of the week.\n"
-            f"- Aim for 7 to 8 hours of restorative sleep each night.\n"
-            f"- Schedule regular preventative health check-ups (Blood Pressure, Blood Sugar, CBC, Lipid Profile).\n\n"
-            f"**Key Health Precautions:**\n"
-            f"- If you are experiencing specific symptoms (such as fever, headache, body pain, cough, or stomach pain), please describe them in detail.\n"
-            f"- Never consume unprescribed medications or antibiotics without clinical diagnosis.\n"
-            f"- Seek prompt medical consultation if you experience acute, worsening, or persistent discomfort.\n\n"
-            f"*(Disclaimer: Niramaya provides AI-guided clinical insights. This does not replace formal consultation with a physician.)*"
+            f"{overview}\n\n"
+            f"**Evidence-Based Lifestyle & Home Care Recommendations:**\n"
+            f"{care_str}\n\n"
+            f"**Key Health Precautions & Clinical Follow-up:**\n"
+            f"{prec_str}\n\n"
+            f"*(Disclaimer: Niramaya provides AI-guided clinical insights. This does not replace formal consultation or prescription by a licensed medical practitioner.)*"
         )
         return response
 

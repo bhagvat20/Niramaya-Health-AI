@@ -6,10 +6,9 @@ env/
 
 # Python Cache
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
-backend/**/__pycache__/
-backend/routes/__pycache__/
 
 # Testing
 .pytest_cache/
