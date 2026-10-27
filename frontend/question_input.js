@@ -572,14 +572,37 @@ async function handleLogin(e) {
     const password = document.getElementById("password").value;
 
     try {
-        const res = await fetch(API_BASE + "/userlogin", {
+        let res = await fetch(API_BASE + "/userlogin", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password })
-        });
-        const data = await res.json();
+        }).catch(() => null);
 
-        if (res.ok && data.success) {
+        let data = res ? await res.json().catch(() => null) : null;
+
+        // If local API returned User not found or failed, try cloud Render deployment directly!
+        if ((!res || !res.ok || !data || !data.success) && API_BASE !== "https://niramaya-health-ai.onrender.com") {
+            try {
+                const cloudRes = await fetch("https://niramaya-health-ai.onrender.com/userlogin", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, password })
+                });
+                const cloudData = await cloudRes.json();
+                if (cloudRes.ok && cloudData.success) {
+                    res = cloudRes;
+                    data = cloudData;
+                    // Also replicate to local server so next time it's offline-ready
+                    fetch(API_BASE + "/register", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ fname: data.familyname || "Family", email, password })
+                    }).catch(() => {});
+                }
+            } catch (_) {}
+        }
+
+        if (res && res.ok && data && data.success) {
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", data.familyname || "");
@@ -598,7 +621,7 @@ async function handleLogin(e) {
                 openMemberSelectionModal(data.members);
             }
         } else {
-            alert(data.message || "Invalid login credentials.");
+            alert((data && data.message) || "Invalid login credentials. Please check your email and password.");
         }
     } catch (err) {
         alert("Server error during login. Please try again.");

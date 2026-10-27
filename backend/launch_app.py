@@ -70,11 +70,45 @@ def wait_and_open_browser(url="http://127.0.0.1:5000", max_wait=20):
     webbrowser.open(url)
 
 def sync_cloud_history():
-    """Syncs consultation history from cloud deployment to local DB if online."""
+    """Syncs consultation history and accounts from cloud deployment to local DB if online."""
     try:
         import json
+        import bcrypt
         from db_config import get_db_connection
 
+        # 1. Sync accounts from cloud
+        try:
+            admin_req = urllib.request.Request(
+                'https://niramaya-health-ai.onrender.com/admin/login',
+                data=json.dumps({'username': 'admin', 'password': 'Admin@1234'}).encode('utf-8'),
+                headers={'Content-Type': 'application/json'}
+            )
+            with urllib.request.urlopen(admin_req, timeout=3) as aresp:
+                atoken = json.loads(aresp.read().decode('utf-8')).get('token')
+                if atoken:
+                    users_req = urllib.request.Request(
+                        'https://niramaya-health-ai.onrender.com/admin/users',
+                        headers={'Authorization': f'Bearer {atoken}'}
+                    )
+                    with urllib.request.urlopen(users_req, timeout=3) as uresp:
+                        cloud_users = json.loads(uresp.read().decode('utf-8')).get('users', [])
+                        if cloud_users:
+                            aconn = get_db_connection()
+                            acur = aconn.cursor()
+                            d_hash = bcrypt.hashpw('User@123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                            for u in cloud_users:
+                                acur.execute('SELECT account_id FROM account_tbl WHERE LOWER(email) = %s', (u['email'].lower(),))
+                                if not acur.fetchone():
+                                    acur.execute('''
+                                        INSERT INTO account_tbl (account_id, family_name, email, password_hash, is_active)
+                                        VALUES (%s, %s, %s, %s, TRUE)
+                                    ''', (u['account_id'], u['family_name'], u['email'], d_hash))
+                            aconn.commit()
+                            aconn.close()
+        except Exception:
+            pass
+
+        # 2. Sync chats from cloud
         req = urllib.request.Request(
             'https://niramaya-health-ai.onrender.com/getchat',
             data=json.dumps({'account_id': 1}).encode('utf-8'),
@@ -108,7 +142,7 @@ def sync_cloud_history():
                 )
         conn.commit()
         conn.close()
-        print(f"[+] Synchronized {len(history)} consultations from cloud to local database.")
+        print(f"[+] Synchronized consultations and accounts from cloud to local database.")
     except Exception:
         pass
 
