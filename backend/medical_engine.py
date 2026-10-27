@@ -114,6 +114,12 @@ SYMPTOM_PATTERNS = {
     ],
     'sweating': [
         r'\bsweating\b', r'\bprofuse sweating\b', r'\bpasina\b', r'\bcold sweat\b'
+    ],
+    'weight_gain': [
+        r'\bweight gain\b', r'\bweight gaining\b', r'\bvazan badhna\b', r'\brapid weight gain\b', r'\bgaining weight\b'
+    ],
+    'weight_loss': [
+        r'\bweight loss\b', r'\bvazan ghatna\b', r'\bunexplained weight loss\b', r'\blosing weight\b'
     ]
 }
 
@@ -146,7 +152,9 @@ SYMPTOM_DISPLAY = {
     'constipation': 'Constipation (कब्ज)',
     'insomnia': 'Sleep Disturbance / Insomnia (अनिद्रा)',
     'anxiety': 'Anxiety / Restlessness (घबराहट / बेचैनी)',
-    'sweating': 'Excessive Sweating (पसीना आना)'
+    'sweating': 'Excessive Sweating (पसीना आना)',
+    'weight_gain': 'Weight Gain (असामान्य वजन बढ़ना)',
+    'weight_loss': 'Weight Loss (असामान्य वजन घटना)'
 }
 
 # Comprehensive Clinical Disease Knowledge Base
@@ -713,6 +721,38 @@ CLINICAL_DISEASES = {
             "Signs of secondary bacterial infection: yellow crusting, pus oozing, or red warmth spreading",
             "Sudden widespread hives with swelling of lips/tongue or throat tightness (Anaphylaxis Emergency)",
             "Rash covering over 50% of the body with high fever"
+        ]
+    },
+
+    'hypothyroidism_metabolic': {
+        'name': 'Hypothyroidism & Metabolic Weight Gain (हाइपोथायरायडिज्म / असामान्य वजन बढ़ना)',
+        'category': 'Endocrine & Metabolic Disorder',
+        'keywords': ['weight gain', 'weight gaining', 'hypothyroidism', 'thyroid', 'vazan badhna', 'slow metabolism', 'weight increase'],
+        'primary_symptoms': ['weight_gain', 'fatigue'],
+        'secondary_symptoms': ['constipation', 'cold', 'body_pain', 'joint_pain'],
+        'overview': (
+            "Unexplained or progressive weight gain is commonly linked with Hypothyroidism (underactive thyroid gland), "
+            "where inadequate thyroid hormone production slows down basal metabolic rate. Other contributing metabolic "
+            "factors include insulin resistance, hormonal imbalances (such as PCOS in women), and fluid retention."
+        ),
+        'causes': "Autoimmune thyroiditis (Hashimoto's), iodine deficiency, hormonal imbalances (PCOS/Cushing's), metabolic syndrome, or sedentary lifestyle.",
+        'diet_and_home_care': [
+            "Consume a nutrient-dense, high-fiber, balanced diet: leafy greens, seasonal fruits, lean proteins (lentils, paneer, sprouts), and whole grains.",
+            "Avoid refined sugars, sweetened beverages, white flour (maida), and excessive raw goitrogens (cabbage/cauliflower in huge raw quantities).",
+            "Include selenium and zinc-rich foods (brazil nuts, pumpkin seeds, whole grains) to support thyroid hormone synthesis.",
+            "Maintain 40-45 minutes of daily physical exercise combining brisk walking and light resistance training."
+        ],
+        'precautions': [
+            "Get a complete Thyroid Profile (TSH, Free T3, Free T4) blood test done in the morning on an empty stomach.",
+            "Consult an endocrinologist or general physician for thyroid and metabolic evaluation.",
+            "If prescribed thyroid hormone replacement (Levothyroxine), take it first thing in the morning with plain water, 30-60 minutes before tea or breakfast.",
+            "Ensure 7 to 8 hours of restorative sleep, as sleep deprivation disrupts hunger-regulating hormones."
+        ],
+        'recommended_tests': ['Thyroid Profile (TSH, FT3, FT4)', 'Lipid Profile', 'Fasting Blood Sugar & HbA1c', 'Complete Blood Count (CBC)'],
+        'warning_signs': [
+            "Sudden severe swelling of lower legs, face, or abdomen (pitting edema)",
+            "Weight gain accompanied by severe breathlessness or chest tightness",
+            "Extreme mental confusion, slowed speech, or extreme cold intolerance"
         ]
     }
 }

@@ -71,20 +71,20 @@
     <div id="login-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeLoginModal()">&times;</span>
-            <h2><i class="fas fa-sign-in-alt" style="color:#3b82f6;"></i> Login to Niramaya</h2>
+            <h2><i class="fas fa-sign-in-alt" style="color:#6366f1;"></i> Login to Niramaya</h2>
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
+                    <label for="email"><i class="fas fa-envelope" style="color:#818cf8;"></i> Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="name@example.com" required autocomplete="email">
                 </div>
                 <div class="form-group">
-                    <label for="password">Password</label>
+                    <label for="password"><i class="fas fa-lock" style="color:#818cf8;"></i> Password</label>
                     <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
-                    <p class="modal-link" style="text-align:right; margin-top:4px;">
+                    <p class="modal-link" style="text-align:right; margin-top:6px; margin-bottom:0;">
                         <a href="javascript:void(0)" onclick="openForgotPasswordModal();">Forgot Password?</a>
                     </p>
                 </div>
-                <button type="submit" class="modal-btn">Login</button>
+                <button type="submit" class="modal-btn"><i class="fas fa-sign-in-alt"></i> Login</button>
             </form>
             <p class="modal-link">
                 Don't have an Account? <a href="javascript:void(0)" onclick="closeLoginModal(); openRegisterModal();">Register</a>
@@ -99,18 +99,18 @@
             <h2><i class="fas fa-user-plus" style="color:#10b981;"></i> Register for Niramaya</h2>
             <form id="register-form" onsubmit="handleRegister(event)">
                 <div class="form-group">
-                    <label for="familyname">Family / Full Name</label>
+                    <label for="familyname"><i class="fas fa-user" style="color:#34d399;"></i> Family / Full Name</label>
                     <input type="text" id="familyname" name="familyname" placeholder="Enter your family or full name" required>
                 </div>
                 <div class="form-group">
-                    <label for="register-email">Email Address</label>
-                    <input type="email" id="register-email" name="email" placeholder="Enter your email" required autocomplete="email">
+                    <label for="register-email"><i class="fas fa-envelope" style="color:#34d399;"></i> Email Address</label>
+                    <input type="email" id="register-email" name="email" placeholder="name@example.com" required autocomplete="email">
                 </div>
                 <div class="form-group">
-                    <label for="register-password">Password</label>
-                    <input type="password" id="register-password" name="password" placeholder="Enter password (min 6 chars)" required minlength="6" autocomplete="new-password">
+                    <label for="register-password"><i class="fas fa-lock" style="color:#34d399;"></i> Password</label>
+                    <input type="password" id="register-password" name="password" placeholder="Create password (min 6 characters)" required minlength="6" autocomplete="new-password">
                 </div>
-                <button type="submit" class="modal-btn">Register</button>
+                <button type="submit" class="modal-btn" style="background:linear-gradient(135deg, #059669 0%, #10b981 100%);"><i class="fas fa-user-plus"></i> Register</button>
             </form>
             <p class="modal-link">
                 Already have an account? <a href="javascript:void(0)" onclick="closeRegisterModal(); openLoginModal();">Login</a>
@@ -155,14 +155,14 @@
     <div id="update-profile-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeUpdateProfileModal()">&times;</span>
-            <h2><i class="fas fa-edit"></i> Update Profile</h2>
+            <h2><i class="fas fa-user-edit" style="color:#6366f1;"></i> Update Profile</h2>
             <form id="update-profile-form" onsubmit="handleUpdateProfile(event)">
                 <div class="form-group">
-                    <label for="update-name">Full Name</label>
-                    <input type="text" id="update-name" name="name" placeholder="Enter name" required>
+                    <label for="update-name"><i class="fas fa-user" style="color:#818cf8;"></i> Full Name</label>
+                    <input type="text" id="update-name" name="name" placeholder="Enter full name" required>
                 </div>
                 <div class="form-group">
-                    <label>Gender</label>
+                    <label><i class="fas fa-venus-mars" style="color:#818cf8;"></i> Gender</label>
                     <div class="radio-group">
                         <label class="radio-label">
                             <input type="radio" id="update-gender-male" name="update-gender" value="Male" required> Male
@@ -172,19 +172,21 @@
                         </label>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="update-age">Age</label>
-                    <input type="number" id="update-age" name="age" placeholder="Age in years" required min="1" max="120">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="update-age"><i class="fas fa-birthday-cake" style="color:#818cf8;"></i> Age</label>
+                        <input type="number" id="update-age" name="age" placeholder="Years" required min="1" max="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="update-height"><i class="fas fa-ruler-vertical" style="color:#818cf8;"></i> Height (cm)</label>
+                        <input type="number" id="update-height" name="height" placeholder="cm" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="update-weight"><i class="fas fa-weight" style="color:#818cf8;"></i> Weight (kg)</label>
+                        <input type="number" id="update-weight" name="weight" placeholder="kg" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="update-height">Height (cm)</label>
-                    <input type="number" id="update-height" name="height" placeholder="Height in cm" required>
-                </div>
-                <div class="form-group">
-                    <label for="update-weight">Weight (kg)</label>
-                    <input type="number" id="update-weight" name="weight" placeholder="Weight in kg" required>
-                </div>
-                <button type="submit" class="modal-btn">Save Changes</button>
+                <button type="submit" class="modal-btn"><i class="fas fa-check"></i> Save Changes</button>
             </form>
         </div>
     </div>
@@ -193,14 +195,14 @@
     <div id="add-member-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeAddMemberModal()">&times;</span>
-            <h2><i class="fas fa-user-plus"></i> Add New Member</h2>
+            <h2><i class="fas fa-user-plus" style="color:#6366f1;"></i> Add New Member</h2>
             <form id="add-member-form" onsubmit="handleAddMember(event)">
                 <div class="form-group">
-                    <label for="member-name">Member Name</label>
-                    <input type="text" id="member-name" name="name" placeholder="Enter member name" required>
+                    <label for="member-name"><i class="fas fa-user" style="color:#818cf8;"></i> Member Name</label>
+                    <input type="text" id="member-name" name="name" placeholder="Enter member name (e.g., Brother, Mom, Self)" required>
                 </div>
                 <div class="form-group">
-                    <label>Gender</label>
+                    <label><i class="fas fa-venus-mars" style="color:#818cf8;"></i> Gender</label>
                     <div class="radio-group">
                         <label class="radio-label">
                             <input type="radio" id="member-gender-male" name="member-gender" value="Male" required> Male
@@ -210,26 +212,28 @@
                         </label>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="member-age">Age</label>
-                    <input type="number" id="member-age" name="age" placeholder="Age in years" required min="1" max="120">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="member-age"><i class="fas fa-birthday-cake" style="color:#818cf8;"></i> Age</label>
+                        <input type="number" id="member-age" name="age" placeholder="Years" required min="1" max="120">
+                    </div>
+                    <div class="form-group">
+                        <label for="member-height"><i class="fas fa-ruler-vertical" style="color:#818cf8;"></i> Height (cm)</label>
+                        <input type="number" id="member-height" name="height" placeholder="cm" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="member-weight"><i class="fas fa-weight" style="color:#818cf8;"></i> Weight (kg)</label>
+                        <input type="number" id="member-weight" name="weight" placeholder="kg" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="member-height">Height (cm)</label>
-                    <input type="number" id="member-height" name="height" placeholder="Height in cm" required>
-                </div>
-                <div class="form-group">
-                    <label for="member-weight">Weight (kg)</label>
-                    <input type="number" id="member-weight" name="weight" placeholder="Weight in kg" required>
-                </div>
-                <button type="submit" class="modal-btn">Add Member</button>
+                <button type="submit" class="modal-btn"><i class="fas fa-plus-circle"></i> Add Member</button>
             </form>
         </div>
     </div>
 
     <!-- History Modal -->
     <div id="history-modal" class="modal">
-        <div class="modal-content" style="width:580px;">
+        <div class="modal-content" style="width:640px; max-width:calc(100vw - 32px);">
             <span class="close-btn" onclick="closeHistoryModal()">&times;</span>
             <h2><i class="fas fa-history" style="color:#6366f1;"></i> Consultation History</h2>
             <div id="history-list" class="history-list"></div>

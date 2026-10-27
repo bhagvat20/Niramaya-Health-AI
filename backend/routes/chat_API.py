@@ -18,30 +18,48 @@ def save_chat():
     cursor = None
     try:
         # Get data from the request body
-        data = request.json
+        data = request.json or {}
         account_id = data.get('account_id')
         member_id = data.get('member_id')
         user_input = data.get('user_input')
         bot_response = data.get('bot_response')
         model = data.get('model')
 
-        if not all([account_id, member_id, user_input, bot_response, model]):
+        if not all([account_id, user_input, bot_response, model]):
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Convert IDs to integers
+        # Convert IDs
         account_id = int(account_id)
-        member_id = int(member_id)
 
         # Establish database connection
         conn = connect_db()
         cursor = conn.cursor()
+
+        # If member_id is missing, null, or empty string, resolve to an existing member or create a default primary profile
+        if not member_id or str(member_id).lower() in ['null', 'undefined', '', 'none', '0']:
+            cursor.execute("SELECT member_id FROM member_tbl WHERE account_id = %s ORDER BY member_id ASC LIMIT 1", (account_id,))
+            m_row = cursor.fetchone()
+            if m_row:
+                member_id = m_row[0]
+            else:
+                cursor.execute("SELECT name FROM account_tbl WHERE account_id = %s", (account_id,))
+                acc_row = cursor.fetchone()
+                acc_name = acc_row[0] if acc_row else "Primary Profile"
+                cursor.execute("""
+                    INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
+                    VALUES (%s, %s, 'Other', 25, 170, 65)
+                    RETURNING member_id
+                """, (account_id, acc_name))
+                member_id = cursor.fetchone()[0]
+        else:
+            member_id = int(member_id)
 
         # Insert chat history into the database
         cursor.execute("""
             INSERT INTO chat_history_tbl (account_id, member_id, user_input, bot_response, model)
             VALUES (%s, %s, %s, %s, %s)
             RETURNING history_id
-        """, (account_id, member_id, user_input, bot_response,model))
+        """, (account_id, member_id, user_input, bot_response, model))
         
         row = cursor.fetchone()
         history_id = row[0] if (row and len(row) > 0) else 1

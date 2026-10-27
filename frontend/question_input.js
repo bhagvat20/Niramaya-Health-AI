@@ -331,18 +331,34 @@ async function sendMessage() {
         botMsg.appendChild(renderBotResponseContent(model, data));
         chatContainer.appendChild(botMsg);
 
+        let botSavedResponse = (model === "LRv1" || model === "LRv2")
+            ? JSON.stringify(data)
+            : (data.answer || JSON.stringify(data));
+
+        // Always save consultation locally so it's immediately available in history
+        try {
+            const localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
+            const activeMemberName = sessionStorage.getItem("activeMemberName") || localStorage.getItem("selectedMemberName") || (isLoggedIn ? "Member" : "Guest");
+            localHistory.unshift({
+                history_id: Date.now(),
+                question: userInput,
+                response: botSavedResponse,
+                model: model,
+                timestamp: new Date().toISOString(),
+                member_name: activeMemberName
+            });
+            if (localHistory.length > 50) localHistory.pop();
+            localStorage.setItem("niramaya_consultations", JSON.stringify(localHistory));
+        } catch (_) {}
+
         if (!isLoggedIn) {
             guestQuestionCount++;
             localStorage.setItem("guestQuestionCount", guestQuestionCount);
         } else {
-            // Save consultation history
+            // Save consultation history to server
             const accountId = localStorage.getItem("accountId");
-            const memberId = localStorage.getItem("selectedMemberId");
-            if (accountId && memberId) {
-                let botSavedResponse = (model === "LRv1" || model === "LRv2")
-                    ? JSON.stringify(data)
-                    : (data.answer || JSON.stringify(data));
-
+            const memberId = localStorage.getItem("selectedMemberId") || null;
+            if (accountId) {
                 fetch(API_BASE + "/savechat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -782,16 +798,28 @@ function loadHistory() {
     const accountId = localStorage.getItem("accountId");
     const memberId = localStorage.getItem("selectedMemberId");
     const historyList = document.getElementById("history-list");
+    if (!historyList) return;
 
+    let localHistory = [];
+    try {
+        localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
+    } catch (_) {}
+
+    // If not logged in, display guest session history directly
     if (!accountId) {
-        historyList.innerHTML = `
-            <div style="text-align:center; padding:30px 10px;">
-                <i class="fas fa-lock" style="font-size:36px; color:#f59e0b; margin-bottom:12px;"></i>
-                <p style="font-size:16px; font-weight:600; margin-bottom:6px;">Please Log In</p>
-                <p style="font-size:13px; color:#a1a1aa; margin-bottom:16px;">Log in to access and manage your consultation history.</p>
-                <button onclick="closeHistoryModal(); openLoginModal();" class="modal-btn" style="width:auto; padding:8px 24px;">Log In Now</button>
-            </div>
-        `;
+        if (!localHistory || localHistory.length === 0) {
+            historyList.innerHTML = `
+                <div style="text-align:center; padding:32px 14px; color:#a1a1aa;">
+                    <i class="fas fa-comment-medical fa-2x" style="margin-bottom:12px; color:#6366f1;"></i>
+                    <p style="font-size:16px; font-weight:600; color:#f4f4f5; margin-bottom:6px;">No Consultations Yet</p>
+                    <p style="font-size:13.5px; line-height:1.5; color:#a1a1aa; margin-bottom:16px;">Ask any health symptoms above (e.g., Weight Gain, Fever) to see your consultation history here.</p>
+                    <button onclick="closeHistoryModal(); openLoginModal();" class="modal-btn" style="width:auto; padding:8px 24px;"><i class="fas fa-sign-in-alt"></i> Log In to Sync Cloud History</button>
+                </div>
+            `;
+            return;
+        }
+
+        renderHistoryCards(localHistory, true);
         return;
     }
 
@@ -818,75 +846,108 @@ function loadHistory() {
             return data;
         })
         .then(data => {
-            historyList.innerHTML = "";
-            if (!data.history || data.history.length === 0) {
+            const serverHistory = data.history || [];
+            // Merge with local consultations so recently asked symptoms (like Weight Gain) are instantly visible
+            const combined = [...serverHistory];
+            localHistory.forEach(lh => {
+                const alreadyPresent = combined.some(sh => 
+                    sh.question && lh.question && sh.question.trim().toLowerCase() === lh.question.trim().toLowerCase()
+                );
+                if (!alreadyPresent) {
+                    combined.unshift(lh);
+                }
+            });
+
+            if (combined.length === 0) {
                 historyList.innerHTML = `
-                    <div style="text-align:center; padding:30px 10px; color:#a1a1aa;">
-                        <i class="fas fa-comment-medical fa-2x" style="margin-bottom:10px; color:#6366f1;"></i>
-                        <p style="font-size:15px; font-weight:600; color:#e4e4e7;">No history yet</p>
-                        <p style="font-size:13px;">Ask any health question to save your consultation here.</p>
+                    <div style="text-align:center; padding:32px 14px; color:#a1a1aa;">
+                        <i class="fas fa-comment-medical fa-2x" style="margin-bottom:12px; color:#6366f1;"></i>
+                        <p style="font-size:16px; font-weight:600; color:#f4f4f5; margin-bottom:6px;">No history yet</p>
+                        <p style="font-size:13.5px; color:#a1a1aa;">Ask any health question to save your consultation here.</p>
                     </div>
                 `;
                 return;
             }
 
-            data.history.forEach(item => {
-                const card = document.createElement("div");
-                card.className = "history-card";
-                card.style.cursor = "pointer";
-
-                let formattedDate = "Recent";
-                if (item.timestamp) {
-                    try {
-                        const d = new Date(item.timestamp);
-                        formattedDate = isNaN(d.getTime()) ? String(item.timestamp).split('.')[0] : d.toLocaleString();
-                    } catch (_) {}
-                }
-
-                let snippet = "";
-                if (item.response) {
-                    try {
-                        const parsed = typeof item.response === 'string' ? JSON.parse(item.response) : item.response;
-                        if (parsed.predicted_disease) snippet = "Predicted: " + parsed.predicted_disease;
-                        else if (parsed.Description) snippet = parsed.Description.slice(0, 90) + "...";
-                        else if (parsed.answer) snippet = parsed.answer.slice(0, 90) + "...";
-                        else snippet = String(item.response).slice(0, 90) + "...";
-                    } catch (_) {
-                        snippet = String(item.response).replace(/[#*`_]/g, '').slice(0, 90) + "...";
-                    }
-                }
-
-                card.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                        <h4 style="margin:0 0 6px 0; font-size:15px; font-weight:600; color:#f4f4f5; flex:1;">${item.question}</h4>
-                        <i class="fas fa-trash" title="Delete" style="color:#ef4444; cursor:pointer; padding:4px;" onclick="deleteHistory(event, ${item.history_id})"></i>
-                    </div>
-                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 8px 0; align-items:center;">
-                        <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(99,102,241,0.15); color:#818cf8; font-weight:600;">
-                            <i class="fas fa-user-circle"></i> ${item.member_name || 'Member'}
-                        </span>
-                        <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">
-                            <i class="fas fa-brain"></i> ${item.model}
-                        </span>
-                        <span style="font-size:11px; color:#a1a1aa; margin-left:auto;">
-                            <i class="far fa-clock"></i> ${formattedDate}
-                        </span>
-                    </div>
-                    ${snippet ? `<p style="font-size:13px; color:#d4d4d8; margin:0; line-height:1.4;">${snippet}</p>` : ''}
-                `;
-
-                card.onclick = (e) => {
-                    e.stopPropagation();
-                    displayConversation(item.question, item.response, item.model);
-                    closeHistoryModal();
-                };
-
-                historyList.appendChild(card);
-            });
+            renderHistoryCards(combined, false);
         })
         .catch(err => {
-            historyList.innerHTML = `<p style="text-align:center; color:#ef4444; padding:20px;">Error: ${err.message}</p>`;
+            if (localHistory.length > 0) {
+                renderHistoryCards(localHistory, true);
+            } else {
+                historyList.innerHTML = `<p style="text-align:center; color:#ef4444; padding:20px;">Error: ${err.message}</p>`;
+            }
         });
+}
+
+function renderHistoryCards(items, isGuest) {
+    const historyList = document.getElementById("history-list");
+    if (!historyList) return;
+    historyList.innerHTML = "";
+
+    if (isGuest) {
+        const guestBanner = document.createElement("div");
+        guestBanner.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:12.5px; color:#c7d2fe;";
+        guestBanner.innerHTML = `
+            <span><i class="fas fa-info-circle"></i> Showing recent session consultations.</span>
+            <a href="javascript:void(0)" onclick="closeHistoryModal(); openLoginModal();" style="color:#818cf8; font-weight:600; text-decoration:underline;">Log in to sync</a>
+        `;
+        historyList.appendChild(guestBanner);
+    }
+
+    items.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "history-card";
+        card.style.cursor = "pointer";
+
+        let formattedDate = "Recent";
+        if (item.timestamp) {
+            try {
+                const d = new Date(item.timestamp);
+                formattedDate = isNaN(d.getTime()) ? String(item.timestamp).split('.')[0] : d.toLocaleString();
+            } catch (_) {}
+        }
+
+        let snippet = "";
+        if (item.response) {
+            try {
+                const parsed = typeof item.response === 'string' ? JSON.parse(item.response) : item.response;
+                if (parsed.predicted_disease) snippet = "Predicted: " + parsed.predicted_disease;
+                else if (parsed.Description) snippet = parsed.Description.slice(0, 95) + "...";
+                else if (parsed.answer) snippet = parsed.answer.slice(0, 95) + "...";
+                else snippet = String(item.response).slice(0, 95) + "...";
+            } catch (_) {
+                snippet = String(item.response).replace(/[#*`_]/g, '').slice(0, 95) + "...";
+            }
+        }
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                <h4 style="margin:0 0 6px 0; font-size:15px; font-weight:600; color:#f4f4f5; flex:1;">${item.question}</h4>
+                <i class="fas fa-trash" title="Delete" style="color:#ef4444; cursor:pointer; padding:4px;" onclick="deleteHistory(event, '${item.history_id}')"></i>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 8px 0; align-items:center;">
+                <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(99,102,241,0.15); color:#818cf8; font-weight:600;">
+                    <i class="fas fa-user-circle"></i> ${item.member_name || 'Member'}
+                </span>
+                <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">
+                    <i class="fas fa-brain"></i> ${item.model || 'AI Model'}
+                </span>
+                <span style="font-size:11px; color:#a1a1aa; margin-left:auto;">
+                    <i class="far fa-clock"></i> ${formattedDate}
+                </span>
+            </div>
+            ${snippet ? `<p style="font-size:13px; color:#d4d4d8; margin:0; line-height:1.4;">${snippet}</p>` : ''}
+        `;
+
+        card.onclick = (e) => {
+            e.stopPropagation();
+            displayConversation(item.question, item.response, item.model);
+            closeHistoryModal();
+        };
+
+        historyList.appendChild(card);
+    });
 }
 
 function displayConversation(question, response, model) {
@@ -924,23 +985,33 @@ function deleteHistory(event, historyId) {
     event.stopPropagation();
     if (!confirm("Are you sure you want to delete this consultation?")) return;
 
+    // Delete from local storage
+    try {
+        let localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
+        localHistory = localHistory.filter(item => String(item.history_id) !== String(historyId));
+        localStorage.setItem("niramaya_consultations", JSON.stringify(localHistory));
+    } catch (_) {}
+
+    const accountId = localStorage.getItem("accountId");
+    // If guest or local generated ID, reload immediately
+    if (!accountId || String(historyId).length > 10) {
+        loadHistory();
+        return;
+    }
+
     fetch(API_BASE + "/deletechat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             history_id: historyId,
-            account_id: localStorage.getItem("accountId")
+            account_id: accountId
         })
     })
         .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                loadHistory();
-            } else {
-                alert(data.message || "Failed to delete.");
-            }
+            loadHistory();
         })
-        .catch(() => alert("Network error deleting history."));
+        .catch(() => loadHistory());
 }
 
 // Password Management (Forgot / Reset / Change)
