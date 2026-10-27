@@ -108,74 +108,105 @@ function scrollToBottom() {
     }
 }
 
+// Format medical markdown helper for BioGPT & Gemini
+function formatMedicalMarkdown(rawText) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "medical-markdown-content";
+    if (!rawText) return wrapper;
+
+    const lines = String(rawText).split("\n");
+    let currentUl = null;
+
+    lines.forEach(rawLine => {
+        const line = rawLine.trim();
+        if (!line) {
+            currentUl = null;
+            return;
+        }
+
+        if (line.startsWith("- ") || line.startsWith("* ")) {
+            if (!currentUl) {
+                currentUl = document.createElement("ul");
+                wrapper.appendChild(currentUl);
+            }
+            const li = document.createElement("li");
+            let clean = line.substring(2).trim();
+            if (clean.includes("🚨")) {
+                li.style.color = "#f87171";
+                li.style.fontWeight = "500";
+            }
+            li.innerHTML = clean.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+            currentUl.appendChild(li);
+        } else {
+            currentUl = null;
+            const p = document.createElement("p");
+            let formatted = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+            if (line.startsWith("**") && (line.includes(":**") || line.endsWith("**"))) {
+                p.style.marginTop = "10px";
+                p.style.marginBottom = "4px";
+                p.style.color = "#93c5fd";
+                p.style.fontWeight = "600";
+                p.style.fontSize = "15px";
+            } else if (line.startsWith("*(") && line.endsWith(")*")) {
+                p.style.fontSize = "12px";
+                p.style.fontStyle = "italic";
+                p.style.color = "#a1a1aa";
+                p.style.marginTop = "10px";
+                p.style.borderTop = "1px solid #333333";
+                p.style.paddingTop = "6px";
+            }
+            p.innerHTML = formatted;
+            wrapper.appendChild(p);
+        }
+    });
+
+    return wrapper;
+}
+
 // Unified Bot Response Renderer
 function renderBotResponseContent(model, data) {
     const container = document.createElement("div");
     container.className = "bot-response-content";
 
-    if (model === "BioGPT") {
-        const answerList = document.createElement("ul");
+    if (model === "BioGPT" || model === "Gemini") {
         const answerText = data.answer || String(data);
-        const sentences = answerText.split(". ");
-        sentences.forEach(sentence => {
-            const s = sentence.trim();
-            if (s) {
-                const li = document.createElement("li");
-                li.textContent = s.endsWith(".") ? s : s + ".";
-                answerList.appendChild(li);
-            }
-        });
-        container.appendChild(answerList);
-    } else if (model === "Gemini") {
-        const answerText = data.answer || String(data);
-        const lines = answerText.split("\n").map(l => l.trim()).filter(l => l.length > 0);
-        let currentList = null;
-
-        lines.forEach(line => {
-            if (line.startsWith("**") && line.endsWith("**") && !line.includes(":")) {
-                currentList = null;
-                const p = document.createElement("p");
-                p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-                container.appendChild(p);
-            } else if (line.startsWith("*")) {
-                if (!currentList) {
-                    currentList = document.createElement("ul");
-                    container.appendChild(currentList);
-                }
-                const li = document.createElement("li");
-                let clean = line.replace(/^\*\s*/, "").trim();
-                clean = clean.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-                li.innerHTML = clean;
-                currentList.appendChild(li);
-            } else {
-                currentList = null;
-                const p = document.createElement("p");
-                p.innerHTML = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-                container.appendChild(p);
-            }
-        });
+        container.appendChild(formatMedicalMarkdown(answerText));
     } else if (model === "LRv1") {
         const diseasePara = document.createElement("p");
-        diseasePara.innerHTML = `<strong>Predicted Disease:</strong> ${data.predicted_disease || "No disease predicted."}`;
+        diseasePara.innerHTML = `<strong>Predicted Condition:</strong> <span style="color:#60a5fa; font-weight:600;">${data.predicted_disease || "No condition identified."}</span>`;
         container.appendChild(diseasePara);
 
+        if (data.matched_symptoms && data.matched_symptoms.length > 0) {
+            const symPara = document.createElement("p");
+            symPara.innerHTML = `<strong>Identified Symptoms:</strong> ${data.matched_symptoms.join(", ")}`;
+            container.appendChild(symPara);
+        }
+
         const descPara = document.createElement("p");
-        descPara.innerHTML = `<strong>Description:</strong> ${data.description || data.Description || "No description available."}`;
+        descPara.innerHTML = `<strong>Medical Overview:</strong> ${data.description || data.Description || "No description available."}`;
         container.appendChild(descPara);
 
         const disclaim = document.createElement("p");
         disclaim.style.fontStyle = "italic";
         disclaim.style.fontSize = "12px";
         disclaim.style.color = "#a1a1aa";
+        disclaim.style.marginTop = "8px";
         disclaim.textContent = "Disclaimer: Niramaya is an AI assistant. Please consult a qualified medical professional.";
         container.appendChild(disclaim);
     } else if (model === "LRv2") {
         const diseasePara = document.createElement("p");
-        diseasePara.innerHTML = `<strong>Predicted Disease:</strong> ${data.predicted_disease || "No disease predicted."}`;
+        diseasePara.innerHTML = `<strong>Predicted Condition:</strong> <span style="color:#60a5fa; font-weight:600;">${data.predicted_disease || "No condition identified."}</span>`;
         container.appendChild(diseasePara);
 
+        if (data.matched_symptoms && data.matched_symptoms.length > 0) {
+            const symPara = document.createElement("p");
+            symPara.innerHTML = `<strong>Identified Symptoms:</strong> ${data.matched_symptoms.join(", ")}`;
+            container.appendChild(symPara);
+        }
+
         const descPara = document.createElement("p");
-        descPara.innerHTML = `<strong>Description:</strong> ${data.description || data.Description || "No description available."}`;
+        descPara.innerHTML = `<strong>Medical Overview:</strong> ${data.description || data.Description || "No description available."}`;
         container.appendChild(descPara);
 
         const precautions = data.precautions || [];
@@ -197,6 +228,7 @@ function renderBotResponseContent(model, data) {
         disclaim.style.fontStyle = "italic";
         disclaim.style.fontSize = "12px";
         disclaim.style.color = "#a1a1aa";
+        disclaim.style.marginTop = "8px";
         disclaim.textContent = "Disclaimer: Niramaya is an AI assistant. Please consult a qualified medical professional.";
         container.appendChild(disclaim);
     } else {
