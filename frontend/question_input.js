@@ -24,21 +24,18 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initPage() {
+    // Clear any stale legacy member name so no unwanted name ever shows on page load
+    sessionStorage.removeItem("activeMemberName");
+    sessionStorage.removeItem("activeMemberId");
+    localStorage.removeItem("selectedMemberName");
+    localStorage.removeItem("selectedMemberId");
+
     const storedAccountId = localStorage.getItem("accountId");
     if (storedAccountId) {
         isLoggedIn = true;
     } else {
         isLoggedIn = false;
         guestQuestionCount = parseInt(localStorage.getItem("guestQuestionCount") || "0", 10);
-    }
-
-    // Safety: If selectedMemberName equals familyName or has no valid member ID, clear it so no unwanted name is shown
-    const selectedMemberId = localStorage.getItem("selectedMemberId");
-    const selectedMemberName = localStorage.getItem("selectedMemberName");
-    const familyName = localStorage.getItem("familyName");
-    if (!selectedMemberId || selectedMemberName === familyName) {
-        localStorage.removeItem("selectedMemberId");
-        localStorage.removeItem("selectedMemberName");
     }
 
     updateNavButtons();
@@ -408,16 +405,16 @@ function updateNavButtons() {
 
 function updateGreeting() {
     const welcomeEl = document.getElementById("welcome-message");
-    const memberName = localStorage.getItem("selectedMemberName");
+    const activeMember = sessionStorage.getItem("activeMemberName") || localStorage.getItem("selectedMemberName");
 
-    // Only display greeting name if a member has been explicitly added or selected
-    if (isLoggedIn && memberName && memberName.trim() !== "") {
+    // Only display greeting name if user is logged in AND a member was explicitly added or selected
+    if (isLoggedIn && activeMember && activeMember.trim() !== "") {
         if (welcomeEl) {
             welcomeEl.style.display = "block";
-            welcomeEl.textContent = `Hello, ${memberName.trim()}!`;
+            welcomeEl.textContent = `Hello, ${activeMember.trim()}!`;
         }
     } else {
-        // If member is not added or selected, DO NOT show any name!
+        // If no user/member is added, stay completely simple without any name!
         if (welcomeEl) {
             welcomeEl.style.display = "none";
             welcomeEl.textContent = "";
@@ -466,6 +463,8 @@ async function handleLogin(e) {
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", data.familyname || "");
             // Ensure no member name is pre-set without explicit user selection
+            sessionStorage.removeItem("activeMemberName");
+            sessionStorage.removeItem("activeMemberId");
             localStorage.removeItem("selectedMemberId");
             localStorage.removeItem("selectedMemberName");
             isLoggedIn = true;
@@ -504,14 +503,19 @@ async function handleRegister(e) {
         const data = await res.json();
 
         if (res.ok && data.success) {
-            alert("Registration successful! Logging in...");
+            alert("Registration successful! Please add a profile to start your consultation.");
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", fname);
+            sessionStorage.removeItem("activeMemberName");
+            sessionStorage.removeItem("activeMemberId");
+            localStorage.removeItem("selectedMemberId");
+            localStorage.removeItem("selectedMemberName");
             isLoggedIn = true;
 
             closeRegisterModal();
             updateNavButtons();
+            updateGreeting();
             // Open member selection / setup
             openAddMemberModal();
         } else {
@@ -524,6 +528,8 @@ async function handleRegister(e) {
 
 // Logout
 function logout() {
+    sessionStorage.removeItem("activeMemberName");
+    sessionStorage.removeItem("activeMemberId");
     localStorage.removeItem("accountId");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("familyName");
@@ -542,7 +548,7 @@ function openMemberSelectionModal(members) {
     if (!listContainer) return;
     listContainer.innerHTML = "";
 
-    const currentMemberId = localStorage.getItem("selectedMemberId");
+    const currentMemberId = sessionStorage.getItem("activeMemberId") || localStorage.getItem("selectedMemberId");
 
     members.forEach(m => {
         const card = document.createElement("div");
@@ -567,6 +573,8 @@ function openMemberSelectionModal(members) {
 function closeMemberSelectionModal() { closeModal("member-selection-modal"); }
 
 function selectMember(memberId, memberName, accountId) {
+    sessionStorage.setItem("activeMemberName", memberName);
+    sessionStorage.setItem("activeMemberId", memberId);
     localStorage.setItem("selectedMemberId", memberId);
     localStorage.setItem("selectedMemberName", memberName);
     if (accountId) localStorage.setItem("accountId", accountId);
@@ -593,10 +601,11 @@ async function deleteMember(memberId) {
         });
         const data = await res.json();
         if (data.success) {
-            if (String(localStorage.getItem("selectedMemberId")) === String(memberId)) {
-                localStorage.removeItem("selectedMemberId");
-                localStorage.removeItem("selectedMemberName");
-            }
+            sessionStorage.removeItem("activeMemberName");
+            sessionStorage.removeItem("activeMemberId");
+            localStorage.removeItem("selectedMemberId");
+            localStorage.removeItem("selectedMemberName");
+            updateGreeting();
             changeMember();
         } else {
             alert(data.message || "Failed to delete member.");
