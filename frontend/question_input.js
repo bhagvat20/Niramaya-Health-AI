@@ -370,6 +370,18 @@ async function sendMessage() {
         if (!isLoggedIn) {
             guestQuestionCount++;
             localStorage.setItem("guestQuestionCount", guestQuestionCount);
+            // Also persist guest consultation to server under default account so local history matches cloud
+            fetch(API_BASE + "/savechat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    account_id: 1,
+                    member_id: null,
+                    user_input: userInput,
+                    bot_response: botSavedResponse,
+                    model: model
+                })
+            }).catch(() => {});
         } else {
             // Save consultation history to server
             const accountId = localStorage.getItem("accountId");
@@ -855,7 +867,7 @@ function openHistoryModal() {
 function closeHistoryModal() { closeModal("history-modal"); }
 
 function loadHistory() {
-    const accountId = localStorage.getItem("accountId");
+    const storedAccountId = localStorage.getItem("accountId");
     const memberId = localStorage.getItem("selectedMemberId");
     const historyList = document.getElementById("history-list");
     if (!historyList) return;
@@ -865,24 +877,6 @@ function loadHistory() {
         localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
     } catch (_) {}
 
-    // If not logged in, display guest session history directly
-    if (!accountId) {
-        if (!localHistory || localHistory.length === 0) {
-            historyList.innerHTML = `
-                <div style="text-align:center; padding:32px 14px; color:#a1a1aa;">
-                    <i class="fas fa-comment-medical fa-2x" style="margin-bottom:12px; color:#6366f1;"></i>
-                    <p style="font-size:16px; font-weight:600; color:#f4f4f5; margin-bottom:6px;">No Consultations Yet</p>
-                    <p style="font-size:13.5px; line-height:1.5; color:#a1a1aa; margin-bottom:16px;">Ask any health symptoms above (e.g., Weight Gain, Fever) to see your consultation history here.</p>
-                    <button onclick="closeHistoryModal(); openLoginModal();" class="modal-btn" style="width:auto; padding:8px 24px;"><i class="fas fa-sign-in-alt"></i> Log In to Sync Cloud History</button>
-                </div>
-            `;
-            return;
-        }
-
-        renderHistoryCards(localHistory, true);
-        return;
-    }
-
     historyList.innerHTML = `
         <div style="text-align:center; padding:30px; color:#a1a1aa;">
             <i class="fas fa-spinner fa-spin fa-2x" style="color:#6366f1;"></i>
@@ -890,7 +884,9 @@ function loadHistory() {
         </div>
     `;
 
-    const reqBody = { account_id: accountId };
+    // Query active account or fallback to default account 1 so local double-click runners show all consultations
+    const effectiveAccountId = storedAccountId || "1";
+    const reqBody = { account_id: effectiveAccountId };
     if (memberId && String(memberId).toLowerCase() !== 'all') {
         reqBody.member_id = memberId;
     }
@@ -907,7 +903,7 @@ function loadHistory() {
         })
         .then(data => {
             const serverHistory = data.history || [];
-            // Merge with local consultations so recently asked symptoms (like Weight Gain) are instantly visible
+            // Merge with local consultations so recently asked symptoms are instantly visible
             const combined = [...serverHistory];
             localHistory.forEach(lh => {
                 const alreadyPresent = combined.some(sh => 
@@ -929,7 +925,7 @@ function loadHistory() {
                 return;
             }
 
-            renderHistoryCards(combined, false);
+            renderHistoryCards(combined, !storedAccountId);
         })
         .catch(err => {
             if (localHistory.length > 0) {

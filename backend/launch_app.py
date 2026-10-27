@@ -69,6 +69,49 @@ def wait_and_open_browser(url="http://127.0.0.1:5000", max_wait=20):
     print("[*] Opening browser now...")
     webbrowser.open(url)
 
+def sync_cloud_history():
+    """Syncs consultation history from cloud deployment to local DB if online."""
+    try:
+        import json
+        from db_config import get_db_connection
+
+        req = urllib.request.Request(
+            'https://niramaya-health-ai.onrender.com/getchat',
+            data=json.dumps({'account_id': 1}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            history = data.get('history', [])
+            if not history:
+                return
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute('SELECT member_id FROM member_tbl WHERE member_id = 24')
+        if not cur.fetchone():
+            cur.execute(
+                'INSERT INTO member_tbl (member_id, account_id, name, gender, age, height, weight) '
+                'VALUES (24, 1, %s, %s, %s, %s, %s)',
+                ('TestFamily', 'Other', 25, '170', '65')
+            )
+            conn.commit()
+
+        for h in history:
+            cur.execute('SELECT history_id FROM chat_history_tbl WHERE history_id = %s', (h['history_id'],))
+            if not cur.fetchone():
+                cur.execute(
+                    'INSERT INTO chat_history_tbl (history_id, account_id, member_id, user_input, bot_response, model, timestamp) '
+                    'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+                    (h['history_id'], 1, h.get('member_id') or 24, h['question'], h['response'], h.get('model') or 'BioGPT', h.get('timestamp') or 'NOW()')
+                )
+        conn.commit()
+        conn.close()
+        print(f"[+] Synchronized {len(history)} consultations from cloud to local database.")
+    except Exception:
+        pass
+
 def main():
     print("=" * 62)
     print("        NIRAMAYA HEALTH AI - SYSTEM LAUNCHER")
@@ -84,6 +127,9 @@ def main():
     except Exception as e:
         print(f"[!] Warning: PostgreSQL check: {e}")
         print("    If PostgreSQL service is stopped, start it via Windows Services.")
+
+    # Background cloud sync
+    threading.Thread(target=sync_cloud_history, daemon=True).start()
 
     print("[2/3] Checking Port 5000...")
     free_port(5000)
