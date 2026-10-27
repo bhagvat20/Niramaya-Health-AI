@@ -239,16 +239,30 @@ function renderBotResponseContent(model, data) {
 
 // Send Message Handler
 async function sendMessage() {
-    const inputField = isFirstMessage
-        ? document.getElementById("user-input")
-        : document.getElementById("user-input-footer");
+    const heroInput = document.getElementById("user-input");
+    const footerInput = document.getElementById("user-input-footer");
+    const heroContainer = document.getElementById("input-container");
+    const footerContainer = document.getElementById("chat-footer");
 
-    const modelField = isFirstMessage
-        ? document.getElementById("model-select")
-        : document.getElementById("model-select-footer");
+    const heroVisible = heroContainer && window.getComputedStyle(heroContainer).display !== "none";
+    const footerVisible = footerContainer && window.getComputedStyle(footerContainer).display !== "none";
 
-    const userInput = (inputField ? inputField.value : "").trim();
-    const model = modelField ? modelField.value : "BioGPT";
+    let userInput = "";
+
+    // Accurately capture text from whichever input field the user actually typed in
+    if (footerVisible && footerInput && footerInput.value.trim()) {
+        userInput = footerInput.value.trim();
+    } else if (heroVisible && heroInput && heroInput.value.trim()) {
+        userInput = heroInput.value.trim();
+    } else if (footerInput && footerInput.value.trim()) {
+        userInput = footerInput.value.trim();
+    } else if (heroInput && heroInput.value.trim()) {
+        userInput = heroInput.value.trim();
+    }
+
+    const modelSelect = document.getElementById("model-select");
+    const modelSelectFooter = document.getElementById("model-select-footer");
+    const model = (footerVisible && modelSelectFooter) ? modelSelectFooter.value : (modelSelect ? modelSelect.value : "BioGPT");
     const chatContainer = document.getElementById("chat-container");
 
     if (!userInput) {
@@ -261,6 +275,10 @@ async function sendMessage() {
         openLoginModal();
         return;
     }
+
+    // IMMEDIATELY clear both inputs so previous queries (e.g. Weight Gain) can never repeat on subsequent messages!
+    if (heroInput) heroInput.value = "";
+    if (footerInput) footerInput.value = "";
 
     // Switch from hero to chat layout
     if (isFirstMessage) {
@@ -290,8 +308,6 @@ async function sendMessage() {
     `;
     chatContainer.appendChild(loader);
     scrollToBottom();
-
-    if (inputField) inputField.value = "";
 
     try {
         let endpoint = "";
@@ -392,6 +408,10 @@ async function sendMessage() {
 function newChat() {
     const chatContainer = document.getElementById("chat-container");
     if (chatContainer) chatContainer.innerHTML = "";
+    const heroInput = document.getElementById("user-input");
+    const footerInput = document.getElementById("user-input-footer");
+    if (heroInput) heroInput.value = "";
+    if (footerInput) footerInput.value = "";
     document.getElementById("greeting-container").style.display = "block";
     document.getElementById("input-container").style.display = "flex";
     if (chatContainer) chatContainer.style.display = "none";

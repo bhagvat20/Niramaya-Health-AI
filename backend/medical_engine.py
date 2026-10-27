@@ -189,6 +189,103 @@ CLINICAL_DISEASES = {
         ]
     },
 
+    'headache_migraine': {
+        'name': 'Tension Headache & Migraine / Cephalea (सिर दर्द एवं माइग्रेन)',
+        'category': 'Neurological / Primary Cephalalgia',
+        'keywords': ['headache', 'head ache', 'migraine', 'migrane', 'cephalea', 'sir dard', 'sar dard', 'adha sishi', 'cluster headache', 'forehead pain', 'head pain'],
+        'primary_symptoms': ['headache'],
+        'secondary_symptoms': ['nausea', 'dizziness', 'fatigue', 'insomnia'],
+        'overview': (
+            "Headache (cephalalgia) is one of the most common medical symptoms, typically presenting as "
+            "a Tension-type headache (diffuse, band-like dull aching across forehead, temples, or back of head) or "
+            "Migraine (throbbing, pulsating pain often on one side of head, sometimes accompanied by nausea or light sensitivity). "
+            "Most acute headaches arise from muscle contraction, mental stress, eye fatigue, dehydration, or irregular sleep patterns."
+        ),
+        'causes': "Stress, dehydration, prolonged digital screen exposure, cervical posture strain, lack of sleep, skipping meals, or neurovascular migraine triggers.",
+        'diet_and_home_care': [
+            "Hydration first: Drink 2 to 3 glasses of cool or room-temperature water immediately.",
+            "Rest in a quiet, dark, well-ventilated room with eyes closed for 20-30 minutes.",
+            "Apply a cold damp washcloth or ice pack to your forehead, temples, or base of the neck.",
+            "Sip warm herbal ginger tea or lemon-mint water to relieve muscle tightness and mild nausea.",
+            "Practice gentle neck and shoulder stretching to release tension."
+        ],
+        'precautions': [
+            "Avoid staring at bright smartphone, laptop, or television screens while experiencing a headache.",
+            "Do not consume excess caffeinated or sugary energy drinks; limit loud noise exposures.",
+            "Avoid frequent unprescribed over-the-counter painkillers (limit analgesics to prevent rebound medication-overuse headaches).",
+            "Maintain consistent meal times and ensure 7 to 8 hours of uninterrupted sleep."
+        ],
+        'recommended_tests': ['Refraction / Eye Examination (to rule out vision strain)', 'Blood Pressure Measurement', 'Neurological consultation if headaches are recurrent (>2 per week)'],
+        'warning_signs': [
+            "Sudden, explosive 'thunderclap' headache reaching peak intensity within seconds (worst headache of your life)",
+            "Headache accompanied by high fever, neck stiffness (inability to touch chin to chest), confusion, or rash",
+            "Headache following recent head trauma or accompanied by weakness, numbness, or slurred speech"
+        ]
+    },
+
+    'viral_fever': {
+        'name': 'Acute Viral Fever & Seasonal Febrile Illness (वायरल बुखार)',
+        'category': 'Acute Viral Infection',
+        'keywords': ['viral fever', 'bukhar', 'season fever', 'viral', 'halka bukhar', 'tez bukhar', 'pyrexia', 'body is hot'],
+        'primary_symptoms': ['fever'],
+        'secondary_symptoms': ['body_pain', 'fatigue', 'headache', 'chills', 'loss_of_appetite'],
+        'overview': (
+            "Viral fever is an acute elevation of body temperature above normal (98.6°F / 37°C) caused by an "
+            "underlying viral infection. It is frequently accompanied by general body aches, weakness, headache, "
+            "and loss of appetite as the body's immune defense responds to fight the virus."
+        ),
+        'causes': "Airborne or contact viral pathogens (rhinovirus, adenovirus, seasonal enteroviruses, influenza-like illness).",
+        'diet_and_home_care': [
+            "Drink plenty of warm fluids (boiled water, clear vegetable soups, coconut water, herbal tea) to prevent dehydration.",
+            "Consume light, warm, freshly cooked foods (dalia, moong dal khichdi, boiled vegetables, applesauce).",
+            "Get strict bed rest in a well-ventilated room; do not exert yourself physically.",
+            "Apply lukewarm (not cold) water sponge compresses to forehead and limbs if temperature exceeds 101°F."
+        ],
+        'precautions': [
+            "Monitor body temperature with a digital thermometer every 4 to 6 hours.",
+            "Do not take antibiotics on your own; antibiotics are ineffective against viral infections.",
+            "Use only antipyretics like Paracetamol in age-appropriate dosage under clinical advice.",
+            "Wash hands frequently and isolate personal eating utensils and towels to protect family members."
+        ],
+        'recommended_tests': ['Complete Blood Count (CBC) with ESR', 'Urine Routine Examination', 'Physician consultation if fever persists past 3 days'],
+        'warning_signs': [
+            "High fever persisting above 102.5°F that does not respond to standard fever medication",
+            "Severe shortness of breath, chest pain, persistent vomiting, or extreme lethargy/confusion",
+            "Appearance of unusual rash, dark urine, or bleeding from nose/gums"
+        ]
+    },
+
+    'cough_cold_urti': {
+        'name': 'Common Cold & Upper Respiratory Tract Infection (सर्दी, जुकाम एवं खांसी)',
+        'category': 'Respiratory Viral Infection',
+        'keywords': ['cold', 'cough', 'jukaam', 'sardi', 'khansi', 'sneezing', 'runny nose', 'stuffy nose', 'sore throat', 'chheenk'],
+        'primary_symptoms': ['cold', 'cough', 'sore_throat'],
+        'secondary_symptoms': ['headache', 'fever', 'fatigue'],
+        'overview': (
+            "Common cold and acute upper respiratory tract infection (URTI) are viral illnesses affecting "
+            "the nasal passages, throat, and upper airways. Symptoms include runny or congested nose, frequent sneezing, "
+            "sore throat irritation, and dry or productive coughing."
+        ),
+        'causes': "Rhinoviruses, Coronaviruses, Respiratory Syncytial Virus (RSV), or Parainfluenza transmitted via airborne droplets or hand-to-face contact.",
+        'diet_and_home_care': [
+            "Drink warm water, ginger-tulsi tea, honey with warm water (for cough relief), and warm vegetable/chicken soup.",
+            "Perform warm saltwater gargles 2-3 times daily to soothe throat irritation and reduce swelling.",
+            "Inhale steam (plain water steam inhalation) for 5-10 minutes to open congested nasal airways."
+        ],
+        'precautions': [
+            "Cover your mouth and nose with a tissue or elbow when coughing or sneezing.",
+            "Avoid cold drinks, ice, and extremely refrigerated food.",
+            "Maintain hand hygiene by washing with soap and water frequently.",
+            "Rest adequately to facilitate prompt recovery."
+        ],
+        'recommended_tests': ['Clinical ENT / Throat Evaluation', 'Complete Blood Count (if fever coexists)'],
+        'warning_signs': [
+            "Difficulty breathing, audible wheezing, or chest pain while breathing",
+            "Inability to swallow fluids or severe ear pain",
+            "Cough lasting longer than 2 weeks or coughing up blood"
+        ]
+    },
+
     'dengue': {
         'name': 'Dengue Fever (डेंगू बुखार)',
         'category': 'Viral Tropical Infection',
@@ -801,27 +898,49 @@ def match_disease_from_query(text, detected_symptoms):
         primary_hits = 0
         for s in detected_symptoms:
             if s in data['primary_symptoms']:
-                score += 4.5
+                score += 5.0
                 primary_hits += 1
             elif s in data['secondary_symptoms']:
                 score += 1.5
 
-        # Critical condition bonus: Chest pain + (sweating or shortness of breath) heavily favors cardiac alert
-        if dis_id == 'heart_attack_warning' and 'chest_pain' in detected_symptoms:
+        if primary_hits == 0:
+            continue
+
+        # Specificity boost: If user reported 1 symptom and disease is specifically focused on that 1 symptom
+        # (e.g. headache -> headache_migraine, weight_gain -> hypothyroidism_metabolic, fever -> viral_fever)
+        if len(data['primary_symptoms']) == 1 and primary_hits == 1 and len(detected_symptoms) == 1:
+            score += 18.0
+
+        # CLINICAL DISQUALIFICATIONS:
+        # 1. Dengue, Malaria, Typhoid MUST have fever! Never diagnose Dengue/Malaria for isolated headache or pain!
+        if dis_id in ['dengue', 'malaria', 'typhoid'] and 'fever' not in detected_symptoms:
+            continue
+
+        # 2. Dengue requires fever PLUS at least one of (body_pain, joint_pain, rash)
+        if dis_id == 'dengue' and ('body_pain' not in detected_symptoms and 'joint_pain' not in detected_symptoms and 'rash' not in detected_symptoms):
+            score -= 6.0
+
+        # 3. Malaria requires fever PLUS (chills or sweating)
+        if dis_id == 'malaria' and ('chills' not in detected_symptoms and 'sweating' not in detected_symptoms):
+            score -= 6.0
+
+        # 4. Critical cardiac alert requires chest pain
+        if dis_id == 'heart_attack_warning':
+            if 'chest_pain' not in detected_symptoms:
+                continue
             if 'sweating' in detected_symptoms or 'shortness_of_breath' in detected_symptoms:
-                score += 10
+                score += 15.0
                 primary_hits += 2
+
+        # 5. Kidney stones requires stomach or back pain
+        if dis_id == 'kidney_stones' and 'stomach_pain' not in detected_symptoms:
+            continue
 
         # Bonus if multiple primary symptoms hit
         if primary_hits >= 2:
-            score += 3
-        
-        # Penalize if condition requires other specific symptoms
-        if dis_id == 'kidney_stones' and 'burning_urination' in detected_symptoms and 'stomach_pain' not in detected_symptoms:
-            score -= 3
+            score += (primary_hits * 3.5)
 
-        if primary_hits > 0:
-            scored_diseases.append((score, primary_hits, dis_id, data))
+        scored_diseases.append((score, primary_hits, dis_id, data))
 
     if scored_diseases:
         scored_diseases.sort(key=lambda x: (x[0], x[1]), reverse=True)
