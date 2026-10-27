@@ -464,6 +464,18 @@ body {
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
 }
 
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover, 
+.form-group input:-webkit-autofill:focus,
+.form-group input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #27272a inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 0 0 1000px #27272a inset !important;
+    color: #ffffff !important;
+    caret-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
 .radio-group {
     display: flex;
     gap: 12px;

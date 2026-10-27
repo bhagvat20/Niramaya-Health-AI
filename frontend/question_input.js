@@ -458,7 +458,24 @@ function closeModal(id) {
 }
 
 // Login
-function openLoginModal() { openModal("login-modal"); }
+function openLoginModal() {
+    const form = document.getElementById("login-form");
+    if (form) form.reset();
+    const emailInput = document.getElementById("email");
+    const pwdInput = document.getElementById("password");
+    if (emailInput) { emailInput.value = ""; emailInput.setAttribute("readonly", true); }
+    if (pwdInput) { pwdInput.value = ""; pwdInput.setAttribute("readonly", true); }
+
+    openModal("login-modal");
+
+    // Force clear any delayed browser autofill so fields always stay blank on open
+    [20, 100, 300].forEach(delay => {
+        setTimeout(() => {
+            if (emailInput) emailInput.value = "";
+            if (pwdInput) pwdInput.value = "";
+        }, delay);
+    });
+}
 function closeLoginModal() { closeModal("login-modal"); }
 
 async function handleLogin(e) {
@@ -501,7 +518,26 @@ async function handleLogin(e) {
 }
 
 // Register
-function openRegisterModal() { openModal("register-modal"); }
+function openRegisterModal() {
+    const form = document.getElementById("register-form");
+    if (form) form.reset();
+    const fnameInput = document.getElementById("familyname");
+    const emailInput = document.getElementById("register-email");
+    const pwdInput = document.getElementById("register-password");
+    if (fnameInput) fnameInput.value = "";
+    if (emailInput) { emailInput.value = ""; emailInput.setAttribute("readonly", true); }
+    if (pwdInput) { pwdInput.value = ""; pwdInput.setAttribute("readonly", true); }
+
+    openModal("register-modal");
+
+    [20, 100, 300].forEach(delay => {
+        setTimeout(() => {
+            if (fnameInput) fnameInput.value = "";
+            if (emailInput) emailInput.value = "";
+            if (pwdInput) pwdInput.value = "";
+        }, delay);
+    });
+}
 function closeRegisterModal() { closeModal("register-modal"); }
 
 async function handleRegister(e) {
@@ -632,7 +668,11 @@ async function deleteMember(memberId) {
 }
 
 // Add Member
-function openAddMemberModal() { openModal("add-member-modal"); }
+function openAddMemberModal() {
+    const form = document.getElementById("add-member-form");
+    if (form) form.reset();
+    openModal("add-member-modal");
+}
 function closeAddMemberModal() {
     closeModal("add-member-modal");
     const form = document.getElementById("add-member-form");
