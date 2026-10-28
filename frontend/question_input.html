@@ -72,18 +72,18 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeLoginModal()">&times;</span>
             <h2><i class="fas fa-sign-in-alt" style="color:#6366f1;"></i> Login to Niramaya</h2>
-            <form id="login-form" onsubmit="handleLogin(event)" autocomplete="off">
-                <div style="background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:8px; padding:8px 12px; margin-bottom:14px; font-size:12px; color:#c7d2fe;">
-                    <i class="fas fa-info-circle"></i> <strong>Demo Account:</strong> normaluser@example.com / UserPass123
-                </div>
+            <form id="login-form" onsubmit="handleLogin(event)" autocomplete="off" autocapitalize="off" spellcheck="false">
+                <!-- Hidden dummy inputs to absorb browser autofill so real fields stay completely blank -->
+                <input type="text" name="fake_user_absorb" style="position:absolute; top:-9999px; left:-9999px; opacity:0; pointer-events:none;" tabindex="-1" autocomplete="off">
+                <input type="password" name="fake_pass_absorb" style="position:absolute; top:-9999px; left:-9999px; opacity:0; pointer-events:none;" tabindex="-1" autocomplete="off">
 
                 <div class="form-group">
                     <label for="email"><i class="fas fa-envelope" style="color:#818cf8;"></i> Email Address</label>
-                    <input type="email" id="email" name="user_login_email" placeholder="name@example.com" required autocomplete="off">
+                    <input type="email" id="email" name="niramaya_user_email" placeholder="name@example.com" required autocomplete="new-password" value="">
                 </div>
                 <div class="form-group">
                     <label for="password"><i class="fas fa-lock" style="color:#818cf8;"></i> Password</label>
-                    <input type="password" id="password" name="user_login_pwd" placeholder="Enter your password" required autocomplete="current-password">
+                    <input type="password" id="password" name="niramaya_user_password" placeholder="Enter your password" required autocomplete="new-password" value="">
                     <p class="modal-link" style="text-align:right; margin-top:6px; margin-bottom:0;">
                         <a href="javascript:void(0)" onclick="openForgotPasswordModal();">Forgot Password?</a>
                     </p>
@@ -101,18 +101,22 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeRegisterModal()">&times;</span>
             <h2><i class="fas fa-user-plus" style="color:#10b981;"></i> Register for Niramaya</h2>
-            <form id="register-form" onsubmit="handleRegister(event)" autocomplete="off">
+            <form id="register-form" onsubmit="handleRegister(event)" autocomplete="off" autocapitalize="off" spellcheck="false">
+                <!-- Hidden dummy inputs to absorb browser autofill -->
+                <input type="text" name="fake_reg_absorb" style="position:absolute; top:-9999px; left:-9999px; opacity:0; pointer-events:none;" tabindex="-1" autocomplete="off">
+                <input type="password" name="fake_regpass_absorb" style="position:absolute; top:-9999px; left:-9999px; opacity:0; pointer-events:none;" tabindex="-1" autocomplete="off">
+
                 <div class="form-group">
                     <label for="familyname"><i class="fas fa-user" style="color:#34d399;"></i> Family / Full Name</label>
-                    <input type="text" id="familyname" name="familyname" placeholder="Enter your family or full name" required autocomplete="off">
+                    <input type="text" id="familyname" name="niramaya_reg_fname" placeholder="Enter your family or full name" required autocomplete="off" value="">
                 </div>
                 <div class="form-group">
                     <label for="register-email"><i class="fas fa-envelope" style="color:#34d399;"></i> Email Address</label>
-                    <input type="email" id="register-email" name="user_reg_email" placeholder="name@example.com" required autocomplete="off">
+                    <input type="email" id="register-email" name="niramaya_reg_email" placeholder="name@example.com" required autocomplete="new-password" value="">
                 </div>
                 <div class="form-group">
                     <label for="register-password"><i class="fas fa-lock" style="color:#34d399;"></i> Password</label>
-                    <input type="password" id="register-password" name="user_reg_pwd" placeholder="Create password (min 6 characters)" required minlength="6" autocomplete="new-password">
+                    <input type="password" id="register-password" name="niramaya_reg_pwd" placeholder="Create password (min 6 characters)" required minlength="6" autocomplete="new-password" value="">
                 </div>
                 <button type="submit" class="modal-btn" id="user-register-btn" style="background:linear-gradient(135deg, #059669 0%, #10b981 100%);"><i class="fas fa-user-plus"></i> Register</button>
             </form>

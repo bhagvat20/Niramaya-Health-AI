@@ -542,7 +542,29 @@ function closeModal(id) {
 function openLoginModal() {
     const form = document.getElementById("login-form");
     if (form) form.reset();
+    
+    const wipeInputs = () => {
+        const emailInput = document.getElementById("email");
+        const pwdInput = document.getElementById("password");
+        if (emailInput) {
+            emailInput.value = "";
+            emailInput.defaultValue = "";
+            emailInput.setAttribute("autocomplete", "new-password");
+        }
+        if (pwdInput) {
+            pwdInput.value = "";
+            pwdInput.defaultValue = "";
+            pwdInput.setAttribute("autocomplete", "new-password");
+        }
+    };
+
+    wipeInputs();
     openModal("login-modal");
+
+    // Multi-pass clear to defeat aggressive browser autofill injection
+    setTimeout(wipeInputs, 30);
+    setTimeout(wipeInputs, 150);
+    setTimeout(wipeInputs, 300);
 }
 function closeLoginModal() { closeModal("login-modal"); }
 
@@ -622,7 +644,23 @@ async function handleLogin(e) {
 function openRegisterModal() {
     const form = document.getElementById("register-form");
     if (form) form.reset();
+
+    const wipeInputs = () => {
+        ['familyname', 'register-email', 'register-password'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = "";
+                el.defaultValue = "";
+                el.setAttribute("autocomplete", "new-password");
+            }
+        });
+    };
+
+    wipeInputs();
     openModal("register-modal");
+
+    setTimeout(wipeInputs, 30);
+    setTimeout(wipeInputs, 150);
 }
 function closeRegisterModal() { closeModal("register-modal"); }
 
