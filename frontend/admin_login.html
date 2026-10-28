@@ -229,17 +229,18 @@
 
         <div id="alert-box" class="alert-box"></div>
 
-        <form id="admin-login-form" autocomplete="off">
-          <!-- Prevent browser autofill from prefilling admin fields -->
-          <input type="text" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1" autocomplete="off" />
-          <input type="password" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1" autocomplete="new-password" />
+        <div style="background:rgba(96,165,250,0.12); border:1px solid rgba(96,165,250,0.35); border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12.5px; color:#93c5fd; line-height:1.5;">
+          <i class="fas fa-key" style="margin-right:6px;"></i> <strong>Default Admin Credentials:</strong><br>
+          Username: <code>admin</code> or <code>admin@niramaya.com</code> &nbsp;|&nbsp; Password: <code>Admin@1234</code>
+        </div>
 
+        <form id="admin-login-form">
           <div class="form-group">
             <label for="username_or_email">Username or Email</label>
             <div class="input-with-icon">
               <i class="fas fa-user"></i>
-              <input type="text" id="username_or_email" name="adm_usr_empty" placeholder="Enter username or email" required
-                autocomplete="off" readonly onfocus="this.removeAttribute('readonly');" value="">
+              <input type="text" id="username_or_email" placeholder="admin or admin@niramaya.com" required
+                autocomplete="username" value="">
             </div>
           </div>
 
@@ -247,8 +248,8 @@
             <label for="password">Password</label>
             <div class="input-with-icon">
               <i class="fas fa-lock"></i>
-              <input type="password" id="password" name="adm_pwd_empty" placeholder="Enter password" required
-                autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly');" value="">
+              <input type="password" id="password" placeholder="Admin@1234" required
+                autocomplete="current-password" value="">
             </div>
           </div>
 
@@ -311,7 +312,33 @@
   </footer>
 
   <script>
-    const API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:5000';
+    const LOCAL_API = 'http://127.0.0.1:5000';
+    const CLOUD_API = 'https://niramaya-health-ai.onrender.com';
+    let API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) 
+        ? window.location.origin 
+        : LOCAL_API;
+
+    async function apiFetch(endpoint, options = {}) {
+      const url = `${API_BASE_URL}${endpoint}`;
+      try {
+        const res = await fetch(url, options);
+        if (res.ok || res.status < 500) return res;
+      } catch (_) {}
+
+      // Fallback to cloud Render deployment if local is unreachable
+      if (API_BASE_URL !== CLOUD_API) {
+        try {
+          const cloudUrl = `${CLOUD_API}${endpoint}`;
+          const cloudRes = await fetch(cloudUrl, options);
+          if (cloudRes.ok || cloudRes.status < 500) {
+            API_BASE_URL = CLOUD_API;
+            return cloudRes;
+          }
+        } catch (_) {}
+      }
+
+      return await fetch(url, options);
+    }
 
     function showAlert(message, type = 'error') {
       const box = document.getElementById('alert-box');
@@ -352,7 +379,7 @@
       if (!token) return;
 
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/verify`, {
+        const response = await apiFetch('/admin/verify', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -400,7 +427,7 @@
       loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
 
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/login`, {
+        const response = await apiFetch('/admin/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -411,20 +438,20 @@
           })
         });
 
-        const data = await response.json();
+        const data = await response.json().catch(() => null);
 
-        if (response.ok && data.success) {
+        if (response.ok && data && data.success) {
           setAdminToken(data.token);
           displayAuthenticatedState(data.admin);
           showStatusAlert("Admin login successful! Redirecting to Dashboard...");
           setTimeout(() => {
             window.location.href = 'admin_dashboard.html';
-          }, 1000);
+          }, 800);
         } else {
-          showAlert(data.message || "Invalid credentials or login error.");
+          showAlert((data && data.message) || "Invalid credentials. Use 'admin' and 'Admin@1234'.");
         }
       } catch (err) {
-        showAlert("Unable to connect to authentication server. Ensure backend is running.");
+        showAlert("Unable to connect to authentication server. Please check connection.");
         console.error("Login request error:", err);
       } finally {
         loginBtn.disabled = false;
@@ -435,7 +462,7 @@
     document.getElementById('verify-api-btn').addEventListener('click', async function () {
       const token = getAdminToken();
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/profile`, {
+        const res = await apiFetch('/admin/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -453,7 +480,7 @@
       const token = getAdminToken();
       if (token) {
         try {
-          await fetch(`${API_BASE_URL}/admin/logout`, {
+          await apiFetch('/admin/logout', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -468,33 +495,8 @@
       showAlert("You have logged out successfully.", "success");
     });
 
-    function clearAdminInputs() {
-      const form = document.getElementById('admin-login-form');
-      if (form) form.reset();
-      const uField = document.getElementById('username_or_email');
-      const pField = document.getElementById('password');
-      if (uField) {
-        uField.value = '';
-        uField.setAttribute('readonly', 'readonly');
-      }
-      if (pField) {
-        pField.value = '';
-        pField.setAttribute('readonly', 'readonly');
-      }
-    }
-
-    // Initialize check on page load and ensure inputs are completely empty
     document.addEventListener("DOMContentLoaded", () => {
-      clearAdminInputs();
       checkExistingSession();
-    });
-
-    // Handle any delayed browser password manager autofill
-    window.addEventListener("load", () => {
-      clearAdminInputs();
-      setTimeout(clearAdminInputs, 50);
-      setTimeout(clearAdminInputs, 200);
-      setTimeout(clearAdminInputs, 500);
     });
   </script>
 </body>

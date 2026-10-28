@@ -475,7 +475,33 @@
 
   <script src="script.js"></script>
   <script>
-    const API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:5000';
+    const LOCAL_API = 'http://127.0.0.1:5000';
+    const CLOUD_API = 'https://niramaya-health-ai.onrender.com';
+    let API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) 
+        ? window.location.origin 
+        : LOCAL_API;
+
+    async function apiFetch(endpoint, options = {}) {
+      const url = `${API_BASE_URL}${endpoint}`;
+      try {
+        const res = await fetch(url, options);
+        if (res.ok || res.status < 500) return res;
+      } catch (_) {}
+
+      // Fallback to cloud Render deployment if local is unreachable
+      if (API_BASE_URL !== CLOUD_API) {
+        try {
+          const cloudUrl = `${CLOUD_API}${endpoint}`;
+          const cloudRes = await fetch(cloudUrl, options);
+          if (cloudRes.ok || cloudRes.status < 500) {
+            API_BASE_URL = CLOUD_API;
+            return cloudRes;
+          }
+        } catch (_) {}
+      }
+
+      return await fetch(url, options);
+    }
 
     function getAuthToken() {
       return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');

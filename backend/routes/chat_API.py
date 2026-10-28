@@ -29,11 +29,34 @@ def save_chat():
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
         # Convert IDs
-        account_id = int(account_id)
+        try:
+            account_id = int(account_id)
+        except (ValueError, TypeError):
+            account_id = 1
 
         # Establish database connection
         conn = connect_db()
         cursor = conn.cursor()
+
+        # Ensure account_id exists in account_tbl to prevent foreign key errors
+        cursor.execute("SELECT account_id, family_name FROM account_tbl WHERE account_id = %s", (account_id,))
+        acc_row = cursor.fetchone()
+        if not acc_row:
+            # Fall back to any active account or account 1
+            cursor.execute("SELECT account_id, family_name FROM account_tbl ORDER BY account_id ASC LIMIT 1")
+            acc_row = cursor.fetchone()
+            if acc_row:
+                account_id = acc_row[0]
+            else:
+                cursor.execute("""
+                    INSERT INTO account_tbl (family_name, email, password_hash, is_active)
+                    VALUES ('Default Family', 'guest@niramaya.com', 'none', 1)
+                    RETURNING account_id
+                """)
+                account_id = cursor.fetchone()[0]
+                acc_row = (account_id, 'Default Family')
+
+        acc_family_name = acc_row[1] if (acc_row and len(acc_row) > 1 and acc_row[1]) else "Primary Profile"
 
         # If member_id is missing, null, or empty string, resolve to an existing member or create a default primary profile
         if not member_id or str(member_id).lower() in ['null', 'undefined', '', 'none', '0']:
@@ -42,17 +65,33 @@ def save_chat():
             if m_row:
                 member_id = m_row[0]
             else:
-                cursor.execute("SELECT name FROM account_tbl WHERE account_id = %s", (account_id,))
-                acc_row = cursor.fetchone()
-                acc_name = acc_row[0] if acc_row else "Primary Profile"
                 cursor.execute("""
                     INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
-                    VALUES (%s, %s, 'Other', 25, 170, 65)
+                    VALUES (%s, %s, 'Other', 25, '170', '65')
                     RETURNING member_id
-                """, (account_id, acc_name))
-                member_id = cursor.fetchone()[0]
+                """, (account_id, acc_family_name))
+                m_new = cursor.fetchone()
+                member_id = m_new[0] if m_new else 1
         else:
-            member_id = int(member_id)
+            try:
+                member_id = int(member_id)
+                # Verify member belongs to this account or exists
+                cursor.execute("SELECT member_id FROM member_tbl WHERE member_id = %s", (member_id,))
+                if not cursor.fetchone():
+                    cursor.execute("SELECT member_id FROM member_tbl WHERE account_id = %s ORDER BY member_id ASC LIMIT 1", (account_id,))
+                    fallback_m = cursor.fetchone()
+                    member_id = fallback_m[0] if fallback_m else None
+            except Exception:
+                member_id = None
+
+            if not member_id:
+                cursor.execute("""
+                    INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
+                    VALUES (%s, %s, 'Other', 25, '170', '65')
+                    RETURNING member_id
+                """, (account_id, acc_family_name))
+                m_new = cursor.fetchone()
+                member_id = m_new[0] if m_new else 1
 
         # Insert chat history into the database
         cursor.execute("""

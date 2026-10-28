@@ -102,26 +102,28 @@ def get_recent_activity():
             for r in reg_rows
         ]
 
-        # Recent AI queries (last 5)
+        # Recent AI queries (last 20)
         cursor.execute("""
-            SELECT c.history_id, a.email, m.name, c.model, c.timestamp, c.user_input
+            SELECT c.history_id, a.email, m.name, c.model, c.timestamp, c.user_input, c.account_id
             FROM chat_history_tbl c
-            JOIN account_tbl a ON c.account_id = a.account_id
-            JOIN member_tbl m ON c.member_id = m.member_id
+            LEFT JOIN account_tbl a ON c.account_id = a.account_id
+            LEFT JOIN member_tbl m ON c.member_id = m.member_id
             ORDER BY c.timestamp DESC
-            LIMIT 5;
+            LIMIT 20;
         """)
-        chat_rows = cursor.fetchall()
+        chat_rows = cursor.fetchall() or []
         recent_chats = []
         for r in chat_rows:
             raw_text = r[5] or ""
             snippet = raw_text[:80] + ("..." if len(raw_text) > 80 else "")
             ts = r[4].isoformat() if hasattr(r[4], 'isoformat') else str(r[4]) if r[4] else None
+            user_email = r[1] or (f"Account #{r[6]}" if r[6] else "Guest User")
+            member_name = r[2] or "Primary Profile"
             recent_chats.append({
                 "history_id": r[0],
-                "user_email": r[1],
-                "member_name": r[2],
-                "model": r[3],
+                "user_email": user_email,
+                "member_name": member_name,
+                "model": r[3] or "BioGPT",
                 "timestamp": ts,
                 "query_snippet": snippet
             })

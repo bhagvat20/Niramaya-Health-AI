@@ -360,6 +360,11 @@
         <div id="members-table-container">
           <!-- Dynamic Table -->
         </div>
+
+        <h3 style="margin-top:24px;"><i class="fas fa-stethoscope"></i> Symptoms Consultations History</h3>
+        <div id="consultations-container" style="margin-top:10px;">
+          <!-- Dynamic Consultations List -->
+        </div>
       </div>
     </div>
   </div>
@@ -434,7 +439,33 @@
 
   <script src="script.js"></script>
   <script>
-    const API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) ? window.location.origin : 'http://localhost:5000';
+    const LOCAL_API = 'http://127.0.0.1:5000';
+    const CLOUD_API = 'https://niramaya-health-ai.onrender.com';
+    let API_BASE_URL = (window.location.origin && window.location.origin.startsWith('http')) 
+        ? window.location.origin 
+        : LOCAL_API;
+
+    async function apiFetch(endpoint, options = {}) {
+      const url = `${API_BASE_URL}${endpoint}`;
+      try {
+        const res = await fetch(url, options);
+        if (res.ok || res.status < 500) return res;
+      } catch (_) {}
+
+      // Fallback to cloud Render deployment if local is unreachable
+      if (API_BASE_URL !== CLOUD_API) {
+        try {
+          const cloudUrl = `${CLOUD_API}${endpoint}`;
+          const cloudRes = await fetch(cloudUrl, options);
+          if (cloudRes.ok || cloudRes.status < 500) {
+            API_BASE_URL = CLOUD_API;
+            return cloudRes;
+          }
+        } catch (_) {}
+      }
+
+      return await fetch(url, options);
+    }
 
     function getAuthToken() {
       return localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
@@ -541,7 +572,7 @@
     async function viewUser(id) {
       const token = getAuthToken();
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+        const res = await apiFetch(`/admin/users/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -590,6 +621,41 @@
             html += `</tbody></table>`;
             container.innerHTML = html;
           }
+
+          // Consultations history
+          const consultContainer = document.getElementById('consultations-container');
+          if (consultContainer) {
+            const chats = u.recent_consultations || [];
+            if (chats.length === 0) {
+              consultContainer.innerHTML = `<p style="color:var(--secondary-text); font-size:13px;">No symptoms check consultations logged for this user yet.</p>`;
+            } else {
+              let cHtml = `
+                <table class="member-list-table" style="font-size:12.5px;">
+                  <thead>
+                    <tr>
+                      <th>Symptoms Input</th>
+                      <th>Model</th>
+                      <th>Overview Snippet</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+              `;
+              chats.forEach(c => {
+                cHtml += `
+                  <tr>
+                    <td><strong>${c.user_input}</strong><br><small style="color:var(--secondary-text);">${c.member_name}</small></td>
+                    <td><span class="badge-role">${c.model}</span></td>
+                    <td style="color:var(--secondary-text);">${c.bot_response}</td>
+                    <td>${c.timestamp ? c.timestamp.split('T')[0] : '-'}</td>
+                  </tr>
+                `;
+              });
+              cHtml += `</tbody></table>`;
+              consultContainer.innerHTML = cHtml;
+            }
+          }
+
           openModal('details-modal');
         }
       } catch (err) {
@@ -614,7 +680,7 @@
       const alertBox = document.getElementById('edit-alert');
 
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+        const res = await apiFetch(`/admin/users/${id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -645,7 +711,7 @@
 
       const token = getAuthToken();
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/users/${id}/status`, {
+        const res = await apiFetch(`/admin/users/${id}/status`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -667,7 +733,7 @@
     async function promptDelete(id, email) {
       const token = getAuthToken();
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+        const res = await apiFetch(`/admin/users/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -710,7 +776,7 @@
       }
 
       try {
-        const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
+        const res = await apiFetch(`/admin/users/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`,

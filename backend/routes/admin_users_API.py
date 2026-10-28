@@ -141,12 +141,34 @@ def get_user_details(account_id):
             for m in members_rows
         ]
         
-        # Get chat count
+        # Get chat count & recent consultation history
         cursor.execute("SELECT COUNT(*) FROM chat_history_tbl WHERE account_id = %s", (account_id,))
         chat_count = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT c.history_id, c.user_input, c.bot_response, c.model, c.timestamp, m.name
+            FROM chat_history_tbl c
+            LEFT JOIN member_tbl m ON c.member_id = m.member_id
+            WHERE c.account_id = %s
+            ORDER BY c.timestamp DESC
+            LIMIT 15;
+        """, (account_id,))
+        chat_rows = cursor.fetchall() or []
+        recent_consultations = [
+            {
+                "history_id": cr[0],
+                "user_input": cr[1],
+                "bot_response": cr[2][:120] + ("..." if len(cr[2] or "") > 120 else "") if cr[2] else "",
+                "model": cr[3],
+                "timestamp": cr[4].isoformat() if hasattr(cr[4], 'isoformat') else str(cr[4]) if cr[4] else None,
+                "member_name": cr[5] or "Primary Profile"
+            }
+            for cr in chat_rows
+        ]
         
         user_data["members"] = members_list
         user_data["chat_count"] = chat_count
+        user_data["recent_consultations"] = recent_consultations
         
         return jsonify({
             "success": True,
