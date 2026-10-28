@@ -8,50 +8,6 @@ const API_BASE = (window.location.origin && window.location.origin.startsWith('h
     ? window.location.origin 
     : 'http://127.0.0.1:5000';
 
-// Default consultations to ensure offline double-click runner always has complete history matching cloud
-const DEFAULT_CONSULTATIONS = [
-    {
-        history_id: "seed-101",
-        question: "I have heache",
-        model: "BioGPT",
-        timestamp: "2026-10-27T14:30:57.000Z",
-        member_name: "Member",
-        response: "**Condition / Clinical Assessment:** Tension Headache & Migraine / Cephalea (सिर दर्द एवं माइग्रेन)\n\nMedical Overview: Headache (cephalalgia) commonly presents as tension headache or migraine from muscle strain, mental tension, or dehydration."
-    },
-    {
-        history_id: "seed-102",
-        question: "i have headche",
-        model: "BioGPT",
-        timestamp: "2026-10-27T15:34:42.000Z",
-        member_name: "Member",
-        response: "**Condition / Clinical Assessment:** Tension Headache & Migraine / Cephalea (सिर दर्द एवं माइग्रेन)\n\nMedical Overview: Rest in a quiet dark room, stay well-hydrated, and practice gentle neck stretching."
-    },
-    {
-        history_id: "seed-103",
-        question: "I have a headache",
-        model: "BioGPT",
-        timestamp: "2026-10-27T15:35:14.000Z",
-        member_name: "Member",
-        response: "**Condition / Clinical Assessment:** Tension Headache & Migraine / Cephalea (सिर दर्द एवं माइग्रेन)\n\nKey Precautions: Avoid prolonged digital screen time and limit loud noise exposure."
-    },
-    {
-        history_id: "seed-104",
-        question: "weight gain",
-        model: "BioGPT",
-        timestamp: "2026-10-27T15:35:52.000Z",
-        member_name: "Member",
-        response: "**Condition / Clinical Assessment:** Hypothyroidism & Metabolic Weight Gain (हाइपोथायरायडिज्म / असामान्य वजन बढ़ना)\n\nMedical Overview: Unexplained weight gain is commonly linked with underactive thyroid function or metabolic slowing."
-    },
-    {
-        history_id: "seed-105",
-        question: "weight lose",
-        model: "BioGPT",
-        timestamp: "2026-10-27T15:36:10.000Z",
-        member_name: "Member",
-        response: "**Condition / Clinical Assessment:** Unexplained Weight Loss & Metabolic Evaluation (असामान्य वजन घटना / हाइपरथायरायडिज्म)\n\nMedical Overview: Unexplained weight loss warrants comprehensive evaluation for thyroid activity, fasting blood sugar, and gut absorption."
-    }
-];
-
 // Global State
 let isFirstMessage = true;
 let isLoggedIn = false;
@@ -74,15 +30,10 @@ function initPage() {
     localStorage.removeItem("selectedMemberName");
     localStorage.removeItem("selectedMemberId");
 
-    // Ensure default consultations exist in browser storage so history is never empty or showing only 1 search
+    // Clean out any legacy mock consultations from browser storage so only real chats remain
     try {
         let curLocal = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
-        DEFAULT_CONSULTATIONS.forEach(dc => {
-            const exists = curLocal.some(c => c.question && c.question.trim().toLowerCase() === dc.question.trim().toLowerCase());
-            if (!exists) {
-                curLocal.push(dc);
-            }
-        });
+        curLocal = curLocal.filter(c => c && c.history_id && !String(c.history_id).startsWith("seed-"));
         localStorage.setItem("niramaya_consultations", JSON.stringify(curLocal));
     } catch (_) {}
 
@@ -977,17 +928,8 @@ function loadHistory() {
     let localHistory = [];
     try {
         localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
+        localHistory = localHistory.filter(c => c && c.history_id && !String(c.history_id).startsWith("seed-"));
     } catch (_) {}
-
-    // Ensure default consultations are guaranteed in local history
-    if (typeof DEFAULT_CONSULTATIONS !== 'undefined') {
-        DEFAULT_CONSULTATIONS.forEach(dc => {
-            const exists = localHistory.some(c => c.question && c.question.trim().toLowerCase() === dc.question.trim().toLowerCase());
-            if (!exists) {
-                localHistory.push(dc);
-            }
-        });
-    }
 
     historyList.innerHTML = `
         <div style="text-align:center; padding:30px; color:#a1a1aa;">
@@ -996,7 +938,7 @@ function loadHistory() {
         </div>
     `;
 
-    // Query active account or fallback to default account 1 so local double-click runners show all consultations
+    // Query active account or fallback to default account 1 so real consultations load
     const effectiveAccountId = storedAccountId || "1";
     const reqBody = { account_id: effectiveAccountId };
 
@@ -1004,7 +946,8 @@ function loadHistory() {
         const combined = [...(serverHistory || [])];
         localHistory.forEach(lh => {
             const alreadyPresent = combined.some(sh => 
-                sh.question && lh.question && sh.question.trim().toLowerCase() === lh.question.trim().toLowerCase()
+                (sh.question && lh.question && sh.question.trim().toLowerCase() === lh.question.trim().toLowerCase()) ||
+                (sh.history_id && lh.history_id && String(sh.history_id) === String(lh.history_id))
             );
             if (!alreadyPresent) {
                 combined.unshift(lh);
@@ -1012,7 +955,13 @@ function loadHistory() {
         });
 
         if (combined.length === 0) {
-            renderHistoryCards(DEFAULT_CONSULTATIONS, true);
+            historyList.innerHTML = `
+                <div style="text-align:center; padding:35px; color:var(--secondary-text);">
+                    <i class="fas fa-comment-medical fa-2x" style="color:#6366f1; margin-bottom:12px;"></i>
+                    <p style="font-size:14px; font-weight:600; color:var(--text-color);">No consultation history found</p>
+                    <p style="font-size:12.5px; color:#888; margin-top:4px;">Type your symptoms or health questions in the chat box to begin!</p>
+                </div>
+            `;
         } else {
             renderHistoryCards(combined, !storedAccountId);
         }
@@ -1032,7 +981,7 @@ function loadHistory() {
         .then(data => {
             renderWithCombined(data.history || []);
         })
-        .catch(err => {
+        .catch(() => {
             // Tier 2: If on local file/runner, fetch from cloud Render endpoint
             if (API_BASE !== "https://niramaya-health-ai.onrender.com") {
                 fetch("https://niramaya-health-ai.onrender.com/getchat", {
@@ -1045,11 +994,11 @@ function loadHistory() {
                         renderWithCombined(cloudData.history || []);
                     })
                     .catch(() => {
-                        // Tier 3: Complete offline fallback with guaranteed history
-                        renderHistoryCards(localHistory, true);
+                        // Tier 3: Local session history only
+                        renderWithCombined([]);
                     });
             } else {
-                renderHistoryCards(localHistory, true);
+                renderWithCombined([]);
             }
         });
 }
