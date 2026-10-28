@@ -36,82 +36,37 @@ except Exception as e:
     print(f"Medical engine ML load notice: {e}")
 
 # ==============================================================================
-# Health Domain Guardrail (Detect Health vs Non-Health Queries)
+# Health Domain Guardrail (Dynamic Model Filter)
 # ==============================================================================
 
-HEALTH_TERMS = {
-    # Core symptoms
-    'pain', 'ache', 'hurts', 'fever', 'cough', 'cold', 'flu', 'sneeze', 'vomit', 'vomiting',
-    'nausea', 'diarrhea', 'constipation', 'dizzy', 'dizziness', 'fatigue', 'tired', 'tiredness',
-    'weakness', 'swelling', 'swollen', 'bleeding', 'blood', 'rash', 'itching', 'itchy',
-    'burn', 'burning', 'numbness', 'cramp', 'cramps', 'sore', 'breathing', 'breathless',
-    'shortness of breath', 'mucus', 'phlegm', 'discharge', 'chills', 'sweat', 'sweating',
-    'weight', 'appetite', 'sleep', 'insomnia', 'headache', 'migraine', 'acidity', 'gas',
-    'bloating', 'infection', 'virus', 'viral', 'bacterial', 'allergy', 'allergic',
-    'asthma', 'pneumonia', 'covid', 'malaria', 'dengue', 'typhoid', 'jaundice',
-    'diabetes', 'sugar', 'hypertension', 'blood pressure', 'bp', 'cholesterol', 'thyroid',
-    'anemia', 'cancer', 'tumor', 'ulcer', 'arthritis', 'stroke', 'depression', 'anxiety',
-    'stress', 'trauma', 'obesity', 'seizure', 'paralysis',
-
-    # Body parts & organs
-    'head', 'chest', 'heart', 'lung', 'lungs', 'throat', 'stomach', 'belly', 'abdomen',
-    'liver', 'kidney', 'kidneys', 'back', 'spine', 'bone', 'bones', 'joint', 'joints',
-    'muscle', 'muscles', 'skin', 'eye', 'eyes', 'ear', 'ears', 'nose', 'mouth', 'teeth',
-    'tooth', 'tongue', 'arm', 'leg', 'foot', 'feet', 'knee', 'knees', 'shoulder', 'neck',
-    'brain', 'nerve', 'nerves', 'vein', 'artery', 'urine', 'stool', 'bowel',
-
-    # Medical & Clinical words
-    'doctor', 'hospital', 'clinic', 'physician', 'nurse', 'medicine', 'medicines', 'pill',
-    'tablet', 'capsule', 'syrup', 'drug', 'drugs', 'dosage', 'treatment', 'cure',
-    'therapy', 'vaccine', 'vaccination', 'test', 'tests', 'scan', 'mri', 'ct scan',
-    'xray', 'x-ray', 'surgery', 'prescription', 'symptom', 'symptoms', 'diagnosis',
-    'disease', 'illness', 'sick', 'unwell', 'healthy', 'health', 'wellness', 'nutrition',
-    'diet', 'calorie', 'calories', 'protein', 'vitamin', 'vitamins', 'hydration', 'water',
-    'exercise', 'workout', 'fitness', 'immunity', 'pregnant', 'pregnancy', 'period',
-    'periods', 'menstrual', 'injury', 'wound', 'cut', 'bruise', 'fracture', 'sprain',
-
-    # Hindi / Hinglish medical terms
-    'dard', 'bukhar', 'khansi', 'sardi', 'jukaam', 'jukam', 'ulti', 'dast', 'pet', 'sir',
-    'sar', 'gala', 'gale', 'kamar', 'chakkar', 'kamzori', 'thakan', 'dawa', 'dawai',
-    'bimari', 'bimar', 'ilaj', 'ghutna', 'badan', 'seena', 'chhati', 'khoon',
-    'jalan', 'khujli', 'sujan', 'ghav', 'chot', 'vajan', 'motapa'
-}
-
-NON_HEALTH_NEGATIVE_KEYWORDS = {
-    'python', 'java', 'javascript', 'c++', 'html', 'css', 'programming', 'code',
-    'algorithm', 'compiler', 'database', 'sql', 'github', 'repository', 'function',
-    'prime minister', 'president of', 'election', 'politics', 'political', 'bjp',
-    'congress', 'parliament', 'minister', 'cricket', 'football', 'fifa', 'ipl',
-    'messi', 'ronaldo', 'match score', 'wicket', 'movie', 'actor', 'actress', 'cinema',
-    'film', 'bollywood', 'hollywood', 'trailer', 'song', 'crypto', 'bitcoin', 'stock market',
-    'share market', 'trading', 'mutual fund', 'sensex', 'nifty', 'joke', 'riddle',
-    'poem', 'story', 'capital of', 'population of', 'weather today', 'flight ticket',
-    'train ticket', 'hotel booking', 'who invented', 'who discovered', 'algebra', 'calculus'
-}
+# Obvious non-health domains to prevent non-medical queries
+OUT_OF_DOMAIN_PATTERNS = [
+    r'\b(python|javascript|java|c\+\+|html|css|programming|coding|algorithm|compiler|database|sql|github|function)\b',
+    r'\b(prime minister|president of|election|politics|parliament|bjp|congress)\b',
+    r'\b(cricket|football|fifa|ipl|wicket|match score|messi|ronaldo)\b',
+    r'\b(movie|cinema|actor|actress|bollywood|hollywood|trailer|song)\b',
+    r'\b(bitcoin|crypto|cryptocurrency|stock market|share market|trading|sensex|nifty)\b',
+    r'\b(capital of|weather today|flight ticket|train ticket)\b'
+]
 
 def is_health_related(query: str) -> bool:
     """
-    Returns True if the query is related to health, medical, wellness, or symptoms.
-    Returns False if it is out-of-scope (general knowledge, coding, politics, sports, entertainment, etc.).
+    Dynamically allows user queries to be answered by the AI/ML models.
+    Refuses only queries that explicitly fall into non-health domains (coding, politics, sports, etc.).
     """
-    if not query:
+    if not query or not query.strip():
         return False
     clean = query.lower().strip()
 
-    # Reject explicit non-health queries
-    for nh in NON_HEALTH_NEGATIVE_KEYWORDS:
-        if nh in clean:
-            # Check if there is also strong health context (e.g. "injury in cricket")
-            health_match = any(ht in clean for ht in ['pain', 'injury', 'hurt', 'fracture', 'doctor'])
-            if not health_match:
-                return False
+    # Reject non-medical domain queries unless health context is present
+    for pat in OUT_OF_DOMAIN_PATTERNS:
+        if re.search(pat, clean):
+            # If the user is asking about an injury or health issue related to sports/activities, allow it
+            if any(w in clean for w in ['pain', 'injury', 'hurt', 'fracture', 'doctor', 'hospital']):
+                return True
+            return False
 
-    # Check for health keywords
-    for ht in HEALTH_TERMS:
-        if ht in clean:
-            return True
-
-    return False
+    return True
 
 def get_non_health_refusal_message() -> str:
     """Standard message returned when a user asks a non-health related question."""

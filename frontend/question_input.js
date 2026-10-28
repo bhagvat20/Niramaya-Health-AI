@@ -672,8 +672,8 @@ async function handleLogin(e) {
             data = await res.json().catch(() => null);
         } catch (_) {}
 
-        // Fallback: If primary failed or invalid credentials, try Render cloud directly
-        if ((!res || !res.ok || !data || !data.success) && API_BASE !== CLOUD_API) {
+        // Fallback: If primary local server was completely unreachable, try Render cloud
+        if (!res && API_BASE !== CLOUD_API) {
             try {
                 const cloudRes = await fetch(CLOUD_API + "/userlogin", {
                     method: "POST",
