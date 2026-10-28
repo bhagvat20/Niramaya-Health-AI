@@ -10,7 +10,9 @@ from medical_engine import (
     get_lrv1_prediction,
     get_lrv2_prediction,
     extract_symptoms_from_text,
-    SYMPTOM_DISPLAY
+    SYMPTOM_DISPLAY,
+    is_health_related,
+    get_non_health_refusal_message
 )
 
 # Create a Blueprint for disease predictor routes
@@ -83,8 +85,11 @@ def generate_any_health_response(prompt):
     """
     Answers ANY medical question or symptom query dynamically.
     Combines live Gemini AI (if valid API key is configured) + Clinical Medical Engine.
-    Ensures identical, high-accuracy output across Render and Local environments.
+    Ensures strictly health-related questions are answered.
     """
+    if not is_health_related(prompt):
+        return get_non_health_refusal_message()
+
     # 1. Try Gemini Generative AI if key is configured and valid
     api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY).strip()
     if api_key and not api_key.startswith("AIzaSyCxcCXwbFRd") and len(api_key) > 20:
@@ -93,7 +98,7 @@ def generate_any_health_response(prompt):
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-1.5-flash')
             resp = model.generate_content(
-                f"You are Niramaya Health AI medical assistant. Provide a helpful, clear, empathetic medical response in structured markdown including condition overview, detected symptoms, causes, dietary recommendations, home care, precautions, and when to seek urgent emergency care for: {prompt}",
+                f"You are Niramaya Health AI medical assistant. You ONLY answer health, symptom, medical, and wellness questions. Provide a helpful, clear, empathetic medical response in structured markdown including condition overview, detected symptoms, causes, dietary recommendations, home care, precautions, and when to seek urgent emergency care for: {prompt}",
                 request_options={"timeout": 4.0}
             )
             if resp and resp.text:
@@ -119,7 +124,10 @@ def ask_biogpt():
     if greet:
         return jsonify({"question": question, "answer": greet['answer']}), 200
 
-    # Dynamic clinical medical answer for any query
+    if not is_health_related(question):
+        return jsonify({"question": question, "answer": get_non_health_refusal_message()}), 200
+
+    # Dynamic clinical medical answer for any random health query
     ans = generate_clinical_response(question)
     return jsonify({"question": question, "answer": ans}), 200
 
@@ -137,6 +145,9 @@ def ask_gemini():
     greet = check_greeting_response(question)
     if greet:
         return jsonify({"question": question, "answer": greet['answer']}), 200
+
+    if not is_health_related(question):
+        return jsonify({"question": question, "answer": get_non_health_refusal_message()}), 200
 
     answer = generate_any_health_response(question)
     return jsonify({"question": question, "answer": answer}), 200
@@ -157,6 +168,13 @@ def askLRv1():
     if greet:
         return jsonify(greet), 200
 
+    if not is_health_related(symptom_text):
+        return jsonify({
+            'predicted_disease': 'Non-Health Query',
+            'matched_symptoms': [],
+            'description': get_non_health_refusal_message()
+        }), 200
+
     prediction = get_lrv1_prediction(symptom_text)
     return jsonify(prediction), 200
 
@@ -176,6 +194,17 @@ def askLRv2():
     greet = check_greeting_response(symptom_text)
     if greet:
         return jsonify(greet), 200
+
+    if not is_health_related(symptom_text):
+        return jsonify({
+            'predicted_disease': 'Non-Health Query',
+            'matched_symptoms': [],
+            'description': get_non_health_refusal_message(),
+            'precautions': [
+                'Please ask questions strictly related to human health, symptoms, and medical wellness.',
+                'Consult a qualified medical practitioner for formal diagnosis.'
+            ]
+        }), 200
 
     prediction = get_lrv2_prediction(symptom_text)
     return jsonify(prediction), 200

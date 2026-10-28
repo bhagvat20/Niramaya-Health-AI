@@ -389,7 +389,33 @@ async function sendMessage() {
         if (!data) {
             // Offline clinical engine fallback guarantee: matches backend diagnostic engine exactly
             const cleanSym = userInput.trim();
-            if (model === "LRv1" || model === "LRv2") {
+            const healthKeywords = [
+                'pain', 'ache', 'fever', 'cough', 'cold', 'flu', 'sneeze', 'vomit', 'nausea', 'diarrhea',
+                'headache', 'dizzy', 'fatigue', 'tired', 'weakness', 'swelling', 'bleed', 'blood', 'rash',
+                'itching', 'burn', 'cramp', 'sore', 'breath', 'chills', 'sweat', 'weight', 'sleep', 'insomnia',
+                'acidity', 'gas', 'infection', 'virus', 'viral', 'allergy', 'asthma', 'diabetes', 'sugar',
+                'pressure', 'bp', 'doctor', 'hospital', 'medicine', 'pill', 'tablet', 'cure', 'treatment',
+                'symptom', 'disease', 'sick', 'health', 'diet', 'vitamin', 'injury', 'wound', 'heart', 'chest',
+                'dard', 'bukhar', 'khansi', 'sardi', 'jukam', 'ulti', 'dast', 'pet', 'sir', 'sar', 'gala',
+                'kamar', 'chakkar', 'kamzori', 'dawa', 'ilaj', 'bimari', 'badan', 'chhati', 'khoon'
+            ];
+            const isHealth = healthKeywords.some(k => cleanSym.toLowerCase().includes(k));
+
+            if (!isHealth) {
+                if (model === "LRv1" || model === "LRv2") {
+                    data = {
+                        predicted_disease: "Non-Health Query",
+                        matched_symptoms: [],
+                        description: "Niramaya AI only processes medical and health symptoms. Please enter specific health symptoms to predict conditions.",
+                        precautions: ["Please ask questions strictly related to human health, symptoms, and medical wellness."]
+                    };
+                } else {
+                    data = {
+                        question: userInput,
+                        answer: "**Medical Domain Restriction:**\nI am Niramaya AI Health Assistant. I am specialized exclusively in human health, medical conditions, symptoms, medications, nutrition, and wellness topics.\n\nI cannot answer questions outside the healthcare domain (such as general trivia, coding, politics, sports, or entertainment).\n\n**Please ask a health-related question** (e.g., about your symptoms, medical concerns, home care, diet, or precautions)."
+                    };
+                }
+            } else if (model === "LRv1" || model === "LRv2") {
                 data = {
                     predicted_disease: cleanSym.toLowerCase().includes("headache") ? "Tension Headache & Migraine (सिर दर्द)" : (cleanSym.toLowerCase().includes("fever") ? "Viral Fever & Pyrexia (वायरल बुखार)" : cleanSym + " (Symptom Assessment)"),
                     matched_symptoms: [cleanSym],
