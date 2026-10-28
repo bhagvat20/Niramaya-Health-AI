@@ -91,19 +91,15 @@ def generate_any_health_response(prompt):
         try:
             import google.generativeai as genai
             genai.configure(api_key=api_key)
-            models_to_try = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-pro']
-            for m in models_to_try:
-                try:
-                    model = genai.GenerativeModel(m)
-                    resp = model.generate_content(
-                        f"You are Niramaya Health AI medical assistant. Provide a helpful, clear, empathetic medical response in structured markdown including condition overview, detected symptoms, causes, dietary recommendations, home care, precautions, and when to seek urgent emergency care for: {prompt}"
-                    )
-                    if resp and resp.text:
-                        return resp.text
-                except Exception:
-                    continue
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            resp = model.generate_content(
+                f"You are Niramaya Health AI medical assistant. Provide a helpful, clear, empathetic medical response in structured markdown including condition overview, detected symptoms, causes, dietary recommendations, home care, precautions, and when to seek urgent emergency care for: {prompt}",
+                request_options={"timeout": 4.0}
+            )
+            if resp and resp.text:
+                return resp.text
         except Exception as e:
-            print(f"Gemini API note: {e}")
+            print(f"Gemini fast-fallback note: {e}")
 
     # 2. Clinical Medical Intelligence Engine (Deterministic, offline-capable, comprehensive)
     return generate_clinical_response(prompt)

@@ -4,9 +4,24 @@
  */
 
 // Auto-detect backend API URL (supports localhost, 127.0.0.1, or cloud domain like Render)
-const API_BASE = (window.location.origin && window.location.origin.startsWith('http')) 
+let API_BASE = (window.location.origin && window.location.origin.startsWith('http')) 
     ? window.location.origin 
     : 'http://127.0.0.1:5000';
+const CLOUD_API = 'https://niramaya-health-ai.onrender.com';
+
+// Fast fetch with timeout to prevent UI lag on network timeouts
+async function fastFetch(url, options = {}, timeoutMs = 2500) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timer);
+        return response;
+    } catch (err) {
+        clearTimeout(timer);
+        throw err;
+    }
+}
 
 // Global State
 let isFirstMessage = true;
@@ -24,12 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initPage() {
-    // Clear any stale legacy member name so no unwanted name ever shows on page load
-    sessionStorage.removeItem("activeMemberName");
-    sessionStorage.removeItem("activeMemberId");
-    localStorage.removeItem("selectedMemberName");
-    localStorage.removeItem("selectedMemberId");
-
     // Clean out any legacy mock consultations from browser storage so only real chats remain
     try {
         let curLocal = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
@@ -43,6 +52,13 @@ function initPage() {
     } else {
         isLoggedIn = false;
         guestQuestionCount = parseInt(localStorage.getItem("guestQuestionCount") || "0", 10);
+        // Clear any stored names only when guest / not logged in
+        sessionStorage.removeItem("activeMemberName");
+        sessionStorage.removeItem("activeMemberId");
+        localStorage.removeItem("selectedMemberName");
+        localStorage.removeItem("selectedMemberId");
+        localStorage.removeItem("familyName");
+        localStorage.removeItem("userEmail");
     }
 
     updateNavButtons();
@@ -338,13 +354,13 @@ async function sendMessage() {
         let response = null;
         let data = null;
 
-        // Try primary API
+        // Try primary API with fast 2500ms timeout
         try {
-            response = await fetch(endpoint, {
+            response = await fastFetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
-            });
+            }, 2500);
             data = await response.json().catch(() => null);
         } catch (_) {}
 
@@ -352,15 +368,16 @@ async function sendMessage() {
         if ((!response || !response.ok || !data) && !endpoint.includes("niramaya-health-ai.onrender.com")) {
             try {
                 const cloudPath = (model === "LRv1") ? "/asklrv1" : (model === "LRv2") ? "/asklrv2" : (model === "Gemini") ? "/askgemini" : "/askbiogpt";
-                const cloudRes = await fetch("https://niramaya-health-ai.onrender.com" + cloudPath, {
+                const cloudRes = await fastFetch(CLOUD_API + cloudPath, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
-                });
+                }, 4000);
                 const cloudData = await cloudRes.json().catch(() => null);
                 if (cloudRes.ok && cloudData) {
                     response = cloudRes;
                     data = cloudData;
+                    API_BASE = CLOUD_API;
                 }
             } catch (_) {}
         }
@@ -500,21 +517,55 @@ function updateNavButtons() {
     }
 }
 
+function getLoggedInDisplayName() {
+    if (!isLoggedIn) return "";
+
+    // 1. Explicitly selected member profile
+    const activeMember = sessionStorage.getItem("activeMemberName") || localStorage.getItem("selectedMemberName");
+    if (activeMember && activeMember.trim() && activeMember.trim().toLowerCase() !== "null") {
+        return activeMember.trim();
+    }
+
+    // 2. Family / registered user name
+    const familyName = localStorage.getItem("familyName");
+    if (familyName && familyName.trim() && familyName.trim().toLowerCase() !== "null") {
+        return familyName.trim();
+    }
+
+    // 3. User email prefix
+    const email = localStorage.getItem("userEmail");
+    if (email && email.trim()) {
+        const raw = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, ' ').trim();
+        if (raw) {
+            return raw.charAt(0).toUpperCase() + raw.slice(1);
+        }
+    }
+
+    return "User";
+}
+
 function updateGreeting() {
     const welcomeEl = document.getElementById("welcome-message");
-    const activeMember = sessionStorage.getItem("activeMemberName") || localStorage.getItem("selectedMemberName");
+    const subHeaderEl = document.querySelector(".sub-header");
 
-    // Only display greeting name if user is logged in AND a member was explicitly added or selected
-    if (isLoggedIn && activeMember && activeMember.trim() !== "") {
+    // Only display greeting name if user is logged in
+    if (isLoggedIn) {
+        const displayName = getLoggedInDisplayName();
         if (welcomeEl) {
             welcomeEl.style.display = "block";
-            welcomeEl.textContent = `Hello, ${activeMember.trim()}!`;
+            welcomeEl.textContent = `Hello, ${displayName}!`;
+        }
+        if (subHeaderEl) {
+            subHeaderEl.textContent = "What is your goal today? How can I help you?";
         }
     } else {
-        // If no user/member is added, stay completely simple without any name!
+        // Guest / Not logged in: completely simple without any name!
         if (welcomeEl) {
             welcomeEl.style.display = "none";
             welcomeEl.textContent = "";
+        }
+        if (subHeaderEl) {
+            subHeaderEl.textContent = "How can I help you today?";
         }
     }
 }
@@ -584,28 +635,29 @@ async function handleLogin(e) {
         let res = null;
         let data = null;
 
-        // Try primary API
+        // Try primary API with fast 2500ms timeout
         try {
-            res = await fetch(API_BASE + "/userlogin", {
+            res = await fastFetch(API_BASE + "/userlogin", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
-            });
+            }, 2500);
             data = await res.json().catch(() => null);
         } catch (_) {}
 
         // Fallback: If primary failed or invalid credentials, try Render cloud directly
-        if ((!res || !res.ok || !data || !data.success) && API_BASE !== "https://niramaya-health-ai.onrender.com") {
+        if ((!res || !res.ok || !data || !data.success) && API_BASE !== CLOUD_API) {
             try {
-                const cloudRes = await fetch("https://niramaya-health-ai.onrender.com/userlogin", {
+                const cloudRes = await fastFetch(CLOUD_API + "/userlogin", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email, password })
-                });
+                }, 4000);
                 const cloudData = await cloudRes.json().catch(() => null);
                 if (cloudRes.ok && cloudData && cloudData.success) {
                     res = cloudRes;
                     data = cloudData;
+                    API_BASE = CLOUD_API;
                 }
             } catch (_) {}
         }
@@ -613,22 +665,27 @@ async function handleLogin(e) {
         if (res && res.ok && data && data.success) {
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
-            localStorage.setItem("familyName", data.familyname || "");
-            sessionStorage.removeItem("activeMemberName");
-            sessionStorage.removeItem("activeMemberId");
-            localStorage.removeItem("selectedMemberId");
-            localStorage.removeItem("selectedMemberName");
+            const resolvedName = (data.familyname && data.familyname.trim()) 
+                ? data.familyname.trim() 
+                : (data.members && data.members.length > 0 && data.members[0].name ? data.members[0].name : (email ? email.split("@")[0] : "User"));
+            localStorage.setItem("familyName", resolvedName);
+            localStorage.setItem("selectedMemberName", resolvedName);
+            sessionStorage.setItem("activeMemberName", resolvedName);
+            if (data.members && data.members.length > 0) {
+                localStorage.setItem("selectedMemberId", data.members[0].member_id);
+                sessionStorage.setItem("activeMemberId", data.members[0].member_id);
+            }
             isLoggedIn = true;
 
             closeLoginModal();
             updateNavButtons();
             updateGreeting();
 
-            if (data.members && data.members.length > 0) {
+            if (data.members && data.members.length > 1) {
                 openMemberSelectionModal(data.members);
             }
         } else {
-            alert((data && data.message) || "Invalid login credentials. For demo, try: normaluser@example.com / UserPass123");
+            alert((data && data.message) || "Invalid email or password. Please try again.");
         }
     } catch (err) {
         alert("Server connection error during login. Ensure backend server is running.");
@@ -671,22 +728,20 @@ async function handleRegister(e) {
     const password = document.getElementById("register-password").value;
 
     try {
-        const res = await fetch(API_BASE + "/register", {
+        const res = await fastFetch(API_BASE + "/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ fname, email, password })
-        });
+        }, 3500);
         const data = await res.json();
 
         if (res.ok && data.success) {
-            alert("Registration successful! Please add a profile to start your consultation.");
+            alert("Registration successful! Welcome to Niramaya.");
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", fname);
-            sessionStorage.removeItem("activeMemberName");
-            sessionStorage.removeItem("activeMemberId");
-            localStorage.removeItem("selectedMemberId");
-            localStorage.removeItem("selectedMemberName");
+            localStorage.setItem("selectedMemberName", fname);
+            sessionStorage.setItem("activeMemberName", fname);
             isLoggedIn = true;
 
             closeRegisterModal();
@@ -1005,12 +1060,12 @@ function loadHistory() {
         }
     };
 
-    // Tier 1: Try local or active API_BASE
-    fetch(API_BASE + "/getchat", {
+    // Tier 1: Try local or active API_BASE with fastFetch
+    fastFetch(API_BASE + "/getchat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(reqBody)
-    })
+    }, 2000)
         .then(async res => {
             const data = await res.json().catch(() => null);
             if (!res.ok || !data || !data.success) throw new Error("Primary API fetch failed");
@@ -1021,18 +1076,17 @@ function loadHistory() {
         })
         .catch(() => {
             // Tier 2: If on local file/runner, fetch from cloud Render endpoint
-            if (API_BASE !== "https://niramaya-health-ai.onrender.com") {
-                fetch("https://niramaya-health-ai.onrender.com/getchat", {
+            if (API_BASE !== CLOUD_API) {
+                fastFetch(CLOUD_API + "/getchat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(reqBody)
-                })
+                }, 4000)
                     .then(r => r.json())
                     .then(cloudData => {
                         renderWithCombined(cloudData.history || []);
                     })
                     .catch(() => {
-                        // Tier 3: Local session history only
                         renderWithCombined([]);
                     });
             } else {
