@@ -4,23 +4,17 @@
  */
 
 // Auto-detect backend API URL (supports localhost, 127.0.0.1, or cloud domain like Render)
-let API_BASE = (window.location.origin && window.location.origin.startsWith('http')) 
-    ? window.location.origin 
-    : 'http://127.0.0.1:5000';
 const CLOUD_API = 'https://niramaya-health-ai.onrender.com';
+let API_BASE = (window.location.protocol.startsWith('http') && window.location.origin) 
+    ? window.location.origin 
+    : CLOUD_API;
 
-// Fast fetch with timeout to prevent UI lag on network timeouts
-async function fastFetch(url, options = {}, timeoutMs = 2500) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        const response = await fetch(url, { ...options, signal: controller.signal });
-        clearTimeout(timer);
-        return response;
-    } catch (err) {
-        clearTimeout(timer);
-        throw err;
-    }
+// If opening locally via file://, check if local python server on 5000 is running
+if (window.location.protocol === 'file:') {
+    API_BASE = CLOUD_API;
+    fetch('http://127.0.0.1:5000/system/status', { mode: 'no-cors' })
+        .then(() => { API_BASE = 'http://127.0.0.1:5000'; })
+        .catch(() => { API_BASE = CLOUD_API; });
 }
 
 // Global State
@@ -46,19 +40,26 @@ function initPage() {
         localStorage.setItem("niramaya_consultations", JSON.stringify(curLocal));
     } catch (_) {}
 
-    const storedAccountId = localStorage.getItem("accountId");
-    if (storedAccountId) {
+    // STRICT: Only consider user logged-in if explicitly authenticated in this session
+    // Never auto-login from old stale localStorage so guests never see a past user's name
+    const isSessionActive = sessionStorage.getItem("userLoggedIn") === "true" && sessionStorage.getItem("accountId");
+    if (isSessionActive) {
         isLoggedIn = true;
     } else {
         isLoggedIn = false;
         guestQuestionCount = parseInt(localStorage.getItem("guestQuestionCount") || "0", 10);
-        // Clear any stored names only when guest / not logged in
-        sessionStorage.removeItem("activeMemberName");
-        sessionStorage.removeItem("activeMemberId");
-        localStorage.removeItem("selectedMemberName");
-        localStorage.removeItem("selectedMemberId");
+        // Clean out any old/stale persistent data so guest view has NO user name
+        localStorage.removeItem("accountId");
         localStorage.removeItem("familyName");
         localStorage.removeItem("userEmail");
+        localStorage.removeItem("selectedMemberName");
+        localStorage.removeItem("selectedMemberId");
+        sessionStorage.removeItem("activeMemberName");
+        sessionStorage.removeItem("activeMemberId");
+        sessionStorage.removeItem("accountId");
+        sessionStorage.removeItem("userLoggedIn");
+        sessionStorage.removeItem("familyName");
+        sessionStorage.removeItem("userEmail");
     }
 
     updateNavButtons();
@@ -354,25 +355,25 @@ async function sendMessage() {
         let response = null;
         let data = null;
 
-        // Try primary API with fast 2500ms timeout
+        // Fast direct fetch to active API endpoint
         try {
-            response = await fastFetch(endpoint, {
+            response = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
-            }, 2500);
+            });
             data = await response.json().catch(() => null);
         } catch (_) {}
 
-        // Fallback: If local API failed or unreachable, try Render live cloud
+        // Fallback: If local API failed or unreachable, try Render live cloud directly
         if ((!response || !response.ok || !data) && !endpoint.includes("niramaya-health-ai.onrender.com")) {
             try {
                 const cloudPath = (model === "LRv1") ? "/asklrv1" : (model === "LRv2") ? "/asklrv2" : (model === "Gemini") ? "/askgemini" : "/askbiogpt";
-                const cloudRes = await fastFetch(CLOUD_API + cloudPath, {
+                const cloudRes = await fetch(CLOUD_API + cloudPath, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
-                }, 4000);
+                });
                 const cloudData = await cloudRes.json().catch(() => null);
                 if (cloudRes.ok && cloudData) {
                     response = cloudRes;
@@ -526,14 +527,14 @@ function getLoggedInDisplayName() {
         return activeMember.trim();
     }
 
-    // 2. Family / registered user name
-    const familyName = localStorage.getItem("familyName");
+    // 2. Family / registered user name from session or storage
+    const familyName = sessionStorage.getItem("familyName") || localStorage.getItem("familyName");
     if (familyName && familyName.trim() && familyName.trim().toLowerCase() !== "null") {
         return familyName.trim();
     }
 
     // 3. User email prefix
-    const email = localStorage.getItem("userEmail");
+    const email = sessionStorage.getItem("userEmail") || localStorage.getItem("userEmail");
     if (email && email.trim()) {
         const raw = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, ' ').trim();
         if (raw) {
@@ -635,24 +636,24 @@ async function handleLogin(e) {
         let res = null;
         let data = null;
 
-        // Try primary API with fast 2500ms timeout
+        // Try primary API
         try {
-            res = await fastFetch(API_BASE + "/userlogin", {
+            res = await fetch(API_BASE + "/userlogin", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
-            }, 2500);
+            });
             data = await res.json().catch(() => null);
         } catch (_) {}
 
         // Fallback: If primary failed or invalid credentials, try Render cloud directly
         if ((!res || !res.ok || !data || !data.success) && API_BASE !== CLOUD_API) {
             try {
-                const cloudRes = await fastFetch(CLOUD_API + "/userlogin", {
+                const cloudRes = await fetch(CLOUD_API + "/userlogin", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email, password })
-                }, 4000);
+                });
                 const cloudData = await cloudRes.json().catch(() => null);
                 if (cloudRes.ok && cloudData && cloudData.success) {
                     res = cloudRes;
@@ -663,17 +664,24 @@ async function handleLogin(e) {
         }
 
         if (res && res.ok && data && data.success) {
-            localStorage.setItem("accountId", data.account_id);
-            localStorage.setItem("userEmail", data.email || email);
             const resolvedName = (data.familyname && data.familyname.trim()) 
                 ? data.familyname.trim() 
                 : (data.members && data.members.length > 0 && data.members[0].name ? data.members[0].name : (email ? email.split("@")[0] : "User"));
+
+            sessionStorage.setItem("userLoggedIn", "true");
+            sessionStorage.setItem("accountId", data.account_id);
+            sessionStorage.setItem("familyName", resolvedName);
+            sessionStorage.setItem("userEmail", data.email || email);
+            sessionStorage.setItem("activeMemberName", resolvedName);
+
+            localStorage.setItem("accountId", data.account_id);
+            localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", resolvedName);
             localStorage.setItem("selectedMemberName", resolvedName);
-            sessionStorage.setItem("activeMemberName", resolvedName);
+
             if (data.members && data.members.length > 0) {
-                localStorage.setItem("selectedMemberId", data.members[0].member_id);
                 sessionStorage.setItem("activeMemberId", data.members[0].member_id);
+                localStorage.setItem("selectedMemberId", data.members[0].member_id);
             }
             isLoggedIn = true;
 
@@ -759,8 +767,7 @@ async function handleRegister(e) {
 
 // Logout
 function logout() {
-    sessionStorage.removeItem("activeMemberName");
-    sessionStorage.removeItem("activeMemberId");
+    sessionStorage.clear();
     localStorage.removeItem("accountId");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("familyName");
@@ -1060,12 +1067,12 @@ function loadHistory() {
         }
     };
 
-    // Tier 1: Try local or active API_BASE with fastFetch
-    fastFetch(API_BASE + "/getchat", {
+    // Tier 1: Try active API_BASE
+    fetch(API_BASE + "/getchat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(reqBody)
-    }, 2000)
+    })
         .then(async res => {
             const data = await res.json().catch(() => null);
             if (!res.ok || !data || !data.success) throw new Error("Primary API fetch failed");
@@ -1077,11 +1084,11 @@ function loadHistory() {
         .catch(() => {
             // Tier 2: If on local file/runner, fetch from cloud Render endpoint
             if (API_BASE !== CLOUD_API) {
-                fastFetch(CLOUD_API + "/getchat", {
+                fetch(CLOUD_API + "/getchat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(reqBody)
-                }, 4000)
+                })
                     .then(r => r.json())
                     .then(cloudData => {
                         renderWithCombined(cloudData.history || []);
