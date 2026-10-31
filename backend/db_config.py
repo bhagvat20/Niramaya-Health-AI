@@ -3,6 +3,16 @@ import re
 import sqlite3
 import psycopg2
 
+def _sqlite_split_part(string, delimiter, part):
+    if string is None:
+        return ""
+    parts = str(string).split(str(delimiter))
+    try:
+        idx = int(part) - 1
+        return parts[idx] if 0 <= idx < len(parts) else ""
+    except Exception:
+        return ""
+
 class SQLiteCursorWrapper:
     def __init__(self, cursor):
         self.cursor = cursor
@@ -11,7 +21,7 @@ class SQLiteCursorWrapper:
     def execute(self, sql, params=None):
         has_returning = bool(re.search(r'RETURNING\s+\w+', sql, re.IGNORECASE))
         clean_sql = re.sub(r'RETURNING\s+\w+', '', sql, flags=re.IGNORECASE)
-        clean_sql = clean_sql.replace('::text', '')
+        clean_sql = re.sub(r'::\w+', '', clean_sql)
         clean_sql = re.sub(r'\bILIKE\b', 'LIKE', clean_sql, flags=re.IGNORECASE)
         clean_sql = clean_sql.replace('%s', '?')
         if params is None:
@@ -85,6 +95,8 @@ def init_sqlite_db(db_path):
         return
 
     conn = sqlite3.connect(db_path)
+    conn.create_function("split_part", 3, _sqlite_split_part)
+    conn.create_function("SPLIT_PART", 3, _sqlite_split_part)
     cur = conn.cursor()
     cur.executescript("""
         CREATE TABLE IF NOT EXISTS account_tbl (
@@ -265,4 +277,6 @@ def get_db_connection(dbname="projectH"):
     sqlite_path = os.path.join(base_dir, "niramaya.db")
     init_sqlite_db(sqlite_path)
     sqlite_conn = sqlite3.connect(sqlite_path, check_same_thread=False)
+    sqlite_conn.create_function("split_part", 3, _sqlite_split_part)
+    sqlite_conn.create_function("SPLIT_PART", 3, _sqlite_split_part)
     return SQLiteConnWrapper(sqlite_conn)

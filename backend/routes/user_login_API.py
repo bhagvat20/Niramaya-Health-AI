@@ -28,20 +28,32 @@ def user_login():
         conn = connect_db()
         cursor = conn.cursor()
         
-        ident_lower = identifier.lower()
+        ident_lower = identifier.lower().strip()
+        ident_prefix = ident_lower.split('@')[0] if '@' in ident_lower else ident_lower
+        acc_id_val = int(identifier) if identifier.isdigit() else -1
 
-        # 1. Search account_tbl by email, family_name (username), email-prefix, or account_id
+        # 1. Search account_tbl by email, family_name (username), or account_id
         cursor.execute("""
             SELECT account_id, password_hash, family_name, is_active, email
             FROM account_tbl 
             WHERE LOWER(email) = %s 
                OR LOWER(family_name) = %s 
-               OR LOWER(SPLIT_PART(email, '@', 1)) = %s
-               OR account_id::text = %s
+               OR account_id = %s
             ORDER BY account_id ASC
             LIMIT 1
-        """, (ident_lower, ident_lower, ident_lower, identifier if identifier.isdigit() else '-1'))
+        """, (ident_lower, ident_lower, acc_id_val))
         account_row = cursor.fetchone()
+
+        # If not matched, try matching email username prefix (e.g. user typed 'aniket' instead of 'aniket@gmail.com')
+        if not account_row and '@' not in ident_lower:
+            cursor.execute("""
+                SELECT account_id, password_hash, family_name, is_active, email
+                FROM account_tbl 
+                WHERE LOWER(email) LIKE %s
+                ORDER BY account_id ASC
+                LIMIT 1
+            """, (ident_prefix + '@%',))
+            account_row = cursor.fetchone()
 
         # 2. If not matched, search member_tbl by member name
         if not account_row:
