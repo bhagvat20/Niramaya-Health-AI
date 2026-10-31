@@ -44,10 +44,11 @@ def wait_and_open_browser(url="http://127.0.0.1:5000", max_wait=20):
     """Waits until the server is actually responding before opening the browser."""
     print("[*] Waiting for server to initialize AI models & database...")
     start_time = time.time()
+    probe_url = url.rstrip('/') + '/api/status'
     while time.time() - start_time < max_wait:
         try:
-            with urllib.request.urlopen(url, timeout=1) as resp:
-                if resp.status in (200, 302):
+            with urllib.request.urlopen(probe_url, timeout=0.8) as resp:
+                if resp.status == 200:
                     print("\n" + "=" * 62)
                     print("  >>> SUCCESS: NIRAMAYA HEALTH AI IS LIVE AND READY! <<<")
                     print("=" * 62)

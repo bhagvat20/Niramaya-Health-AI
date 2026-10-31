@@ -6,7 +6,7 @@ BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
-from flask import Flask, send_from_directory, redirect
+from flask import Flask, send_from_directory, redirect, jsonify
 from flask_cors import CORS
 from routes.register_API import register_bp
 from routes.user_login_API import login_bp
@@ -25,6 +25,12 @@ CORS(app)  # Enable CORS for the entire app
 
 # Frontend directory (relative to backend/)
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend')
+
+@app.route('/api/status')
+@app.route('/health')
+@app.route('/system/status')
+def system_health_status():
+    return jsonify({"status": "healthy", "service": "Niramaya Health AI", "online": True}), 200
 
 @app.route('/')
 def index():

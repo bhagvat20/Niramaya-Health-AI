@@ -75,8 +75,15 @@ class SQLiteConnWrapper:
     def set_isolation_level(self, level):
         pass
 
+_sqlite_initialized = False
+_working_pg_pwd = None
+
 def init_sqlite_db(db_path):
-    """Initializes tables and seeds default data in SQLite if not present."""
+    """Initializes tables and seeds default data in SQLite once if not present."""
+    global _sqlite_initialized
+    if _sqlite_initialized and os.path.exists(db_path):
+        return
+
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     cur.executescript("""
@@ -192,20 +199,23 @@ def init_sqlite_db(db_path):
 
     conn.commit()
     conn.close()
+    _sqlite_initialized = True
 
 def get_db_connection(dbname="projectH"):
     """
-    Establishes database connection:
+    Establishes database connection with instant caching:
     1. DATABASE_URL (Render PostgreSQL or cloud DB)
-    2. Localhost PostgreSQL (user laptop)
-    3. SQLite Fallback (Render without database or machines without PostgreSQL)
+    2. Localhost PostgreSQL with cached working password
+    3. SQLite Fallback (one-time setup, zero-delay connections)
     """
+    global _working_pg_pwd
+
     database_url = os.environ.get("DATABASE_URL")
     if database_url:
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql://", 1)
         try:
-            return psycopg2.connect(database_url, connect_timeout=4)
+            return psycopg2.connect(database_url, connect_timeout=3)
         except Exception as e:
             print(f"[!] Warning: DATABASE_URL connection failed: {e}")
 
@@ -214,6 +224,21 @@ def get_db_connection(dbname="projectH"):
     port = os.environ.get("DB_PORT", "5432")
     user = os.environ.get("DB_USER", "postgres")
     env_password = os.environ.get("DB_PASSWORD")
+
+    # Fast path: try cached working password first if available
+    if _working_pg_pwd is not None:
+        try:
+            conn = psycopg2.connect(
+                dbname=dbname,
+                user=user,
+                password=_working_pg_pwd,
+                host=host,
+                port=port,
+                connect_timeout=1
+            )
+            return conn
+        except Exception:
+            _working_pg_pwd = None
 
     passwords_to_try = []
     if env_password:
@@ -228,8 +253,9 @@ def get_db_connection(dbname="projectH"):
                 password=pwd,
                 host=host,
                 port=port,
-                connect_timeout=2
+                connect_timeout=1
             )
+            _working_pg_pwd = pwd
             return conn
         except Exception:
             pass

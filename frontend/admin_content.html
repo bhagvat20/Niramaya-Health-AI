@@ -483,8 +483,12 @@
 
     async function apiFetch(endpoint, options = {}) {
       const url = `${API_BASE_URL}${endpoint}`;
+      const opts = { ...options };
+      if (!opts.signal && typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        opts.signal = AbortSignal.timeout(3000);
+      }
       try {
-        const res = await fetch(url, options);
+        const res = await fetch(url, opts);
         if (res.ok || res.status < 500) return res;
       } catch (_) {}
 
@@ -492,7 +496,7 @@
       if (API_BASE_URL !== CLOUD_API) {
         try {
           const cloudUrl = `${CLOUD_API}${endpoint}`;
-          const cloudRes = await fetch(cloudUrl, options);
+          const cloudRes = await fetch(cloudUrl, opts);
           if (cloudRes.ok || cloudRes.status < 500) {
             API_BASE_URL = CLOUD_API;
             return cloudRes;
@@ -500,7 +504,7 @@
         } catch (_) {}
       }
 
-      return await fetch(url, options);
+      return await fetch(url, opts);
     }
 
     function getAuthToken() {

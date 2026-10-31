@@ -4,17 +4,32 @@
  */
 
 // Auto-detect backend API URL (supports localhost, 127.0.0.1, or cloud domain like Render)
+const LOCAL_API = 'http://127.0.0.1:5000';
 const CLOUD_API = 'https://niramaya-health-ai.onrender.com';
 let API_BASE = (window.location.protocol.startsWith('http') && window.location.origin) 
     ? window.location.origin 
-    : CLOUD_API;
+    : LOCAL_API;
 
-// If opening locally via file://, check if local python server on 5000 is running
+// Helper: Fast fetch with automatic timeout to prevent hangs
+async function fastFetch(url, options = {}, timeoutMs = 2500) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+    }
+}
+
+// If opening locally via file://, probe local python server on 5000
 if (window.location.protocol === 'file:') {
-    API_BASE = CLOUD_API;
-    fetch('http://127.0.0.1:5000/system/status', { mode: 'no-cors' })
-        .then(() => { API_BASE = 'http://127.0.0.1:5000'; })
-        .catch(() => { API_BASE = CLOUD_API; });
+    API_BASE = LOCAL_API;
+    fastFetch(LOCAL_API + '/api/status', {}, 400)
+        .then(() => { API_BASE = LOCAL_API; })
+        .catch(() => {});
 }
 
 // Global State
@@ -355,25 +370,25 @@ async function sendMessage() {
         let response = null;
         let data = null;
 
-        // Fast direct fetch to active API endpoint
+        // Fast direct fetch to active API endpoint (timeout 2500ms)
         try {
-            response = await fetch(endpoint, {
+            response = await fastFetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
-            });
+            }, 2500);
             data = await response.json().catch(() => null);
         } catch (_) {}
 
-        // Fallback: If local API failed or unreachable, try Render live cloud directly
+        // Fallback: If local API failed or unreachable, try Render live cloud directly with 2500ms timeout
         if ((!response || !response.ok || !data) && !endpoint.includes("niramaya-health-ai.onrender.com")) {
             try {
                 const cloudPath = (model === "LRv1") ? "/asklrv1" : (model === "LRv2") ? "/asklrv2" : (model === "Gemini") ? "/askgemini" : "/askbiogpt";
-                const cloudRes = await fetch(CLOUD_API + cloudPath, {
+                const cloudRes = await fastFetch(CLOUD_API + cloudPath, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
-                });
+                }, 2500);
                 const cloudData = await cloudRes.json().catch(() => null);
                 if (cloudRes.ok && cloudData) {
                     response = cloudRes;
@@ -389,49 +404,78 @@ async function sendMessage() {
         if (!data) {
             // Offline clinical engine fallback guarantee: matches backend diagnostic engine exactly
             const cleanSym = userInput.trim();
-            const healthKeywords = [
-                'pain', 'ache', 'fever', 'cough', 'cold', 'flu', 'sneeze', 'vomit', 'nausea', 'diarrhea',
-                'headache', 'dizzy', 'fatigue', 'tired', 'weakness', 'swelling', 'bleed', 'blood', 'rash',
-                'itching', 'burn', 'cramp', 'sore', 'breath', 'chills', 'sweat', 'weight', 'sleep', 'insomnia',
-                'acidity', 'gas', 'infection', 'virus', 'viral', 'allergy', 'asthma', 'diabetes', 'sugar',
-                'pressure', 'bp', 'doctor', 'hospital', 'medicine', 'pill', 'tablet', 'cure', 'treatment',
-                'symptom', 'disease', 'sick', 'health', 'diet', 'vitamin', 'injury', 'wound', 'heart', 'chest',
-                'dard', 'bukhar', 'khansi', 'sardi', 'jukam', 'ulti', 'dast', 'pet', 'sir', 'sar', 'gala',
-                'kamar', 'chakkar', 'kamzori', 'dawa', 'ilaj', 'bimari', 'badan', 'chhati', 'khoon'
-            ];
-            const isHealth = healthKeywords.some(k => cleanSym.toLowerCase().includes(k));
+            const cleanLower = cleanSym.toLowerCase().replace(/[?!.]/g, '').trim();
 
-            if (!isHealth) {
+            // 1. Check greetings
+            const greetings = ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good afternoon', 'good evening', 'help', 'who are you', 'test'];
+            const isGreeting = greetings.includes(cleanLower) || greetings.some(g => cleanLower.startsWith(g + ' '));
+
+            if (isGreeting) {
                 if (model === "LRv1" || model === "LRv2") {
                     data = {
-                        predicted_disease: "Non-Health Query",
+                        predicted_disease: "Niramaya AI Health Assistant",
                         matched_symptoms: [],
-                        description: "Niramaya AI only processes medical and health symptoms. Please enter specific health symptoms to predict conditions.",
-                        precautions: ["Please ask questions strictly related to human health, symptoms, and medical wellness."]
+                        description: "Hello! I am your Niramaya AI Health Assistant. I am specialized strictly in symptom checking, health assessment, and clinical precautions. Please enter any health symptoms you are experiencing (e.g., fever, headache, cough, stomach pain, dizziness) to receive clinical insights.",
+                        precautions: [
+                            "List your specific symptoms in detail",
+                            "Track symptom onset and severity",
+                            "Stay well-hydrated with clean water and rest",
+                            "Seek immediate medical care for severe symptoms"
+                        ]
                     };
                 } else {
                     data = {
                         question: userInput,
-                        answer: "**Medical Domain Restriction:**\nI am Niramaya AI Health Assistant. I am specialized exclusively in human health, medical conditions, symptoms, medications, nutrition, and wellness topics.\n\nI cannot answer questions outside the healthcare domain (such as general trivia, coding, politics, sports, or entertainment).\n\n**Please ask a health-related question** (e.g., about your symptoms, medical concerns, home care, diet, or precautions)."
+                        answer: "Hello! I am your Niramaya AI Health Assistant. I am specialized strictly in symptom checking and health assessment. Please describe any symptoms you are experiencing (e.g., fever, headache, cough, stomach pain, rash) to receive instant clinical guidance."
                     };
                 }
-            } else if (model === "LRv1" || model === "LRv2") {
-                data = {
-                    predicted_disease: cleanSym.toLowerCase().includes("headache") ? "Tension Headache & Migraine (सिर दर्द)" : (cleanSym.toLowerCase().includes("fever") ? "Viral Fever & Pyrexia (वायरल बुखार)" : cleanSym + " (Symptom Assessment)"),
-                    matched_symptoms: [cleanSym],
-                    description: `Clinical assessment for '${cleanSym}': Settle in a quiet environment, ensure adequate hydration, rest, and monitor symptom duration.`,
-                    precautions: [
-                        "Stay well-hydrated with clean water and herbal broths",
-                        "Ensure 7 to 8 hours of uninterrupted rest",
-                        "Avoid unprescribed frequent pain medications",
-                        "Seek immediate medical attention if symptoms escalate"
-                    ]
-                };
             } else {
-                data = {
-                    question: userInput,
-                    answer: `**Medical Overview for '${userInput}':**\n- **Clinical Assessment:** Common symptoms commonly respond well to adequate hydration, rest, and monitoring.\n- **Self-Care & Nutrition:** Drink plenty of warm water, eat fresh light meals, and avoid physical strain.\n- **When to See a Doctor:** If symptoms persist beyond 48 hours, worsen rapidly, or involve high fever, consult a certified physician immediately.\n\n*(Disclaimer: Niramaya provides AI-guided informational insights and does not replace professional medical diagnosis.)*`
-                };
+                // 2. Strict symptom & health domain check
+                const healthKeywords = [
+                    'pain', 'ache', 'fever', 'cough', 'cold', 'flu', 'sneeze', 'vomit', 'nausea', 'diarrhea',
+                    'headache', 'dizzy', 'dizziness', 'fatigue', 'tired', 'weakness', 'swelling', 'bleed', 'blood', 'rash',
+                    'itching', 'burn', 'cramp', 'sore', 'breath', 'chills', 'sweat', 'weight', 'sleep', 'insomnia',
+                    'acidity', 'gas', 'infection', 'virus', 'viral', 'allergy', 'asthma', 'diabetes', 'sugar',
+                    'pressure', 'bp', 'doctor', 'hospital', 'medicine', 'pill', 'tablet', 'cure', 'treatment',
+                    'symptom', 'disease', 'sick', 'health', 'diet', 'vitamin', 'injury', 'wound', 'heart', 'chest',
+                    'joint', 'knee', 'back', 'neck', 'stomach', 'throat', 'eye', 'ear', 'tooth',
+                    'dard', 'bukhar', 'khansi', 'sardi', 'jukam', 'ulti', 'dast', 'pet', 'sir', 'sar', 'gala',
+                    'kamar', 'chakkar', 'kamzori', 'dawa', 'ilaj', 'bimari', 'badan', 'chhati', 'khoon', 'sujan', 'khujli'
+                ];
+                const isHealth = healthKeywords.some(k => cleanLower.includes(k));
+
+                if (!isHealth) {
+                    if (model === "LRv1" || model === "LRv2") {
+                        data = {
+                            predicted_disease: "Non-Health Query",
+                            matched_symptoms: [],
+                            description: "⚠️ Medical Domain Restriction: Niramaya AI only processes medical and health symptoms. Please enter specific health symptoms (e.g. fever, headache, stomach ache, body pain) to predict conditions.",
+                            precautions: ["Please ask questions strictly related to human health, symptoms, and medical wellness."]
+                        };
+                    } else {
+                        data = {
+                            question: userInput,
+                            answer: "⚠️ **Medical & Symptom Checker Domain Restriction:**\n\nI am your **Niramaya AI Health Assistant**. I am specialized **exclusively in health symptoms, medical conditions, and clinical precautions**.\n\nI do not answer questions outside the healthcare domain (such as general knowledge, coding, politics, sports, recipes, or entertainment).\n\n👉 **Please describe your health symptoms** (e.g., *fever, headache, cough, body pain, dizziness, stomach ache, rash*) to receive clinical assessment, home care, and precautions."
+                        };
+                    }
+                } else if (model === "LRv1" || model === "LRv2") {
+                    data = {
+                        predicted_disease: cleanLower.includes("headache") ? "Tension Headache & Migraine (सिर दर्द)" : (cleanLower.includes("fever") ? "Viral Fever & Pyrexia (वायरल बुखार)" : cleanSym + " (Symptom Assessment)"),
+                        matched_symptoms: [cleanSym],
+                        description: `Clinical assessment for '${cleanSym}': Settle in a quiet environment, ensure adequate hydration, rest, and monitor symptom duration.`,
+                        precautions: [
+                            "Stay well-hydrated with clean water and herbal broths",
+                            "Ensure 7 to 8 hours of uninterrupted rest",
+                            "Avoid unprescribed frequent pain medications",
+                            "Seek immediate medical attention if symptoms escalate"
+                        ]
+                    };
+                } else {
+                    data = {
+                        question: userInput,
+                        answer: `**Medical Overview for '${userInput}':**\n- **Clinical Assessment:** Common symptoms commonly respond well to adequate hydration, rest, and monitoring.\n- **Self-Care & Nutrition:** Drink plenty of warm water, eat fresh light meals, and avoid physical strain.\n- **When to See a Doctor:** If symptoms persist beyond 48 hours, worsen rapidly, or involve high fever, consult a certified physician immediately.\n\n*(Disclaimer: Niramaya provides AI-guided informational insights and does not replace professional medical diagnosis.)*`
+                    };
+                }
             }
         }
 

@@ -70,22 +70,22 @@ def check_greeting_response(text):
         return {
             'predicted_disease': 'Niramaya AI Health Assistant',
             'matched_symptoms': [],
-            'description': 'Hello! I am your Niramaya AI Health Assistant. Please describe any symptoms you are experiencing (e.g., fever, headache, cough, body pain, loose motions) or ask any health question to receive clinical insights, home care, and precautions.',
+            'description': 'Hello! I am your Niramaya AI Health Assistant. I am specialized strictly in symptom checking, health assessment, and clinical precautions. Please enter any health symptoms you are currently experiencing (e.g., fever, headache, cough, stomach pain, dizziness, weakness) to receive clinical insights.',
             'precautions': [
-                'List all specific symptoms you are experiencing in detail',
-                'Track symptom onset, severity, and duration',
+                'Enter specific symptoms you are experiencing in detail',
+                'Track symptom onset, intensity, and duration',
                 'Stay well-hydrated with clean water and ensure adequate rest',
                 'Seek prompt medical consultation for severe or persistent conditions'
             ],
-            'answer': 'Hello! I am your Niramaya AI Health Assistant. Please describe any symptoms you are experiencing (e.g., fever, headache, cough, stomach pain, rash) or ask any medical question to receive instant AI guidance.'
+            'answer': 'Hello! I am your Niramaya AI Health Assistant. I am specialized strictly in symptom checking and health assessment. Please describe any symptoms you are experiencing (e.g., fever, headache, cough, stomach pain, rash) to receive instant clinical guidance.'
         }
     return None
 
 def generate_any_health_response(prompt):
     """
-    Answers ANY medical question or symptom query dynamically.
+    Answers medical questions and symptom queries dynamically.
+    Enforces strict symptom & medical domain restriction.
     Combines live Gemini AI (if valid API key is configured) + Clinical Medical Engine.
-    Ensures strictly health-related questions are answered.
     """
     if not is_health_related(prompt):
         return get_non_health_refusal_message()
@@ -99,7 +99,7 @@ def generate_any_health_response(prompt):
             model = genai.GenerativeModel('gemini-1.5-flash')
             resp = model.generate_content(
                 f"You are Niramaya Health AI medical assistant. You ONLY answer health, symptom, medical, and wellness questions. Provide a helpful, clear, empathetic medical response in structured markdown including condition overview, detected symptoms, causes, dietary recommendations, home care, precautions, and when to seek urgent emergency care for: {prompt}",
-                request_options={"timeout": 4.0}
+                request_options={"timeout": 2.0}
             )
             if resp and resp.text:
                 return resp.text

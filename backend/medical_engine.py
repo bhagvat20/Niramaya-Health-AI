@@ -41,40 +41,114 @@ except Exception as e:
 
 # Obvious non-health domains to prevent non-medical queries
 OUT_OF_DOMAIN_PATTERNS = [
-    r'\b(python|javascript|java|c\+\+|html|css|programming|coding|algorithm|compiler|database|sql|github|function)\b',
-    r'\b(prime minister|president of|election|politics|parliament|bjp|congress)\b',
-    r'\b(cricket|football|fifa|ipl|wicket|match score|messi|ronaldo)\b',
-    r'\b(movie|cinema|actor|actress|bollywood|hollywood|trailer|song)\b',
-    r'\b(bitcoin|crypto|cryptocurrency|stock market|share market|trading|sensex|nifty)\b',
-    r'\b(capital of|weather today|flight ticket|train ticket)\b'
+    r'\b(python|javascript|java|c\+\+|html|css|programming|coding|algorithm|compiler|database|sql|github|function|developer|debug|syntax|script|api key|software)\b',
+    r'\b(prime minister|president of|election|politics|parliament|bjp|congress|politician|government policy|democracy|minister)\b',
+    r'\b(cricket|football|fifa|ipl|wicket|match score|messi|ronaldo|ipl score|champions trophy|batting|bowling|tennis|badminton|olympics)\b',
+    r'\b(movie|cinema|actor|actress|bollywood|hollywood|trailer|song|music|lyrics|director|film|album|singer)\b',
+    r'\b(bitcoin|crypto|cryptocurrency|stock market|share market|trading|sensex|nifty|mutual fund|forex|bank account|rupee rate)\b',
+    r'\b(capital of|weather today|flight ticket|train ticket|hotel booking|railway|irctc|geography of|tallest mountain|river)\b',
+    r'\b(tell me a joke|write a poem|write a story|sing a song|solve math|calculate|essay on|riddle|funny story)\b',
+    r'\b(how to cook|recipe for|bake a cake|car repair|bike repair|engine|mechanic|iphone|android phone|laptop)\b'
 ]
+
+# Comprehensive vocabulary of human health symptoms, medical conditions, and clinical queries
+HEALTH_SYMPTOM_TERMS = {
+    # Physical symptoms
+    'fever', 'pyrexia', 'temperature', 'chills', 'shivering', 'sweat', 'sweating', 'night sweats',
+    'headache', 'migraine', 'head ache', 'head pain', 'cephalalgia',
+    'cough', 'coughing', 'phlegm', 'sputum', 'mucus', 'wheez', 'bronchitis', 'bronchial',
+    'cold', 'flu', 'influenza', 'sneeze', 'sneezing', 'congestion', 'runny nose', 'blocked nose', 'sinus', 'sinusitis',
+    'throat', 'sore throat', 'tonsil', 'tonsillitis', 'pharyngitis', 'laryngitis',
+    'pain', 'ache', 'hurts', 'hurting', 'sore', 'cramp', 'cramps', 'tender', 'tenderness', 'stiff', 'stiffness',
+    'vomit', 'vomiting', 'nausea', 'queasy', 'diarrhea', 'diarrhoea', 'loose motion', 'motions', 'dysentery',
+    'stomach', 'abdomen', 'abdominal', 'belly', 'gastric', 'gastritis', 'acidity', 'gas', 'bloat', 'bloating',
+    'indigestion', 'heartburn', 'gerd', 'reflux', 'constipation', 'constipated', 'bowel', 'stool',
+    'chest', 'chest pain', 'angina', 'heart', 'palpitation', 'palpitations', 'tachycardia', 'bradycardia',
+    'breath', 'breathing', 'breathless', 'breathlessness', 'shortness of breath', 'dyspnea', 'suffocation', 'asthma',
+    'dizzy', 'dizziness', 'vertigo', 'lightheaded', 'faint', 'fainting', 'syncope', 'blackout',
+    'fatigue', 'tired', 'tiredness', 'weak', 'weakness', 'lethargy', 'lethargic', 'exhaustion', 'malaise',
+    'rash', 'skin rash', 'itch', 'itching', 'pruritus', 'allergy', 'allergic', 'hives', 'urticaria',
+    'swell', 'swelling', 'swollen', 'edema', 'oedema', 'inflammation', 'inflamed', 'puffy',
+    'bleed', 'bleeding', 'blood', 'hemorrhage', 'bruise', 'bruising', 'hematoma',
+    'burn', 'burning', 'burning sensation', 'ulcer', 'ulcers', 'wound', 'injury', 'cut', 'pus', 'boil', 'blister',
+    'numb', 'numbness', 'tingling', 'paralysis', 'tremor', 'tremors', 'seizure', 'convulsion',
+    'insomnia', 'sleepless', 'anxiety', 'anxious', 'depression', 'depressed', 'panic attack', 'stress',
+    'appetite', 'loss of appetite', 'weight loss', 'weight gain', 'dehydration', 'dehydrated', 'thirst',
+    'urine', 'urinary', 'micturition', 'bladder', 'kidney', 'kidney stone', 'uti',
+    'joint', 'joints', 'knee', 'hip', 'shoulder', 'elbow', 'wrist', 'ankle', 'arthritis', 'osteoarthritis',
+    'back', 'backache', 'back pain', 'spine', 'spinal', 'neck', 'neck pain', 'muscle', 'muscles', 'myalgia',
+    'vision', 'blur', 'blurred', 'eye', 'eyes', 'red eye', 'conjunctivitis',
+    'ear', 'earache', 'ear pain', 'hearing', 'tinnitus',
+    'mouth', 'tongue', 'tooth', 'toothache', 'gum', 'gums', 'dental',
+    'infection', 'infectious', 'viral', 'virus', 'bacterial', 'bacteria', 'fungal', 'fungus',
+    'disease', 'illness', 'sickness', 'syndrome', 'disorder', 'condition',
+    'dengue', 'malaria', 'typhoid', 'cholera', 'jaundice', 'hepatitis', 'tuberculosis', 'tb', 'pneumonia',
+    'diabetes', 'diabetic', 'sugar level', 'blood pressure', 'bp', 'hypertension', 'hypotension',
+    'anemia', 'anaemic', 'platelet', 'platelets', 'thyroid', 'cholesterol', 'stroke', 'tumor', 'cancer',
+    'medicine', 'medication', 'drug', 'pill', 'tablet', 'capsule', 'syrup', 'dosage', 'prescription',
+    'doctor', 'physician', 'specialist', 'hospital', 'clinic', 'treatment', 'therapy', 'cure', 'remedy',
+    'precaution', 'precautions', 'diagnosis', 'prognosis', 'patient', 'health', 'medical', 'wellness',
+
+    # Hindi / Hinglish symptom terms
+    'bukhar', 'bukhaar', 'sir dard', 'sar dard', 'dard', 'peeda', 'peedha',
+    'khansi', 'khaansi', 'sardi', 'jukam', 'jukaam', 'zukaam', 'nazla',
+    'ulti', 'ultiyan', 'ubkai', 'dast', 'pet dard', 'pet kharab', 'pet me dard',
+    'chhati dard', 'chhati me dard', 'seene me dard', 'jalan', 'pet me jalan',
+    'chakkar', 'chakkar aana', 'kamzori', 'kamzori lag rahi', 'thakan', 'thakawaat',
+    'sujan', 'soojan', 'khujli', 'khujli hona', 'daane', 'lal daane', 'foda', 'funsi',
+    'khoon', 'khoon aana', 'saans fulna', 'saans lene me dikkat', 'saans me taklif',
+    'gala dard', 'gale me dard', 'gale me kharash', 'khich khich',
+    'badan dard', 'body dard', 'kamar dard', 'peeth dard', 'jism dard',
+    'guthno me dard', 'ghutna dard', 'jod dard', 'jodon ka dard',
+    'dawa', 'dawae', 'dawai', 'ilaj', 'ilaaj', 'bimari', 'bimaar', 'tabiyat',
+    'upchar', 'gharelu nuskhe', 'perhez', 'savdhani'
+}
 
 def is_health_related(query: str) -> bool:
     """
-    Dynamically allows user queries to be answered by the AI/ML models.
-    Refuses only queries that explicitly fall into non-health domains (coding, politics, sports, etc.).
+    Strict Symptom & Medical Domain Guardrail:
+    - ONLY allows queries describing health symptoms, medical conditions, or care.
+    - STRICTLY refuses all general questions (coding, politics, trivia, entertainment, etc.).
     """
     if not query or not query.strip():
         return False
     clean = query.lower().strip()
 
-    # Reject non-medical domain queries unless health context is present
+    # 1. Reject explicit non-medical domain queries
     for pat in OUT_OF_DOMAIN_PATTERNS:
         if re.search(pat, clean):
-            # If the user is asking about an injury or health issue related to sports/activities, allow it
-            if any(w in clean for w in ['pain', 'injury', 'hurt', 'fracture', 'doctor', 'hospital']):
+            # Allow only if physical injury or clinical emergency context is present
+            if any(w in clean for w in ['pain', 'injury', 'hurt', 'fracture', 'doctor', 'hospital', 'bleeding']):
                 return True
             return False
 
-    return True
+    # 2. Match against trained symptom features
+    if len(symptom_features) > 0:
+        for f in symptom_features:
+            f_clean = str(f).lower().replace('_', ' ').strip()
+            if f_clean and f_clean in clean:
+                return True
+
+    # 3. Match against symptom & health vocabulary
+    words = re.findall(r'[a-zA-Z]+', clean)
+    for term in HEALTH_SYMPTOM_TERMS:
+        if ' ' in term:
+            if term in clean:
+                return True
+        else:
+            if term in words or any(w.startswith(term) for w in words):
+                return True
+
+    # 4. If none matched, it is a general question -> strictly refuse!
+    return False
 
 def get_non_health_refusal_message() -> str:
-    """Standard message returned when a user asks a non-health related question."""
+    """Standard message returned when a user asks a general non-symptom question."""
     return (
-        "**Medical Domain Restriction:**\n"
-        "I am Niramaya AI Health Assistant. I am specialized exclusively in human health, medical conditions, symptoms, medications, nutrition, and wellness topics.\n\n"
-        "I cannot answer questions outside the healthcare domain (such as general trivia, coding, politics, sports, or entertainment).\n\n"
-        "**Please ask a health-related question** (e.g., about your symptoms, medical concerns, home care, diet, or precautions)."
+        "⚠️ **Medical & Symptom Checker Domain Restriction:**\n\n"
+        "I am your **Niramaya AI Health Assistant**. I am specialized **exclusively in health symptoms, medical conditions, and clinical precautions**.\n\n"
+        "I do not answer questions outside the healthcare domain (such as general knowledge, coding, politics, sports, recipes, or entertainment).\n\n"
+        "👉 **Please describe your health symptoms** (e.g., *fever, headache, cough, body pain, dizziness, stomach ache, rash*) to receive clinical assessment, home care, and precautions."
     )
 
 # ==============================================================================
@@ -196,7 +270,8 @@ def get_lrv1_prediction(query_text: str) -> dict:
                 if f_clean in clean.lower():
                     vec[i] = 1
             if sum(vec) > 0:
-                pred_disease = str(lr_model.predict([vec])[0])
+                X_df = pd.DataFrame([vec], columns=list(symptom_features))
+                pred_disease = str(lr_model.predict(X_df)[0])
         except Exception:
             pass
 

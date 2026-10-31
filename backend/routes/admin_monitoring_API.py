@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from db_config import get_db_connection
 from routes.admin_auth_API import admin_required
 
@@ -192,7 +192,7 @@ def get_system_status():
             "system_status": {
                 "database_connected": True,
                 "database_name": "projectH",
-                "server_time": datetime.utcnow().isoformat() + "Z",
+                "server_time": datetime.now(timezone.utc).isoformat(),
                 "table_counts": table_counts,
                 "ai_engine_configured": True,
                 "gemini_api_key_present": has_gemini_key

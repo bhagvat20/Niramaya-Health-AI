@@ -32,7 +32,12 @@ async function fetchResearchPapers() {
     ];
 
     try {
-        const response = await fetch("https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=health%20AI%20wellness&resultType=lite&format=json&pageSize=20");
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 1500);
+        const response = await fetch("https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=health%20AI%20wellness&resultType=lite&format=json&pageSize=20", {
+            signal: controller.signal
+        });
+        clearTimeout(tid);
         const data = await response.json();
         let papers = data.resultList.result;
 

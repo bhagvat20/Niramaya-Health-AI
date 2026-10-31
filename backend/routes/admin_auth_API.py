@@ -3,7 +3,7 @@ from flask_cors import CORS
 import psycopg2
 import bcrypt
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from db_config import get_db_connection
 
@@ -17,7 +17,7 @@ def generate_admin_token(admin_id, duration_hours=24):
     and returns (token_string, expires_at_datetime).
     """
     token = secrets.token_hex(32)
-    expires_at = datetime.utcnow() + timedelta(hours=duration_hours)
+    expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=duration_hours)
     
     conn = None
     cursor = None
@@ -75,16 +75,15 @@ def verify_admin_token_db(token_str):
                         exp_dt = datetime.fromisoformat(clean_str)
                     else:
                         exp_dt = datetime.strptime(clean_str[:19], '%Y-%m-%d %H:%M:%S')
-                    is_expired = exp_dt < datetime.utcnow()
+                    is_expired = exp_dt < datetime.now(timezone.utc).replace(tzinfo=None)
                 except Exception as _e:
                     print(f"Token date parse warning: {_e}")
                     is_expired = False
             elif isinstance(expires_at, datetime):
                 if hasattr(expires_at, 'tzinfo') and expires_at.tzinfo is not None:
-                    from datetime import timezone
                     is_expired = expires_at < datetime.now(timezone.utc)
                 else:
-                    is_expired = expires_at < datetime.utcnow()
+                    is_expired = expires_at < datetime.now(timezone.utc).replace(tzinfo=None)
 
         if is_expired:
             # Clean up expired token
