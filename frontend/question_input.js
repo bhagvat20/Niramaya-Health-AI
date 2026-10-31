@@ -461,21 +461,71 @@ async function sendMessage() {
                         };
                     }
                 } else if (model === "LRv1" || model === "LRv2") {
+                    let predDis = cleanSym + " (Symptom Assessment)";
+                    let precs = [
+                        "Stay well-hydrated with clean water and herbal broths",
+                        "Ensure 7 to 8 hours of uninterrupted physical rest",
+                        "Avoid unprescribed frequent pain medications",
+                        "Seek immediate medical attention if symptoms escalate"
+                    ];
+                    if (cleanLower.includes("throat") || cleanLower.includes("gala")) {
+                        predDis = "Acute Pharyngitis & Throat Irritation (गले में खराश)";
+                        precs = ["Warm saline water gargles 3-4 times daily", "Sip warm ginger-honey water", "Avoid refrigerated cold beverages", "Consult a doctor if swallowing is difficult"];
+                    } else if (cleanLower.includes("digest") || cleanLower.includes("stomach") || cleanLower.includes("pet") || cleanLower.includes("gut")) {
+                        predDis = "Functional Dyspepsia & Gut Disturbance (पाचन संबंधी समस्या)";
+                        precs = ["Consume fresh curd / probiotic buttermilk", "Sip warm fennel-cumin water after meals", "Adopt a light khichdi / BRAT diet", "Avoid deep-fried and spicy curries"];
+                    } else if (cleanLower.includes("cough") || cleanLower.includes("khansi") || cleanLower.includes("cold")) {
+                        predDis = "Bronchial Congestion & Upper Respiratory Irritation (खांसी व जुकाम)";
+                        precs = ["Steam inhalation twice daily", "Drink warm turmeric milk before sleeping", "Keep head elevated at night", "Avoid direct cold air drafts"];
+                    } else if (cleanLower.includes("fever") || cleanLower.includes("bukhar")) {
+                        predDis = "Acute Pyrexia & Immune Response (वायरल बुखार)";
+                        precs = ["Total physical bed rest in cool room", "ORS and tender coconut water hydration", "Tepid sponging with lukewarm water", "Seek doctor if fever exceeds 102°F"];
+                    } else if (cleanLower.includes("headache") || cleanLower.includes("sir dard")) {
+                        predDis = "Cephalea & Tension / Migraine (सिर दर्द)";
+                        precs = ["Rest in a quiet, dark room away from screens", "Drink 500ml water immediately", "Apply a cold compress on forehead", "Avoid loud sounds and skipping meals"];
+                    }
                     data = {
-                        predicted_disease: cleanLower.includes("headache") ? "Tension Headache & Migraine (सिर दर्द)" : (cleanLower.includes("fever") ? "Viral Fever & Pyrexia (वायरल बुखार)" : cleanSym + " (Symptom Assessment)"),
+                        predicted_disease: predDis,
                         matched_symptoms: [cleanSym],
-                        description: `Clinical assessment for '${cleanSym}': Settle in a quiet environment, ensure adequate hydration, rest, and monitor symptom duration.`,
-                        precautions: [
-                            "Stay well-hydrated with clean water and herbal broths",
-                            "Ensure 7 to 8 hours of uninterrupted rest",
-                            "Avoid unprescribed frequent pain medications",
-                            "Seek immediate medical attention if symptoms escalate"
-                        ]
+                        description: `Clinical assessment for '${cleanSym}': Monitor symptom duration, avoid physical strain, and practice targeted home care.`,
+                        precautions: precs
                     };
                 } else {
+                    let clinicalOverview = `Health inquiries regarding '${userInput}' involve evaluating physiological balance and organ stress.`;
+                    let causesText = "- Dehydration, irregular sleep, or situational physical/mental fatigue\n- Underlying viral, bacterial, or seasonal reactivity\n- Dietary sensitivities or irregular meal intervals";
+                    let homeCareText = "- Hydration: Drink 2.5 to 3 liters of warm water and electrolyte broths\n- Rest: Ensure 7 to 8 hours of uninterrupted rest in a quiet space\n- Nutrition: Eat freshly prepared light, nutrient-rich meals";
+                    let redFlagsText = "- 🚨 High persistent fever (>102°F)\n- 🚨 Severe unremitting pain or difficulty breathing\n- 🚨 Extreme weakness or inability to keep liquids down";
+
+                    if (cleanLower.includes("throat") || cleanLower.includes("gala")) {
+                        clinicalOverview = "Pharyngeal irritation and acute pharyngitis involve inflammation of mucous membranes in the throat or tonsils.";
+                        causesText = "- Viral pharyngitis (rhinovirus, adenovirus, or flu)\n- Bacterial tonsillopharyngitis (strep throat)\n- Acid reflux (LPR) or vocal cord strain";
+                        homeCareText = "- Warm Saline Gargles: Gargle with 1/2 tsp salt in warm water 3-4 times daily\n- Soothing Warm Sips: Warm water with pure honey, ginger, and tulsi\n- Steam Inhalation: Inhale warm vapor for 5-7 minutes\n- Avoid: Cold refrigerated drinks, ice cream, and spicy peppers";
+                        redFlagsText = "- 🚨 Inability to swallow liquids or saliva\n- 🚨 Difficulty breathing or whistling breath sounds\n- 🚨 Asymmetric swelling of tonsils or fever > 102°F";
+                    } else if (cleanLower.includes("digest") || cleanLower.includes("stomach") || cleanLower.includes("pet") || cleanLower.includes("gut")) {
+                        clinicalOverview = "Gastrointestinal disturbances involve altered gut motility, acid imbalance, or gut flora (dysbiosis) irritation.";
+                        causesText = "- Gastric hyperacidity or GERD acid reflux\n- Irritable bowel syndrome (IBS) or food intolerance\n- Sluggish motility or stress-mediated gut spasms";
+                        homeCareText = "- Probiotics: Fresh homemade curd, yogurt, or buttermilk with roasted cumin\n- Digestive Tea: Lukewarm water with fennel seeds (saunf) and ginger\n- Bland Diet: Light moong dal khichdi, steamed rice, and ripe bananas\n- Avoid: Deep-fried oily snacks, carbonated drinks, and late heavy dinners";
+                        redFlagsText = "- 🚨 Severe, acute abdominal rigidity or localized sharp colic\n- 🚨 Blood in vomit or black tarry stools\n- 🚨 Inability to keep liquids down for 24 hours or yellowing of eyes (jaundice)";
+                    } else if (cleanLower.includes("cough") || cleanLower.includes("khansi") || cleanLower.includes("cold")) {
+                        clinicalOverview = "Respiratory cough reflects tracheobronchial hyperreactivity and mucosal clearing mechanisms.";
+                        causesText = "- Viral respiratory infection or seasonal bronchitis\n- Post-nasal drip pooling in posterior airway\n- Allergic airway sensitivity to dust, smoke, or cold drafts";
+                        homeCareText = "- Steam Inhalation: Warm water steam for 5-10 minutes twice daily\n- Warm Turmeric Milk: Drink warm milk with turmeric and black pepper before bed\n- Head Elevation: Sleep with an extra pillow to reduce nocturnal cough\n- Avoid: Chilled water, smoking, and air conditioning drafts";
+                        redFlagsText = "- 🚨 Shortness of breath or rapid labored breathing\n- 🚨 Coughing up blood or rust-colored phlegm\n- 🚨 Persistent high fever lasting beyond 3 days";
+                    } else if (cleanLower.includes("fever") || cleanLower.includes("bukhar")) {
+                        clinicalOverview = "Pyrexia is an active immune-mediated defense orchestrated by the hypothalamus against pathogens.";
+                        causesText = "- Systemic viral flu, dengue, or seasonal infectious agents\n- Bacterial focal infection (urinary, respiratory, or enteric)\n- Localized inflammatory immune response";
+                        homeCareText = "- Complete Bed Rest: Conserve metabolic energy for immune defense\n- Electrolytes: Drink generous amounts of ORS, coconut water, and clear soups\n- Tepid Sponging: Wipe forehead and neck with lukewarm water (never cold ice)\n- Diet: Thin dal soup, barley water, and light rice porridge";
+                        redFlagsText = "- 🚨 Temperature rising above 103°F or unresponsive to antipyretics\n- 🚨 Fever with stiff neck, confusion, or convulsions\n- 🚨 Tiny red/purple pinpoint spots on skin (petechiae)";
+                    } else if (cleanLower.includes("headache") || cleanLower.includes("sir dard")) {
+                        clinicalOverview = "Cephalea arises from pericranial muscle tension, vascular spasms, or cranial nerve sensitivity.";
+                        causesText = "- Tension headache from mental stress, prolonged screen time, or neck stiffness\n- Vascular migraine from sleep disruption or skipped meals\n- Dehydration or sudden caffeine withdrawal";
+                        homeCareText = "- Quiet Rest: Lie down in a dark, quiet room away from screens\n- Rapid Hydration: Drink 500ml of cool water immediately\n- Cold Compress: Place an ice pack wrapped in a cloth over forehead or temples\n- Gentle Relief: Slow neck rolls and shoulder stretches";
+                        redFlagsText = "- 🚨 Sudden explosive 'thunderclap' headache\n- 🚨 Headache with stiff neck, high fever, or confusion\n- 🚨 Facial drooping, slurred speech, or vision loss";
+                    }
+
                     data = {
                         question: userInput,
-                        answer: `**Medical Overview for '${userInput}':**\n- **Clinical Assessment:** Common symptoms commonly respond well to adequate hydration, rest, and monitoring.\n- **Self-Care & Nutrition:** Drink plenty of warm water, eat fresh light meals, and avoid physical strain.\n- **When to See a Doctor:** If symptoms persist beyond 48 hours, worsen rapidly, or involve high fever, consult a certified physician immediately.\n\n*(Disclaimer: Niramaya provides AI-guided informational insights and does not replace professional medical diagnosis.)*`
+                        answer: `**Condition / Clinical Assessment:** ${cleanSym.title()} (Clinical Evaluation)\n\n**Medical Overview:**\n${clinicalOverview}\n\n**Probable Causes & Contributing Factors:**\n${causesText}\n\n**Dietary Recommendations & Home Care:**\n${homeCareText}\n\n**When to Seek Immediate Medical Attention (Red Flags):**\n${redFlagsText}\n\n*(Disclaimer: Niramaya provides AI-guided informational health insights. This does not replace formal examination, laboratory diagnosis, or prescription by a licensed medical practitioner.)*`
                     };
                 }
             }

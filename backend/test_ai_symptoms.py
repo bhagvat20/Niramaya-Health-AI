@@ -88,3 +88,25 @@ def test_system_status_and_health_endpoints(client):
         data = res.get_json()
         assert data['status'] == 'healthy'
         assert data['online'] is True
+
+def test_ai_different_symptoms_give_distinct_customized_answers(client):
+    """Verifies that different symptoms produce distinct, symptom-specific answers and not identical boilerplate."""
+    res_digestive = client.post('/askbiogpt', json={'question': 'Digestive Issues'}).get_json()['answer']
+    res_throat = client.post('/askbiogpt', json={'question': 'sore throat'}).get_json()['answer']
+    res_multi = client.post('/askbiogpt', json={'question': 'fever and cough'}).get_json()['answer']
+
+    # 1. Digestive must mention digestive-specific advice
+    assert "Gastrointestinal" in res_digestive or "Dyspepsia" in res_digestive
+    assert "curd" in res_digestive.lower() or "probiotic" in res_digestive.lower() or "fennel" in res_digestive.lower()
+
+    # 2. Throat must mention throat-specific advice
+    assert "Pharyngitis" in res_throat or "Gale" in res_throat or "Throat" in res_throat
+    assert "gargle" in res_throat.lower() or "honey" in res_throat.lower() or "saline" in res_throat.lower()
+
+    # 3. Multi symptom must detect multi-symptom complex
+    assert "Multi-Symptom" in res_multi or ("Pyrexia" in res_multi and "Respiratory" in res_multi)
+
+    # 4. Responses must be completely distinct from each other!
+    assert res_digestive != res_throat
+    assert res_throat != res_multi
+
