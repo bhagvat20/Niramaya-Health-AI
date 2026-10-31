@@ -42,6 +42,7 @@ def test_ai_general_questions_are_strictly_rejected(client):
 def test_ai_symptoms_are_properly_accepted_and_answered(client):
     """Verifies that genuine health symptoms in English and Hindi are accepted and answered."""
     symptom_queries = [
+        "Digestive Issues",
         "I have severe fever and headache for 2 days",
         "vomiting and loose motion with stomach pain",
         "chest pain and shortness of breath",

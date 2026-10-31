@@ -53,38 +53,63 @@ OUT_OF_DOMAIN_PATTERNS = [
 
 # Comprehensive vocabulary of human health symptoms, medical conditions, and clinical queries
 HEALTH_SYMPTOM_TERMS = {
-    # Physical symptoms
+    # Physical symptoms & sensory
     'fever', 'pyrexia', 'temperature', 'chills', 'shivering', 'sweat', 'sweating', 'night sweats',
     'headache', 'migraine', 'head ache', 'head pain', 'cephalalgia',
     'cough', 'coughing', 'phlegm', 'sputum', 'mucus', 'wheez', 'bronchitis', 'bronchial',
     'cold', 'flu', 'influenza', 'sneeze', 'sneezing', 'congestion', 'runny nose', 'blocked nose', 'sinus', 'sinusitis',
     'throat', 'sore throat', 'tonsil', 'tonsillitis', 'pharyngitis', 'laryngitis',
     'pain', 'ache', 'hurts', 'hurting', 'sore', 'cramp', 'cramps', 'tender', 'tenderness', 'stiff', 'stiffness',
+    
+    # Digestive, Gastrointestinal & Gut
+    'digest', 'digestive', 'digestion', 'digestive issues', 'digestive problem', 'digestive system',
+    'gut', 'gut health', 'gut issue', 'gut problem', 'stomach', 'abdomen', 'abdominal', 'belly',
+    'gastric', 'gastritis', 'acidity', 'gas', 'bloat', 'bloating', 'indigestion', 'heartburn', 'gerd',
+    'reflux', 'acid reflux', 'constipation', 'constipated', 'bowel', 'bowels', 'stool', 'stools',
     'vomit', 'vomiting', 'nausea', 'queasy', 'diarrhea', 'diarrhoea', 'loose motion', 'motions', 'dysentery',
-    'stomach', 'abdomen', 'abdominal', 'belly', 'gastric', 'gastritis', 'acidity', 'gas', 'bloat', 'bloating',
-    'indigestion', 'heartburn', 'gerd', 'reflux', 'constipation', 'constipated', 'bowel', 'stool',
-    'chest', 'chest pain', 'angina', 'heart', 'palpitation', 'palpitations', 'tachycardia', 'bradycardia',
-    'breath', 'breathing', 'breathless', 'breathlessness', 'shortness of breath', 'dyspnea', 'suffocation', 'asthma',
+    'flatulence', 'belching', 'burping', 'food poisoning', 'colitis', 'colon', 'ibs',
+    'liver', 'gallbladder', 'pancreas', 'appendix', 'appendicitis', 'piles', 'hemorrhoid', 'hemorrhoids',
+    'fistula', 'fissure', 'hernia',
+
+    # Cardiovascular & Respiratory
+    'chest', 'chest pain', 'angina', 'heart', 'cardiac', 'cardiovascular', 'palpitation', 'palpitations',
+    'tachycardia', 'bradycardia', 'pulse', 'circulation', 'breath', 'breathing', 'breathless',
+    'breathlessness', 'shortness of breath', 'dyspnea', 'suffocation', 'asthma', 'lungs', 'copd',
+
+    # Neurological, Sleep & Psychological
     'dizzy', 'dizziness', 'vertigo', 'lightheaded', 'faint', 'fainting', 'syncope', 'blackout',
     'fatigue', 'tired', 'tiredness', 'weak', 'weakness', 'lethargy', 'lethargic', 'exhaustion', 'malaise',
-    'rash', 'skin rash', 'itch', 'itching', 'pruritus', 'allergy', 'allergic', 'hives', 'urticaria',
-    'swell', 'swelling', 'swollen', 'edema', 'oedema', 'inflammation', 'inflamed', 'puffy',
-    'bleed', 'bleeding', 'blood', 'hemorrhage', 'bruise', 'bruising', 'hematoma',
-    'burn', 'burning', 'burning sensation', 'ulcer', 'ulcers', 'wound', 'injury', 'cut', 'pus', 'boil', 'blister',
     'numb', 'numbness', 'tingling', 'paralysis', 'tremor', 'tremors', 'seizure', 'convulsion',
     'insomnia', 'sleepless', 'anxiety', 'anxious', 'depression', 'depressed', 'panic attack', 'stress',
+
+    # Dermatology, Skin & Hair
+    'rash', 'skin rash', 'skin', 'itch', 'itching', 'pruritus', 'allergy', 'allergic', 'hives', 'urticaria',
+    'swell', 'swelling', 'swollen', 'edema', 'oedema', 'inflammation', 'inflamed', 'puffy',
+    'acne', 'pimple', 'pimples', 'eczema', 'psoriasis', 'dandruff', 'hair loss', 'hairfall', 'alopecia',
+    'bleed', 'bleeding', 'blood', 'hemorrhage', 'bruise', 'bruising', 'hematoma',
+    'burn', 'burning', 'burning sensation', 'ulcer', 'ulcers', 'wound', 'injury', 'cut', 'pus', 'boil', 'blister',
+
+    # Endocrine, Metabolic & Renal
     'appetite', 'loss of appetite', 'weight loss', 'weight gain', 'dehydration', 'dehydrated', 'thirst',
-    'urine', 'urinary', 'micturition', 'bladder', 'kidney', 'kidney stone', 'uti',
+    'urine', 'urinary', 'micturition', 'bladder', 'kidney', 'kidneys', 'kidney stone', 'uti', 'renal',
+    'diabetes', 'diabetic', 'sugar level', 'blood sugar', 'glucose', 'insulin', 'blood pressure', 'bp',
+    'hypertension', 'hypotension', 'thyroid', 'cholesterol', 'anemia', 'anaemic', 'platelet', 'platelets',
+
+    # Musculoskeletal & Joints
     'joint', 'joints', 'knee', 'hip', 'shoulder', 'elbow', 'wrist', 'ankle', 'arthritis', 'osteoarthritis',
     'back', 'backache', 'back pain', 'spine', 'spinal', 'neck', 'neck pain', 'muscle', 'muscles', 'myalgia',
+    'bone', 'bones', 'gout', 'sciatica', 'sprain', 'strain', 'fracture',
+
+    # Sensory Organs (Eyes, Ears, Oral)
     'vision', 'blur', 'blurred', 'eye', 'eyes', 'red eye', 'conjunctivitis',
     'ear', 'earache', 'ear pain', 'hearing', 'tinnitus',
-    'mouth', 'tongue', 'tooth', 'toothache', 'gum', 'gums', 'dental',
+    'mouth', 'tongue', 'tooth', 'toothache', 'gum', 'gums', 'dental', 'teeth',
+
+    # Clinical, Diagnosis & Medication
     'infection', 'infectious', 'viral', 'virus', 'bacterial', 'bacteria', 'fungal', 'fungus',
-    'disease', 'illness', 'sickness', 'syndrome', 'disorder', 'condition',
+    'disease', 'illness', 'sickness', 'syndrome', 'disorder', 'condition', 'issue', 'issues', 'problem', 'problems',
     'dengue', 'malaria', 'typhoid', 'cholera', 'jaundice', 'hepatitis', 'tuberculosis', 'tb', 'pneumonia',
-    'diabetes', 'diabetic', 'sugar level', 'blood pressure', 'bp', 'hypertension', 'hypotension',
-    'anemia', 'anaemic', 'platelet', 'platelets', 'thyroid', 'cholesterol', 'stroke', 'tumor', 'cancer',
+    'stroke', 'tumor', 'cancer',
     'medicine', 'medication', 'drug', 'pill', 'tablet', 'capsule', 'syrup', 'dosage', 'prescription',
     'doctor', 'physician', 'specialist', 'hospital', 'clinic', 'treatment', 'therapy', 'cure', 'remedy',
     'precaution', 'precautions', 'diagnosis', 'prognosis', 'patient', 'health', 'medical', 'wellness',
@@ -107,8 +132,8 @@ HEALTH_SYMPTOM_TERMS = {
 def is_health_related(query: str) -> bool:
     """
     Strict Symptom & Medical Domain Guardrail:
-    - ONLY allows queries describing health symptoms, medical conditions, or care.
-    - STRICTLY refuses all general questions (coding, politics, trivia, entertainment, etc.).
+    - ONLY allows queries describing health symptoms, medical conditions, body organs, or clinical care.
+    - STRICTLY refuses non-medical questions (coding, politics, sports, entertainment, tech, etc.).
     """
     if not query or not query.strip():
         return False
@@ -136,10 +161,22 @@ def is_health_related(query: str) -> bool:
             if term in clean:
                 return True
         else:
-            if term in words or any(w.startswith(term) for w in words):
+            if term in words or any(w.startswith(term) or term in w for w in words):
                 return True
 
-    # 4. If none matched, it is a general question -> strictly refuse!
+    # 4. Match anatomical / organ systems combined with health indicators or inquiries
+    body_organs = {
+        'digest', 'digestive', 'digestion', 'gut', 'stomach', 'belly', 'abdomen', 'abdominal',
+        'liver', 'heart', 'cardiac', 'lung', 'lungs', 'chest', 'throat', 'head', 'brain', 'skin',
+        'eye', 'eyes', 'ear', 'ears', 'mouth', 'teeth', 'tooth', 'gum', 'bone', 'bones', 'joint',
+        'joints', 'knee', 'back', 'neck', 'shoulder', 'muscle', 'muscles', 'nerve', 'nerves',
+        'kidney', 'kidneys', 'urine', 'urinary', 'blood', 'hair', 'spine', 'bowel', 'colon',
+        'rectum', 'esophagus'
+    }
+    if any(b in clean for b in body_organs):
+        return True
+
+    # 5. If none matched, it is outside healthcare domain -> refuse
     return False
 
 def get_non_health_refusal_message() -> str:

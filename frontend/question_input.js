@@ -438,7 +438,9 @@ async function sendMessage() {
                     'acidity', 'gas', 'infection', 'virus', 'viral', 'allergy', 'asthma', 'diabetes', 'sugar',
                     'pressure', 'bp', 'doctor', 'hospital', 'medicine', 'pill', 'tablet', 'cure', 'treatment',
                     'symptom', 'disease', 'sick', 'health', 'diet', 'vitamin', 'injury', 'wound', 'heart', 'chest',
-                    'joint', 'knee', 'back', 'neck', 'stomach', 'throat', 'eye', 'ear', 'tooth',
+                    'joint', 'knee', 'back', 'neck', 'stomach', 'throat', 'eye', 'ear', 'tooth', 'teeth',
+                    'digest', 'digestive', 'digestion', 'gut', 'bowel', 'colon', 'constipat', 'liver', 'kidney', 'renal',
+                    'cardiac', 'skin', 'hair', 'nerve', 'brain', 'spine', 'bone', 'muscle', 'issue', 'problem', 'disorder',
                     'dard', 'bukhar', 'khansi', 'sardi', 'jukam', 'ulti', 'dast', 'pet', 'sir', 'sar', 'gala',
                     'kamar', 'chakkar', 'kamzori', 'dawa', 'ilaj', 'bimari', 'badan', 'chhati', 'khoon', 'sujan', 'khujli'
                 ];
