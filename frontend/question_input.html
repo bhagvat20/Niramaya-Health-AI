@@ -8,16 +8,18 @@
     <link rel="icon" type="image/png" href="N-16.png">
     <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="question_input.css">
+    <script src="theme.js"></script>
 </head>
 
 <body>
     <!-- Top Header Navigation -->
     <header class="header">
         <div class="logo">
-            <img src="N-dark.png" alt="Niramaya Logo">
+            <img id="logo-img" src="N-dark.png" alt="Niramaya Logo">
         </div>
         <div class="site-name">Niramaya</div>
         <nav class="nav">
+            <button id="theme-toggle" aria-label="Toggle theme" title="Toggle Dark/Light Mode"><i class="fas fa-sun"></i></button>
             <a href="home.html"><i class="fas fa-home"></i> Home</a>
             <a onclick="newChat()" href="javascript:void(0)"><i class="fas fa-plus"></i> New chat</a>
             <a id="history-btn" onclick="openHistoryModal()" style="cursor:pointer;"><i class="fas fa-history"></i> History</a>

@@ -4,44 +4,45 @@
     box-sizing: border-box;
 }
 
+:root,
 :root.dark {
-    --bg-color: #121212;
-    --text-color: #e0e0e0;
-    --header-bg: #1c1c1c;
-    --section-bg: #1c1c1c;
-    --card-bg: #2c2c2c;
-    --button-bg: #444;
-    --button-text: #e0e0e0;
-    --link-color: #e0e0e0;
-    --hover-bg: #333;
-    --secondary-text: #888;
-    --modal-bg: #222;
-    --input-bg: #333;
-    --input-border: #333;
-    --input-text: #e0e0e0;
-    --overlay-bg: rgba(0, 0, 0, 0.5);
-    --shadow-color: rgba(0, 0, 0, 0.5);
-    --border-color: #333;
+    --bg-color: #121214;
+    --text-color: #f4f4f5;
+    --header-bg: #18181b;
+    --section-bg: #1c1c20;
+    --card-bg: #222226;
+    --button-bg: #4f46e5;
+    --button-text: #ffffff;
+    --link-color: #e4e4e7;
+    --hover-bg: #2e2e34;
+    --secondary-text: #a1a1aa;
+    --modal-bg: #18181b;
+    --input-bg: #1f1f23;
+    --input-border: #3f3f46;
+    --input-text: #f4f4f5;
+    --overlay-bg: rgba(0, 0, 0, 0.65);
+    --shadow-color: rgba(0, 0, 0, 0.45);
+    --border-color: #2e2e34;
 }
 
 :root.light {
-    --bg-color: #ffffff;
-    --text-color: #333333;
-    --header-bg: #f0f0f0;
-    --section-bg: #f0f0f0;
-    --card-bg: #e0e0e0;
-    --button-bg: #cccccc;
-    --button-text: #333333;
-    --link-color: #333333;
-    --hover-bg: #dddddd;
-    --secondary-text: #666666;
+    --bg-color: #f8fafc;
+    --text-color: #0f172a;
+    --header-bg: #ffffff;
+    --section-bg: #f1f5f9;
+    --card-bg: #ffffff;
+    --button-bg: #4f46e5;
+    --button-text: #ffffff;
+    --link-color: #334155;
+    --hover-bg: #e2e8f0;
+    --secondary-text: #64748b;
     --modal-bg: #ffffff;
-    --input-bg: #f0f0f0;
-    --input-border: #cccccc;
-    --input-text: #333333;
-    --overlay-bg: rgba(0, 0, 0, 0.3);
-    --shadow-color: rgba(0, 0, 0, 0.2);
-    --border-color: #cccccc;
+    --input-bg: #ffffff;
+    --input-border: #cbd5e1;
+    --input-text: #0f172a;
+    --overlay-bg: rgba(0, 0, 0, 0.25);
+    --shadow-color: rgba(0, 0, 0, 0.08);
+    --border-color: #e2e8f0;
 }
 
 body {

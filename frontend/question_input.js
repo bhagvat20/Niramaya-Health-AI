@@ -181,15 +181,15 @@ function formatMedicalMarkdown(rawText) {
             if (line.startsWith("**") && (line.includes(":**") || line.endsWith("**"))) {
                 p.style.marginTop = "10px";
                 p.style.marginBottom = "4px";
-                p.style.color = "#93c5fd";
+                p.style.color = "var(--headline-color, #60a5fa)";
                 p.style.fontWeight = "600";
                 p.style.fontSize = "15px";
             } else if (line.startsWith("*(") && line.endsWith(")*")) {
                 p.style.fontSize = "12px";
                 p.style.fontStyle = "italic";
-                p.style.color = "#a1a1aa";
+                p.style.color = "var(--secondary-text, #a1a1aa)";
                 p.style.marginTop = "10px";
-                p.style.borderTop = "1px solid #333333";
+                p.style.borderTop = "1px solid var(--border-color, #333333)";
                 p.style.paddingTop = "6px";
             }
             p.innerHTML = formatted;

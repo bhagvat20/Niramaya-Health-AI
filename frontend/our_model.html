@@ -251,21 +251,13 @@
             cursor: pointer;
         }
     </style>
-    <script>
-        const theme = localStorage.getItem('theme') || 'dark';
-        document.documentElement.classList.add(theme);
-    </script>
+    <script src="theme.js"></script>
 </head>
 
 <body>
     <div class="header">
         <div class="logo">
-            <img id="logo-img" alt="Niramaya Logo">
-            <script>
-                const logoImg = document.getElementById('logo-img');
-                const initialTheme = localStorage.getItem('theme') || 'dark';
-                logoImg.src = initialTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
-            </script>
+            <img id="logo-img" src="N-dark.png" alt="Niramaya Logo">
         </div>
         <div class="site-name">Niramaya</div>
         <div class="nav">
