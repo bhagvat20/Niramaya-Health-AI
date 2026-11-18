@@ -64,15 +64,36 @@ function initPage() {
         localStorage.setItem("niramaya_consultations", JSON.stringify(curLocal));
     } catch (_) {}
 
-    // STRICT: Only consider user logged-in if explicitly authenticated in this session
-    // Never auto-login from old stale localStorage so guests never see a past user's name
-    const isSessionActive = sessionStorage.getItem("userLoggedIn") === "true" && sessionStorage.getItem("accountId");
-    if (isSessionActive) {
+    // Persistent login: stays logged in across Home, refreshes, and tabs until explicit Logout
+    const persistentLoggedIn = localStorage.getItem("userLoggedIn") === "true" && !!localStorage.getItem("accountId");
+    const sessionLoggedIn = sessionStorage.getItem("userLoggedIn") === "true" && !!sessionStorage.getItem("accountId");
+
+    if (persistentLoggedIn || sessionLoggedIn) {
         isLoggedIn = true;
+        const accId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
+        const famName = localStorage.getItem("familyName") || sessionStorage.getItem("familyName") || "";
+        const uEmail = localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail") || "";
+        const memName = localStorage.getItem("selectedMemberName") || sessionStorage.getItem("activeMemberName") || famName;
+        const memId = localStorage.getItem("selectedMemberId") || sessionStorage.getItem("activeMemberId") || "";
+
+        localStorage.setItem("userLoggedIn", "true");
+        localStorage.setItem("accountId", accId);
+        if (famName) localStorage.setItem("familyName", famName);
+        if (uEmail) localStorage.setItem("userEmail", uEmail);
+        if (memName) localStorage.setItem("selectedMemberName", memName);
+        if (memId) localStorage.setItem("selectedMemberId", memId);
+
+        sessionStorage.setItem("userLoggedIn", "true");
+        sessionStorage.setItem("accountId", accId);
+        if (famName) sessionStorage.setItem("familyName", famName);
+        if (uEmail) sessionStorage.setItem("userEmail", uEmail);
+        if (memName) sessionStorage.setItem("activeMemberName", memName);
+        if (memId) sessionStorage.setItem("activeMemberId", memId);
     } else {
         isLoggedIn = false;
         guestQuestionCount = parseInt(localStorage.getItem("guestQuestionCount") || "0", 10);
-        // Clean out any old/stale persistent data so guest view has NO user name
+        // Clean out any incomplete/stale keys for guests
+        localStorage.removeItem("userLoggedIn");
         localStorage.removeItem("accountId");
         localStorage.removeItem("familyName");
         localStorage.removeItem("userEmail");
@@ -89,12 +110,12 @@ function initPage() {
     updateNavButtons();
     updateGreeting();
 
-    // Check URL parameters for direct modal open
+    // Check URL parameters for direct modal open (skip login/register modal if already logged in)
     const urlParams = new URLSearchParams(window.location.search);
     const action = urlParams.get("action");
-    if (action === "login") {
+    if (action === "login" && !isLoggedIn) {
         openLoginModal();
-    } else if (action === "register") {
+    } else if (action === "register" && !isLoggedIn) {
         openRegisterModal();
     } else if (action === "history") {
         openHistoryModal();
@@ -794,6 +815,7 @@ async function handleLogin(e) {
             sessionStorage.setItem("userEmail", data.email || email);
             sessionStorage.setItem("activeMemberName", resolvedName);
 
+            localStorage.setItem("userLoggedIn", "true");
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", resolvedName);
@@ -902,6 +924,7 @@ async function handleRegister(e) {
             sessionStorage.setItem("userEmail", data.email || email);
             sessionStorage.setItem("activeMemberName", fname);
 
+            localStorage.setItem("userLoggedIn", "true");
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", fname);
@@ -932,6 +955,7 @@ async function handleRegister(e) {
 // Logout
 function logout() {
     sessionStorage.clear();
+    localStorage.removeItem("userLoggedIn");
     localStorage.removeItem("accountId");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("familyName");
@@ -1449,12 +1473,8 @@ async function handleSendOtp(e) {
             } catch (_) {}
         }
 
-        if (res && res.ok && data && data.success) {
-            if (data.otp) {
-                sessionStorage.setItem("storedOtp", data.otp);
-            } else {
-                sessionStorage.removeItem("storedOtp");
-            }
+        if (res && res.ok && data && data.success && data.email_sent) {
+            sessionStorage.removeItem("storedOtp");
             sessionStorage.setItem("storedAccountId", data.account_id);
             closeSendOtpModal();
             openResetPasswordModal();
@@ -1465,27 +1485,13 @@ async function handleSendOtp(e) {
 
             if (banner) {
                 banner.style.display = "block";
-                if (data.email_sent) {
-                    banner.style.background = "rgba(16, 185, 129, 0.14)";
-                    banner.style.border = "1px solid #10b981";
-                    banner.style.color = "#10b981";
-                    banner.innerHTML = `<i class="fas fa-check-circle"></i> <strong>OTP Sent!</strong> ${data.message}`;
-                } else if (data.otp) {
-                    banner.style.background = "rgba(59, 130, 246, 0.14)";
-                    banner.style.border = "1px solid #3b82f6";
-                    banner.style.color = "var(--text-color)";
-                    banner.innerHTML = `
-                        <div style="margin-bottom:6px;"><i class="fas fa-shield-alt" style="color:#3b82f6;"></i> <strong>Verification OTP Generated</strong></div>
-                        <div style="font-size:12px; color:var(--secondary-text); margin-bottom:8px;">Email SMTP is not configured on this server, so your secure one-time code is shown below:</div>
-                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--input-bg); border:1px dashed #3b82f6; border-radius:8px; padding:8px 12px;">
-                            <span style="font-size:20px; font-weight:700; letter-spacing:5px; color:#3b82f6;">${data.otp}</span>
-                            <button type="button" onclick="document.getElementById('otp').value='${data.otp}'" style="padding:5px 10px; border:none; border-radius:6px; background:#3b82f6; color:#fff; font-size:12px; font-weight:600; cursor:pointer;">Auto-Fill OTP</button>
-                        </div>
-                    `;
-                }
+                banner.style.background = "rgba(16, 185, 129, 0.14)";
+                banner.style.border = "1px solid #10b981";
+                banner.style.color = "#10b981";
+                banner.innerHTML = `<i class="fas fa-envelope-open-text"></i> <strong>OTP Sent!</strong> ${data.message}`;
             }
         } else {
-            alert((data && data.message) || "Failed to send OTP. Please check your email and try again.");
+            alert((data && data.message) || "Failed to send OTP email. Please check email SMTP configuration and try again.");
         }
     } catch (_) {
         alert("Error connecting to server. Please try again.");

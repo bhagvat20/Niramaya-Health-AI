@@ -122,9 +122,17 @@ def test_ai_different_symptoms_give_distinct_customized_answers(client):
     assert res_throat != res_multi
 
 
-def test_registration_and_password_reset_otp_flow(client):
-    """Verifies user registration, duplicate detection, OTP generation, wrong OTP rejection, and password reset."""
+def test_registration_and_password_reset_otp_flow(client, monkeypatch):
+    """Verifies user registration, duplicate detection, email-only OTP (no API leak), wrong OTP rejection, and password reset."""
     import time
+    from routes import password_reset_API
+
+    sent_records = []
+    def fake_send_otp_email(email, otp):
+        sent_records.append((email, otp))
+        return True, "smtp:587"
+
+    monkeypatch.setattr(password_reset_API, "send_otp_email", fake_send_otp_email)
     test_email = f"verify_user_{int(time.time() * 1000)}@example.com"
 
     # 1. Register new user
@@ -147,13 +155,16 @@ def test_registration_and_password_reset_otp_flow(client):
     assert dup_res.status_code == 400
     assert "already registered" in dup_res.get_json()['message'].lower()
 
-    # 3. Forgot password generates OTP
+    # 3. Forgot password sends OTP via email and does NOT leak OTP in JSON response
     fp_res = client.post('/forgotpassword', json={'email': test_email.upper()})
     assert fp_res.status_code == 200
     fp_data = fp_res.get_json()
     assert fp_data['success'] is True
+    assert fp_data['email_sent'] is True
+    assert 'otp' not in fp_data
     assert str(fp_data['account_id']) == str(acc_id)
-    otp = fp_data.get('otp')
+    assert len(sent_records) == 1
+    otp = sent_records[0][1]
     assert otp and len(otp) == 6
 
     # 4. Wrong OTP is rejected server-side

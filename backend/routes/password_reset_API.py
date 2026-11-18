@@ -79,14 +79,38 @@ def _build_otp_email_bodies(otp):
     return plain, html
 
 
+def _reload_dotenv_if_present():
+    """Reloads .env files dynamically so newly saved SMTP/API keys work immediately."""
+    routes_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(routes_dir)
+    project_root = os.path.dirname(backend_dir)
+    for env_path in (os.path.join(project_root, ".env"), os.path.join(backend_dir, ".env")):
+        if not os.path.isfile(env_path):
+            continue
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for raw_line in f:
+                    line = raw_line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, val = line.split("=", 1)
+                    key = key.strip()
+                    val = val.strip().strip('"').strip("'")
+                    if key and val:
+                        os.environ[key] = val
+        except Exception:
+            pass
+
+
 def send_otp_email(email, otp):
     """
-    Attempts to send real OTP email via:
-    1. Resend HTTPS API (RESEND_API_KEY) - works on Render free tier
-    2. Brevo HTTPS API (BREVO_API_KEY) - works on Render free tier
+    Sends real 6-digit OTP to the user's registered email via:
+    1. Resend HTTPS API (RESEND_API_KEY) - works on Render free tier & local
+    2. Brevo HTTPS API (BREVO_API_KEY) - works on Render free tier & local
     3. SMTP (SMTP_HOST/SMTP_USER/SMTP_PASS or GMAIL_USER/GMAIL_PASS) - tries 587 STARTTLS then 465 SSL
     Returns (sent: bool, detail: str).
     """
+    _reload_dotenv_if_present()
     plain_body, html_body = _build_otp_email_bodies(otp)
     subject = "Niramaya Health AI — Password Reset OTP"
 
@@ -198,6 +222,7 @@ def send_otp_email(email, otp):
 @password_reset_bp.route('/forgotpassword/status', methods=['GET'])
 def email_provider_status():
     """Diagnostic endpoint showing whether an email OTP provider is configured (no secrets exposed)."""
+    _reload_dotenv_if_present()
     if os.environ.get("RESEND_API_KEY", "").strip():
         return jsonify({"configured": True, "provider": "resend"}), 200
     if os.environ.get("BREVO_API_KEY", "").strip():
@@ -269,15 +294,23 @@ def forgot_password():
                 "account_id": account_id
             }), 200
         else:
+            if provider_info == "not_configured":
+                err_msg = (
+                    "Email SMTP is not configured on this server. Please set GMAIL_USER & GMAIL_PASS "
+                    "(16-digit Google App Password) or BREVO_API_KEY in .env / Render Environment."
+                )
+            elif "535" in provider_info or "Username and Password not accepted" in provider_info:
+                err_msg = (
+                    "Gmail SMTP login failed. Please use a 16-digit Google App Password "
+                    "(myaccount.google.com/apppasswords) instead of your normal Gmail password."
+                )
+            else:
+                err_msg = f"Failed to send OTP email ({provider_info}). Please verify SMTP/Email API credentials."
             return jsonify({
-                "success": True,
+                "success": False,
                 "email_sent": False,
-                "delivery_method": "on_screen",
-                "reason": provider_info,
-                "message": "Email delivery is not configured on the server yet. Use the 6-digit verification OTP shown on screen to reset your password.",
-                "otp": otp,
-                "account_id": account_id
-            }), 200
+                "message": err_msg
+            }), 503
 
     except Exception as e:
         if conn:
