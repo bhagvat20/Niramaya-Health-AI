@@ -107,16 +107,55 @@ def _reload_dotenv_if_present():
 def send_otp_email(email, otp):
     """
     Sends real 6-digit OTP to the user's registered email via:
-    1. Resend HTTPS API (RESEND_API_KEY) - works on Render free tier & local
-    2. Brevo HTTPS API (BREVO_API_KEY) - works on Render free tier & local
-    3. SMTP (SMTP_HOST/SMTP_USER/SMTP_PASS or GMAIL_USER/GMAIL_PASS) - tries 587 STARTTLS then 465 SSL
+    1. Google Apps Script HTTPS Bridge (EMAIL_WEBHOOK_URL) - 100% FREE forever with Gmail, works on Render free tier
+    2. Resend HTTPS API (RESEND_API_KEY) - works on Render free tier & local
+    3. Brevo HTTPS API (BREVO_API_KEY) - works on Render free tier & local
+    4. SMTP (SMTP_HOST/SMTP_USER/SMTP_PASS or GMAIL_USER/GMAIL_PASS) - works locally (587 STARTTLS / 465 SSL)
     Returns (sent: bool, detail: str).
     """
     _reload_dotenv_if_present()
     plain_body, html_body = _build_otp_email_bodies(otp)
     subject = "Niramaya Health AI — Password Reset OTP"
 
-    # 1. Resend API (HTTPS, never blocked by Render)
+    # 1. Google Apps Script HTTPS Bridge (100% FREE, uses user's own Gmail, NEVER blocked by Render)
+    webhook_url = os.environ.get("EMAIL_WEBHOOK_URL", "").strip()
+    if webhook_url:
+        webhook_secret = os.environ.get("EMAIL_WEBHOOK_SECRET", "niramaya_otp_2026").strip()
+        try:
+            payload = json.dumps({
+                "to": email,
+                "subject": subject,
+                "text": plain_body,
+                "html": html_body,
+                "secret": webhook_secret
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                webhook_url,
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": "NiramayaHealthAI/1.0"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                resp_text = resp.read().decode("utf-8", errors="ignore").strip()
+                if 200 <= resp.status < 300:
+                    try:
+                        parsed = json.loads(resp_text)
+                        if parsed.get("success") is False:
+                            err = parsed.get("error") or resp_text[:150]
+                            print(f"[OTP] Apps Script returned error: {err}")
+                            return False, f"webhook_error: {err}"
+                    except Exception:
+                        pass
+                    print(f"[OTP] Email sent via Google Apps Script HTTPS to {email}")
+                    return True, "apps_script"
+        except Exception as e:
+            print(f"[OTP] Apps Script webhook failed: {e}")
+            return False, f"webhook_failed: {e}"
+
+    # 2. Resend API (HTTPS, never blocked by Render)
     resend_key = os.environ.get("RESEND_API_KEY", "").strip()
     if resend_key:
         sender = os.environ.get("EMAIL_FROM", "Niramaya Health AI <onboarding@resend.dev>").strip()
@@ -264,6 +303,8 @@ def send_otp_email(email, otp):
 def email_provider_status():
     """Diagnostic endpoint showing whether an email OTP provider is configured (no secrets exposed)."""
     _reload_dotenv_if_present()
+    if os.environ.get("EMAIL_WEBHOOK_URL", "").strip():
+        return jsonify({"configured": True, "provider": "google_apps_script"}), 200
     if os.environ.get("RESEND_API_KEY", "").strip():
         return jsonify({"configured": True, "provider": "resend"}), 200
     if os.environ.get("BREVO_API_KEY", "").strip():
