@@ -155,7 +155,9 @@ def send_otp_email(email, otp):
     # 3. SMTP (Gmail App Password or custom SMTP)
     smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
     smtp_user = (os.environ.get("SMTP_USER") or os.environ.get("GMAIL_USER") or "").strip()
-    smtp_pass = (os.environ.get("SMTP_PASS") or os.environ.get("GMAIL_PASS") or "").strip()
+    smtp_pass_raw = (os.environ.get("SMTP_PASS") or os.environ.get("GMAIL_PASS") or "").strip()
+    # Google displays 16-char App Passwords with spaces ("xxxx xxxx xxxx xxxx"); strip spaces for Gmail SMTP
+    smtp_pass = smtp_pass_raw.replace(" ", "") if "gmail" in smtp_host.lower() else smtp_pass_raw
 
     if smtp_user and smtp_pass:
         msg = MIMEMultipart("alternative")
@@ -168,14 +170,15 @@ def send_otp_email(email, otp):
         # Try STARTTLS (port 587) first, then SSL (port 465)
         custom_port = os.environ.get("SMTP_PORT", "").strip()
         ports_to_try = [int(custom_port)] if custom_port.isdigit() else [587, 465]
+        last_err = ""
         for port in ports_to_try:
             try:
                 if port == 465:
-                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=10) as server:
+                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=12) as server:
                         server.login(smtp_user, smtp_pass)
                         server.sendmail(smtp_user, email, msg.as_string())
                 else:
-                    with smtplib.SMTP(smtp_host, port, timeout=10) as server:
+                    with smtplib.SMTP(smtp_host, port, timeout=12) as server:
                         server.ehlo()
                         server.starttls()
                         server.ehlo()
@@ -184,11 +187,26 @@ def send_otp_email(email, otp):
                 print(f"[OTP] Email sent via SMTP ({smtp_host}:{port}) to {email}")
                 return True, f"smtp:{port}"
             except Exception as e:
+                last_err = str(e)
                 print(f"[OTP] SMTP ({smtp_host}:{port}) error: {e}")
-        return False, "smtp_failed"
+        return False, f"smtp_failed: {last_err}"
 
     print(f"[OTP ON-SCREEN MODE] No email provider configured. OTP for {email}: {otp}")
     return False, "not_configured"
+
+
+@password_reset_bp.route('/forgotpassword/status', methods=['GET'])
+def email_provider_status():
+    """Diagnostic endpoint showing whether an email OTP provider is configured (no secrets exposed)."""
+    if os.environ.get("RESEND_API_KEY", "").strip():
+        return jsonify({"configured": True, "provider": "resend"}), 200
+    if os.environ.get("BREVO_API_KEY", "").strip():
+        return jsonify({"configured": True, "provider": "brevo"}), 200
+    if (os.environ.get("SMTP_USER") or os.environ.get("GMAIL_USER") or "").strip() and (
+        os.environ.get("SMTP_PASS") or os.environ.get("GMAIL_PASS") or ""
+    ).strip():
+        return jsonify({"configured": True, "provider": "smtp"}), 200
+    return jsonify({"configured": False, "provider": "none"}), 200
 
 
 # Forgot Password API

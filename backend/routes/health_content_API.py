@@ -494,3 +494,141 @@ def admin_delete_content(content_id):
             cursor.close()
         if conn:
             conn.close()
+
+
+# ==========================================
+# LIVE RESEARCH PAPERS PROXY (EuropePMC + Verified Fallback)
+# ==========================================
+
+_RESEARCH_CACHE = {"timestamp": 0, "papers": []}
+
+CURATED_FALLBACK_PAPERS = [
+    {
+        "title": "BioGPT: Generative Pre-trained Transformer for Biomedical Text Generation and Mining",
+        "authors": "Luo R, Sun L, Xia Y, Qin T, Zhang S, Poon H, Liu TY",
+        "journal": "Briefings in Bioinformatics",
+        "year": "2022",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/36156661/",
+        "image": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80",
+        "tag": "Biomedical AI • 2022"
+    },
+    {
+        "title": "Large Language Models Encode Clinical Knowledge",
+        "authors": "Singhal K, Azizi S, Tu T, Mahdavi SS, Wei J, Chung HW, et al.",
+        "journal": "Nature",
+        "year": "2023",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/37438534/",
+        "image": "https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?auto=format&fit=crop&w=600&q=80",
+        "tag": "Nature • 2023"
+    },
+    {
+        "title": "Evaluation of Symptom Checkers for Self Diagnosis and Triage: Audit Study",
+        "authors": "Semigran HL, Linder JA, Gidengil C, Mehrotra A",
+        "journal": "BMJ",
+        "year": "2015",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/26157077/",
+        "image": "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80",
+        "tag": "BMJ • 2015"
+    },
+    {
+        "title": "High-Performance Medicine: The Convergence of Human and Artificial Intelligence",
+        "authors": "Topol EJ",
+        "journal": "Nature Medicine",
+        "year": "2019",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/30617339/",
+        "image": "https://images.unsplash.com/photo-1550831107-1553da8c8464?auto=format&fit=crop&w=600&q=80",
+        "tag": "Nature Medicine • 2019"
+    },
+    {
+        "title": "A Guide to Deep Learning in Healthcare",
+        "authors": "Esteva A, Robicquet A, Ramsundar B, Kuleshov V, DePristo M, et al.",
+        "journal": "Nature Medicine",
+        "year": "2019",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/30617335/",
+        "image": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80",
+        "tag": "Healthcare ML • 2019"
+    },
+    {
+        "title": "Artificial Intelligence in Clinical Decision Support: Challenges and Opportunities",
+        "authors": "Sutton RT, Pincock D, Baumgart DC, Sadowski DC, Fedorak RN, Kroeker KI",
+        "journal": "NPJ Digital Medicine",
+        "year": "2020",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/32047862/",
+        "image": "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80",
+        "tag": "NPJ Digital Medicine • 2020"
+    }
+]
+
+
+@health_content_bp.route('/api/research-papers', methods=['GET'])
+def get_live_research_papers():
+    """
+    Returns 6 latest peer-reviewed Health AI / Clinical research papers from EuropePMC
+    (cached 15 minutes) with verified clickable PubMed/EuropePMC fallbacks.
+    """
+    import time
+    import re
+    import html
+    import json
+    import urllib.request
+
+    now = time.time()
+    if _RESEARCH_CACHE["papers"] and (now - _RESEARCH_CACHE["timestamp"] < 900):
+        return jsonify({"success": True, "source": "cache", "papers": _RESEARCH_CACHE["papers"]}), 200
+
+    image_pool = [
+        "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80",
+        "https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?auto=format&fit=crop&w=600&q=80",
+        "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80",
+        "https://images.unsplash.com/photo-1550831107-1553da8c8464?auto=format&fit=crop&w=600&q=80",
+        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80",
+        "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80",
+    ]
+
+    try:
+        epmc_url = (
+            "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+            "?query=(%22artificial+intelligence%22+AND+(healthcare+OR+clinical+OR+diagnosis))"
+            "&resultType=lite&format=json&pageSize=12&sort=P_PDATE_D+desc"
+        )
+        req = urllib.request.Request(epmc_url, headers={"User-Agent": "NiramayaHealthAI/1.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        raw_results = payload.get("resultList", {}).get("result", [])
+
+        papers = []
+        for item in raw_results:
+            title = html.unescape(re.sub(r"<[^>]+>", "", item.get("title") or "")).strip().rstrip(".")
+            if not title:
+                continue
+            pmcid = item.get("pmcid")
+            source = item.get("source") or "MED"
+            pid = item.get("id") or ""
+            if pmcid:
+                article_url = f"https://europepmc.org/article/PMC/{pmcid}"
+            elif pid:
+                article_url = f"https://europepmc.org/article/{source}/{pid}"
+            else:
+                continue
+
+            papers.append({
+                "title": title,
+                "authors": item.get("authorString") or "Clinical Research Group",
+                "journal": item.get("journalTitle") or "Europe PMC",
+                "year": str(item.get("pubYear") or "Latest"),
+                "url": article_url,
+                "image": image_pool[len(papers) % len(image_pool)],
+                "tag": f"{item.get('journalTitle') or 'Research'} • {item.get('pubYear') or 'Latest'}"
+            })
+            if len(papers) >= 6:
+                break
+
+        if papers:
+            _RESEARCH_CACHE["timestamp"] = now
+            _RESEARCH_CACHE["papers"] = papers
+            return jsonify({"success": True, "source": "europepmc", "papers": papers}), 200
+    except Exception as e:
+        print(f"Live EuropePMC fetch note: {e}")
+
+    return jsonify({"success": True, "source": "curated", "papers": CURATED_FALLBACK_PAPERS}), 200
+

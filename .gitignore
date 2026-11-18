@@ -22,6 +22,10 @@ app.log
 *.db
 *.sqlite3
 
+# Environment / Secrets (never commit real passwords or API keys)
+.env
+backend/.env
+
 # OS / Editor files
 .DS_Store
 Thumbs.db

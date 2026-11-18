@@ -1,149 +1,209 @@
-// Shuffle array function
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+// ==============================================================================
+// Niramaya Home Script - Latest Research Papers & Navigation
+// ==============================================================================
+
+const CURATED_RESEARCH_PAPERS = [
+    {
+        title: "BioGPT: Generative Pre-trained Transformer for Biomedical Text Generation and Mining",
+        authors: "Luo R, Sun L, Xia Y, Qin T, Zhang S, Poon H, Liu TY",
+        journal: "Briefings in Bioinformatics",
+        year: "2022",
+        url: "https://pubmed.ncbi.nlm.nih.gov/36156661/",
+        image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80",
+        tag: "Biomedical AI • 2022"
+    },
+    {
+        title: "Large Language Models Encode Clinical Knowledge",
+        authors: "Singhal K, Azizi S, Tu T, Mahdavi SS, Wei J, Chung HW, et al.",
+        journal: "Nature",
+        year: "2023",
+        url: "https://pubmed.ncbi.nlm.nih.gov/37438534/",
+        image: "https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?auto=format&fit=crop&w=600&q=80",
+        tag: "Nature • 2023"
+    },
+    {
+        title: "Evaluation of Symptom Checkers for Self Diagnosis and Triage: Audit Study",
+        authors: "Semigran HL, Linder JA, Gidengil C, Mehrotra A",
+        journal: "BMJ",
+        year: "2015",
+        url: "https://pubmed.ncbi.nlm.nih.gov/26157077/",
+        image: "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=600&q=80",
+        tag: "BMJ • 2015"
+    },
+    {
+        title: "High-Performance Medicine: The Convergence of Human and Artificial Intelligence",
+        authors: "Topol EJ",
+        journal: "Nature Medicine",
+        year: "2019",
+        url: "https://pubmed.ncbi.nlm.nih.gov/30617339/",
+        image: "https://images.unsplash.com/photo-1550831107-1553da8c8464?auto=format&fit=crop&w=600&q=80",
+        tag: "Nature Medicine • 2019"
+    },
+    {
+        title: "A Guide to Deep Learning in Healthcare",
+        authors: "Esteva A, Robicquet A, Ramsundar B, Kuleshov V, DePristo M, et al.",
+        journal: "Nature Medicine",
+        year: "2019",
+        url: "https://pubmed.ncbi.nlm.nih.gov/30617335/",
+        image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80",
+        tag: "Healthcare ML • 2019"
+    },
+    {
+        title: "Artificial Intelligence in Clinical Decision Support: Challenges and Opportunities",
+        authors: "Sutton RT, Pincock D, Baumgart DC, Sadowski DC, Fedorak RN, Kroeker KI",
+        journal: "NPJ Digital Medicine",
+        year: "2020",
+        url: "https://pubmed.ncbi.nlm.nih.gov/32047862/",
+        image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80",
+        tag: "NPJ Digital Medicine • 2020"
     }
-    return array;
+];
+
+let researchLoaded = false;
+
+function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text || "";
+    return div.innerHTML;
 }
 
-// Fetch Research Papers
-async function fetchResearchPapers() {
+function renderResearchCards(papers) {
     const container = document.getElementById("research-papers");
-    container.innerHTML = '<div class="loading"><span class="spinner"></span>Loading papers...</div>';
+    if (!container) return;
 
-    // Array of 20 unique, verified health-related images from Unsplash (re-verified)
-    const imagePool = [
-        "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1550831107-1553da8c8464?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1498837167922-ddd27525d352?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1543353071-873f17a7a088?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1579684385127-1ef15d508118?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-        "https://images.unsplash.com/photo-1506126613408-eca07ce68773?ixlib=rb-4.0.3&auto=format&fit=crop&w=320",
-    ];
+    const fallbackImg = "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=600&q=80";
+    container.innerHTML = "";
 
-    // Fallback image pool (re-verified)
-    const fallbackImages = [
-        "https://images.unsplash.com/photo-1617791160536-585948b95a38?ixlib=rb-4.0.3&auto=format&fit=crop&w=320"
-    ];
+    papers.slice(0, 6).forEach((paper) => {
+        const title = escapeHtml(paper.title || "Untitled Research Paper");
+        const authors = escapeHtml(paper.authors || "Clinical Research Group");
+        const tag = escapeHtml(paper.tag || `${paper.journal || "Research"} • ${paper.year || "Latest"}`);
+        const url = paper.url || "https://europepmc.org/";
+        const imgUrl = paper.image || fallbackImg;
 
-    try {
-        const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), 1500);
-        const response = await fetch("https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=health%20AI%20wellness&resultType=lite&format=json&pageSize=20", {
-            signal: controller.signal
-        });
-        clearTimeout(tid);
-        const data = await response.json();
-        let papers = data.resultList.result;
-
-        if (!papers || papers.length === 0) {
-            container.innerHTML = '<p>No recent health papers found.</p>';
-            return;
-        }
-
-        papers = shuffleArray(papers).slice(0, 20);
-        const shuffledImages = shuffleArray([...imagePool]).slice(0, Math.min(6, papers.length));
-        const selectedPapers = papers.slice(0, 6);
-
-        container.innerHTML = "";
-
-        selectedPapers.forEach((paper, index) => {
-            const title = paper.title || "Untitled";
-            const authors = paper.authorString || "Unknown Authors";
-            const pmcId = paper.pmcid || paper.id;
-            const imageUrl = shuffledImages[index] || fallbackImages[index % fallbackImages.length];
-
-            const paperElement = document.createElement("div");
-            paperElement.classList.add("paper-card");
-            paperElement.innerHTML = `
-                <a href="https://europepmc.org/article/MED/${paper.id}" target="_blank" class="paper-link">
-                    <div class="paper-image-wrapper">
-                        <img src="${imageUrl}" alt="${title}" class="paper-image" 
-                             onload="console.log('Image loaded:', '${imageUrl}')"
-                             onerror="console.error('Image failed:', '${imageUrl}'); this.onerror=null; this.src='${fallbackImages[(index + 1) % fallbackImages.length]}';">
-                        <div class="paper-overlay">
-                            <span class="read-more">Read More</span>
-                        </div>
-                    </div>
-                    <div class="paper-details">
-                        <h3 class="paper-title">${title}</h3>
-                        <p class="paper-authors">${authors}</p>
-                    </div>
-                </a>
-            `;
-            container.appendChild(paperElement);
-        });
-    } catch (error) {
-        console.warn("Using offline health AI research cards:", error);
-        const offlinePapers = [
-            { title: "Machine Learning in Early Disease Symptom Prediction", authors: "Clinical AI Informatics, 2025", tag: "Diagnostic AI" },
-            { title: "Clinical Decision Support Systems: Accuracy & Validation", authors: "Niramaya AI Research Group", tag: "Clinical AI" },
-            { title: "Automated Symptom Risk Assessment and Triage Systems", authors: "HealthTech Informatics Quarterly", tag: "Healthcare ML" },
-            { title: "Preventive Healthcare & Lifestyle Intervention via AI", authors: "Global Health Consortium", tag: "Wellness AI" }
-        ];
-        container.innerHTML = "";
-        offlinePapers.forEach((paper) => {
-            const paperElement = document.createElement("div");
-            paperElement.classList.add("paper-card");
-            paperElement.innerHTML = `
-                <div class="paper-link" style="cursor:default; text-decoration:none;">
-                    <div class="paper-image-wrapper" style="background: linear-gradient(135deg, #1e293b, #0f172a); display:flex; align-items:center; justify-content:center; height:140px; color:#38bdf8;">
-                        <i class="fas fa-file-medical fa-3x"></i>
-                    </div>
-                    <div class="paper-details">
-                        <span style="font-size:11px; font-weight:700; color:#10b981; text-transform:uppercase; letter-spacing:0.5px;">${paper.tag}</span>
-                        <h3 class="paper-title" style="margin-top:6px;">${paper.title}</h3>
-                        <p class="paper-authors">${paper.authors}</p>
+        const card = document.createElement("div");
+        card.className = "paper-card";
+        card.innerHTML = `
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="paper-link">
+                <div class="paper-image-wrapper">
+                    <img src="${imgUrl}" alt="${title}" class="paper-image"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center;height:100%;color:#38bdf8;\\'><i class=\\'fas fa-file-medical fa-3x\\'></i></div>';">
+                    <div class="paper-overlay">
+                        <span class="read-more"><i class="fas fa-external-link-alt"></i> Read Paper</span>
                     </div>
                 </div>
-            `;
-            container.appendChild(paperElement);
-        });
-    }
+                <div class="paper-details">
+                    <span class="paper-tag">${tag}</span>
+                    <h3 class="paper-title">${title}</h3>
+                    <p class="paper-authors">${authors}</p>
+                    <span class="paper-read-cta">Open Full Study <i class="fas fa-arrow-right"></i></span>
+                </div>
+            </a>
+        `;
+        container.appendChild(card);
+    });
+
+    researchLoaded = true;
 }
 
-// Updated toggleResearch function to handle first click expansion correctly
-function toggleResearch() {
-    const content = document.getElementById('research-content');
-    const toggle = document.querySelector('.research-toggle');
-    const icon = toggle.querySelector('.toggle-icon');
-    const isCollapsed = content.style.maxHeight === '0px' || !content.style.maxHeight;
+// Fetch Live Research Papers (via backend proxy -> direct EuropePMC -> verified PubMed fallback)
+async function fetchResearchPapers() {
+    const container = document.getElementById("research-papers");
+    if (!container) return;
 
-    if (isCollapsed) {
-        if (content.innerHTML.includes('Loading')) {
-            fetchResearchPapers().then(() => {
-                content.style.maxHeight = content.scrollHeight + 'px';
-                icon.textContent = '▼';
-            });
-        } else {
-            content.style.maxHeight = content.scrollHeight + 'px';
-            icon.textContent = '▼';
+    container.innerHTML = '<div class="loading" style="grid-column:1/-1; text-align:center; padding:24px;"><i class="fas fa-spinner fa-spin"></i> Loading latest peer-reviewed health AI papers...</div>';
+
+    const apiOrigin = (window.location.origin && window.location.origin.startsWith("http"))
+        ? window.location.origin
+        : "http://127.0.0.1:5000";
+
+    // 1. Try Niramaya backend proxy (/api/research-papers)
+    try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch(`${apiOrigin}/api/research-papers`, { signal: controller.signal });
+        clearTimeout(tid);
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.success && Array.isArray(data.papers) && data.papers.length > 0) {
+                renderResearchCards(data.papers);
+                return;
+            }
+        }
+    } catch (_) {}
+
+    // 2. Fallback: Direct EuropePMC REST API from browser (generous 8s timeout)
+    try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(
+            "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=(%22artificial+intelligence%22+AND+healthcare)&resultType=lite&format=json&pageSize=8&sort=P_PDATE_D+desc",
+            { signal: controller.signal }
+        );
+        clearTimeout(tid);
+        if (res.ok) {
+            const data = await res.json();
+            const results = (data.resultList && data.resultList.result) || [];
+            const mapped = results.slice(0, 6).map((p, i) => ({
+                title: String(p.title || "Untitled").replace(/<[^>]+>/g, ""),
+                authors: p.authorString || "Clinical Research Team",
+                journal: p.journalTitle || "Europe PMC",
+                year: p.pubYear || "Latest",
+                url: p.pmcid
+                    ? `https://europepmc.org/article/PMC/${p.pmcid}`
+                    : `https://europepmc.org/article/${p.source || "MED"}/${p.id}`,
+                image: CURATED_RESEARCH_PAPERS[i % CURATED_RESEARCH_PAPERS.length].image,
+                tag: `${p.journalTitle || "Europe PMC"} • ${p.pubYear || "Latest"}`
+            }));
+            if (mapped.length > 0) {
+                renderResearchCards(mapped);
+                return;
+            }
+        }
+    } catch (_) {}
+
+    // 3. Verified Clickable PubMed Fallback Papers (always works even offline)
+    renderResearchCards(CURATED_RESEARCH_PAPERS);
+}
+
+// Expand / collapse Latest Research Papers without clipping bottom cards
+function toggleResearch() {
+    const content = document.getElementById("research-content");
+    const toggle = document.querySelector(".research-toggle");
+    if (!content || !toggle) return;
+
+    const icon = toggle.querySelector(".toggle-icon");
+    const isExpanded = content.classList.contains("expanded");
+
+    if (!isExpanded) {
+        content.classList.add("expanded");
+        content.style.maxHeight = "none";
+        if (icon) icon.textContent = "▼";
+        if (!researchLoaded) {
+            fetchResearchPapers();
         }
     } else {
-        content.style.maxHeight = '0px';
-        icon.textContent = '▶';
+        content.classList.remove("expanded");
+        content.style.maxHeight = "0px";
+        if (icon) icon.textContent = "▶";
     }
 }
 
 // Load papers on page load (theme toggle is managed centrally by theme.js)
 document.addEventListener("DOMContentLoaded", function () {
-    const papersContainer = document.getElementById('research-papers');
-    const researchContent = document.getElementById('research-content');
+    const papersContainer = document.getElementById("research-papers");
+    const researchContent = document.getElementById("research-content");
     if (papersContainer) {
         fetchResearchPapers();
     }
     if (researchContent) {
-        researchContent.style.maxHeight = '0';
+        researchContent.style.maxHeight = "0px";
+        researchContent.classList.remove("expanded");
     }
 
     const logoEl = document.querySelector(".logo");
     if (logoEl) {
-        logoEl.onclick = function(e) {
+        logoEl.onclick = function (e) {
             e.preventDefault();
             window.location.href = "home.html";
         };
@@ -151,7 +211,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const siteNameEl = document.querySelector(".site-name");
     if (siteNameEl) {
-        siteNameEl.onclick = function(e) {
+        siteNameEl.onclick = function (e) {
             e.preventDefault();
             window.location.href = "home.html";
         };
