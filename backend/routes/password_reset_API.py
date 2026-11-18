@@ -171,12 +171,17 @@ def send_otp_email(email, otp):
                 },
                 method="POST"
             )
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 if 200 <= resp.status < 300:
                     print(f"[OTP] Email sent via Brevo API to {email}")
                     return True, "brevo"
+        except urllib.error.HTTPError as he:
+            err_body = he.read().decode("utf-8", errors="ignore")[:200]
+            print(f"[OTP] Brevo API HTTP {he.code}: {err_body}")
+            return False, f"brevo_http_{he.code}: {err_body}"
         except Exception as e:
             print(f"[OTP] Brevo API failed: {e}")
+            return False, f"brevo_failed: {e}"
 
     # 3. SMTP (Gmail App Password or custom SMTP)
     smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
