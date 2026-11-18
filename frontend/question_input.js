@@ -369,6 +369,15 @@ function renderModelPanel(modelKey, data, sectionNumber) {
         descPara.style.marginTop = "8px";
         descPara.innerHTML = `<strong>Disease Description:</strong> ${data.description || data.Description || "No description available."}`;
         card.appendChild(descPara);
+
+        if (!sectionNumber && data.inference_status === "success" && data._query) {
+            const cmpBtn = document.createElement("button");
+            cmpBtn.type = "button";
+            cmpBtn.style.cssText = "margin-top:12px; padding:7px 14px; border:1px solid #f59e0b; border-radius:8px; background:rgba(245,158,11,0.12); color:#f59e0b; font-size:12.5px; font-weight:600; cursor:pointer;";
+            cmpBtn.innerHTML = '<i class="fas fa-balance-scale-right"></i> Compare LRv1 vs LRv2';
+            cmpBtn.onclick = () => runOnDemandComparison(data._query, cmpBtn, card);
+            card.appendChild(cmpBtn);
+        }
         return card;
     }
 
@@ -430,12 +439,49 @@ function renderModelPanel(modelKey, data, sectionNumber) {
             });
             card.appendChild(ul);
         }
+
+        if (!sectionNumber && data.inference_status === "success" && data._query) {
+            const cmpBtn = document.createElement("button");
+            cmpBtn.type = "button";
+            cmpBtn.style.cssText = "margin-top:12px; padding:7px 14px; border:1px solid #f59e0b; border-radius:8px; background:rgba(245,158,11,0.12); color:#f59e0b; font-size:12.5px; font-weight:600; cursor:pointer;";
+            cmpBtn.innerHTML = '<i class="fas fa-balance-scale-right"></i> Compare LRv1 vs LRv2';
+            cmpBtn.onclick = () => runOnDemandComparison(data._query, cmpBtn, card);
+            card.appendChild(cmpBtn);
+        }
         return card;
     }
 
     card.className = "model-panel-card";
     card.textContent = data.answer || JSON.stringify(data);
     return card;
+}
+
+// Helper: On-demand LRv1 vs LRv2 Comparison (only runs when user clicks "Compare LRv1 vs LRv2")
+async function runOnDemandComparison(queryText, btnEl, parentCard) {
+    if (!queryText) return;
+    btnEl.disabled = true;
+    btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Comparing LRv1 vs LRv2...';
+    try {
+        const res = await fastFetch(API_BASE + "/askall", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: queryText, symptoms: queryText })
+        }, getApiTimeoutMs());
+        const d = await res.json().catch(() => null);
+        if (res.ok && d && d.comparison) {
+            btnEl.remove();
+            const cmpPanel = renderComparisonPanel(d.comparison);
+            cmpPanel.style.marginTop = "12px";
+            parentCard.parentElement.appendChild(cmpPanel);
+            setTimeout(scrollToBottom, 100);
+        } else {
+            btnEl.disabled = false;
+            btnEl.innerHTML = '<i class="fas fa-balance-scale-right"></i> Compare LRv1 vs LRv2';
+        }
+    } catch (_) {
+        btnEl.disabled = false;
+        btnEl.innerHTML = '<i class="fas fa-balance-scale-right"></i> Compare LRv1 vs LRv2';
+    }
 }
 
 // Helper: Render LRv1 vs LRv2 Comparison Section
@@ -481,7 +527,7 @@ function renderComparisonPanel(comp) {
 
     card.innerHTML = `
         <div class="model-panel-header">
-            <span class="model-panel-title"><i class="fas fa-balance-scale-right" style="color:#f59e0b;"></i> 5. LRv1 vs LRv2 — Model Comparison &amp; Agreement</span>
+            <span class="model-panel-title"><i class="fas fa-balance-scale-right" style="color:#f59e0b;"></i> LRv1 vs LRv2 — Model Comparison &amp; Agreement</span>
             <span class="agreement-badge ${code}"><i class="fas ${statusIcon}"></i> ${comp.agreement_status || "Comparison"}</span>
         </div>
         <div class="comparison-grid">
@@ -796,6 +842,9 @@ async function sendMessage() {
             }
         }
 
+        if (data && typeof data === "object") {
+            data._query = userInput;
+        }
         const botMsg = document.createElement("div");
         botMsg.className = "chat-message bot-message";
         botMsg.appendChild(renderBotResponseContent(model, data));
