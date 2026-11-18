@@ -4,6 +4,8 @@ import os
 import json
 import random
 import string
+import socket
+import ssl
 import smtplib
 import urllib.request
 import urllib.error
@@ -191,6 +193,17 @@ def send_otp_email(email, otp):
         msg.attach(MIMEText(plain_body, "plain", "utf-8"))
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
+        # Resolve IPv4 explicitly (cloud containers like Render often lack IPv6 routing -> Errno 101)
+        ipv4_host = smtp_host
+        try:
+            infos = socket.getaddrinfo(smtp_host, None, socket.AF_INET, socket.SOCK_STREAM)
+            if infos:
+                ipv4_host = infos[0][4][0]
+        except Exception:
+            ipv4_host = smtp_host
+
+        tls_ctx = ssl.create_default_context()
+
         # Try STARTTLS (port 587) first, then SSL (port 465)
         custom_port = os.environ.get("SMTP_PORT", "").strip()
         ports_to_try = [int(custom_port)] if custom_port.isdigit() else [587, 465]
@@ -198,21 +211,44 @@ def send_otp_email(email, otp):
         for port in ports_to_try:
             try:
                 if port == 465:
-                    with smtplib.SMTP_SSL(smtp_host, 465, timeout=12) as server:
+                    raw_sock = socket.create_connection((ipv4_host, 465), timeout=12)
+                    ssl_sock = tls_ctx.wrap_socket(raw_sock, server_hostname=smtp_host)
+                    server = smtplib.SMTP_SSL(timeout=12, context=tls_ctx)
+                    server.sock = ssl_sock
+                    server.file = ssl_sock.makefile("rb")
+                    server._host = smtp_host
+                    code, _ = server.getreply()
+                    if code != 220:
+                        raise smtplib.SMTPConnectError(code, "SMTP SSL greeting failed")
+                    try:
+                        server.ehlo()
                         server.login(smtp_user, smtp_pass)
                         server.sendmail(smtp_user, email, msg.as_string())
+                    finally:
+                        try:
+                            server.quit()
+                        except Exception:
+                            pass
                 else:
-                    with smtplib.SMTP(smtp_host, port, timeout=12) as server:
+                    server = smtplib.SMTP(timeout=12)
+                    server.connect(ipv4_host, port)
+                    server._host = smtp_host
+                    try:
                         server.ehlo()
-                        server.starttls()
+                        server.starttls(context=tls_ctx)
                         server.ehlo()
                         server.login(smtp_user, smtp_pass)
                         server.sendmail(smtp_user, email, msg.as_string())
-                print(f"[OTP] Email sent via SMTP ({smtp_host}:{port}) to {email}")
+                    finally:
+                        try:
+                            server.quit()
+                        except Exception:
+                            pass
+                print(f"[OTP] Email sent via SMTP IPv4 ({smtp_host}/{ipv4_host}:{port}) to {email}")
                 return True, f"smtp:{port}"
             except Exception as e:
                 last_err = str(e)
-                print(f"[OTP] SMTP ({smtp_host}:{port}) error: {e}")
+                print(f"[OTP] SMTP ({smtp_host}/{ipv4_host}:{port}) error: {e}")
         return False, f"smtp_failed: {last_err}"
 
     print(f"[OTP ON-SCREEN MODE] No email provider configured. OTP for {email}: {otp}")
