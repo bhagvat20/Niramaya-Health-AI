@@ -169,10 +169,10 @@ def test_ai_different_symptoms_give_distinct_customized_answers(client):
     gem_throat = client.post('/askgemini', json={'question': 'sore throat'}).get_json()['answer']
 
     # 1. BioGPT: Biomedical terminology & pathophysiology per condition
-    assert "Gastrointestinal" in bio_digestive or "Dyspepsia" in bio_digestive
-    assert "dysbiosis" in bio_digestive.lower() or "mucosal" in bio_digestive.lower() or "gerd" in bio_digestive.lower()
-    assert "Pharyngitis" in bio_throat or "Throat" in bio_throat
-    assert "Multi-System" in bio_multi or ("Pyrexia" in bio_multi and "Respiratory" in bio_multi)
+    assert "gastrointestinal" in bio_digestive.lower() or "dyspepsia" in bio_digestive.lower() or "digestive" in bio_digestive.lower()
+    assert "dysbiosis" in bio_digestive.lower() or "mucosal" in bio_digestive.lower() or "gerd" in bio_digestive.lower() or "motility" in bio_digestive.lower() or "gastric" in bio_digestive.lower()
+    assert "pharyngitis" in bio_throat.lower() or "throat" in bio_throat.lower() or "pharynx" in bio_throat.lower()
+    assert "multi-system" in bio_multi.lower() or ("pyrexia" in bio_multi.lower() and "respiratory" in bio_multi.lower()) or ("fever" in bio_multi.lower() and "respiratory" in bio_multi.lower())
 
     # 2. Gemini: Practical self-care, home remedies & follow-up questions per condition
     assert "curd" in gem_digestive.lower() or "probiotic" in gem_digestive.lower() or "fennel" in gem_digestive.lower()

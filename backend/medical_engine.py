@@ -597,45 +597,209 @@ def _match_clinical_profiles(clean_lower: str) -> list:
     return matched
 
 
+# Verified clinical alias mapping + fallback reference data for LRv2 41-class diseases
+# whose names differ from or are absent in the 261-disease CSVs.
+_CSV_DISEASE_ALIASES = {
+    'chicken pox': 'chickenpox',
+    'osteoarthristis': 'osteoarthritis',
+    'peptic ulcer diseae': 'stomach ulcers',
+    'bronchial asthma': 'asthma',
+    'diabetes': 'diabetes mellitus',
+}
+
+_LRV2_CLINICAL_REFERENCE = {
+    'hypertension': {
+        'description': 'Hypertension (high blood pressure) is a chronic cardiovascular condition in which the force of blood pushing against arterial walls stays persistently elevated, increasing strain on the heart, brain, and kidneys.',
+        'precautions': [
+            'Monitor blood pressure regularly with a validated cuff and maintain a daily log',
+            'Reduce dietary sodium (salt), processed foods, and excess caffeine intake',
+            'Maintain regular moderate physical activity, healthy weight, and stress management',
+            'Consult a doctor promptly if readings stay elevated or come with severe headache, chest pain, or vision changes'
+        ]
+    },
+    'paralysis (brain hemorrhage)': {
+        'description': 'Brain hemorrhage (intracerebral bleed) is bleeding within brain tissue caused by a ruptured blood vessel, which can impair neurological function and cause weakness or paralysis.',
+        'precautions': [
+            'Seek IMMEDIATE emergency medical care (108 / 112 / 911) if sudden weakness, facial drooping, slurred speech, or severe headache occurs',
+            'Keep blood pressure strictly controlled under a physician’s supervision',
+            'Avoid smoking, excessive alcohol, and unprescribed blood thinners',
+            'Follow prescribed neurological rehabilitation and regular clinical checkups'
+        ]
+    },
+    '(vertigo) paroymsal  positional vertigo': {
+        'description': 'Benign Paroxysmal Positional Vertigo (BPPV) is an inner-ear vestibular disorder causing brief, intense spinning sensations triggered by changes in head position.',
+        'precautions': [
+            'Stand up and turn your head slowly; avoid sudden jerky neck or head movements',
+            'Sit or lie down immediately during a spinning episode to prevent falls',
+            'Sleep with your head slightly elevated and stay well-hydrated',
+            'Consult an ENT or physician for vestibular evaluation (e.g., Epley maneuver)'
+        ]
+    },
+    'acne': {
+        'description': 'Acne vulgaris is a common inflammatory skin condition caused by clogged hair follicles with excess sebum, dead skin cells, and skin bacteria, leading to pimples or blackheads.',
+        'precautions': [
+            'Wash affected areas gently twice daily with a mild, non-comedogenic cleanser',
+            'Avoid squeezing, picking, or popping pimples to prevent scarring and infection',
+            'Use oil-free skincare products and avoid heavy greasy cosmetics',
+            'Consult a dermatologist for persistent, painful, or cystic breakouts'
+        ]
+    },
+    'aids': {
+        'description': 'Acquired Immunodeficiency Syndrome (AIDS) is the advanced stage of HIV infection characterized by severe weakening of the immune system, increasing susceptibility to opportunistic infections.',
+        'precautions': [
+            'Seek confidential medical testing and specialist infectious-disease consultation',
+            'Follow prescribed antiretroviral therapy (ART) consistently without missing doses',
+            'Practice safe hygiene, balanced nutrition, and preventive infection measures',
+            'Report persistent fever, unexplained weight loss, or chronic infections promptly'
+        ]
+    },
+    'allergy': {
+        'description': 'An allergic reaction occurs when the immune system overreacts to normally harmless substances such as pollen, dust mites, pet dander, foods, or insect bites.',
+        'precautions': [
+            'Identify and minimize exposure to known triggers (dust, pollen, specific foods, cosmetics)',
+            'Apply cool compresses or calamine lotion for mild localized skin itching',
+            'Keep indoor spaces ventilated and clean bedding regularly',
+            'Seek emergency care immediately if facial/lip swelling or breathing difficulty occurs'
+        ]
+    },
+    'cervical spondylosis': {
+        'description': 'Cervical spondylosis is age- or posture-related wear and tear of the spinal discs and joints in the neck, commonly causing neck stiffness, localized pain, or radiating arm discomfort.',
+        'precautions': [
+            'Maintain ergonomic posture; keep computer screens at eye level and avoid prolonged downward phone gaze',
+            'Use a supportive cervical pillow and apply warm compresses for muscle stiffness',
+            'Perform gentle neck mobility stretches approved by a physiotherapist',
+            'Seek medical review if numbness, tingling, or arm weakness develops'
+        ]
+    },
+    'chronic cholestasis': {
+        'description': 'Chronic cholestasis is a liver-biliary condition where bile flow from the liver is reduced or obstructed over time, often causing itching, jaundice, dark urine, and fatigue.',
+        'precautions': [
+            'Avoid alcohol and unprescribed hepatotoxic medications or herbal supplements',
+            'Eat a light, low-fat, balanced diet and maintain adequate hydration',
+            'Use gentle soothing moisturizers for bile-related skin itching',
+            'Consult a hepatologist or physician for liver function testing and targeted treatment'
+        ]
+    },
+    'dimorphic hemmorhoids(piles)': {
+        'description': 'Hemorrhoids (piles) are swollen blood vessels in the lower rectum or anus, frequently associated with straining, chronic constipation, or prolonged sitting.',
+        'precautions': [
+            'Eat a high-fiber diet (fruits, vegetables, whole grains) and drink 2.5–3 liters of water daily',
+            'Avoid straining during bowel movements or sitting on the toilet for prolonged periods',
+            'Take warm sitz baths for 10–15 minutes to soothe local discomfort',
+            'Consult a doctor for persistent bleeding, severe pain, or prolapse'
+        ]
+    },
+    'drug reaction': {
+        'description': 'An adverse drug reaction is an unintended immune or physiological response to a medication, ranging from mild skin rashes or itching to more serious systemic reactions.',
+        'precautions': [
+            'Contact your prescribing doctor or pharmacist immediately before taking the next dose',
+            'Record the exact medicine name, dosage, and timing of symptom onset',
+            'Avoid scratching rashes and do not self-treat with unprescribed steroids',
+            'Seek emergency care immediately if swelling of lips/tongue, wheezing, or blistering develops'
+        ]
+    },
+    'fungal infection': {
+        'description': 'A superficial fungal infection (such as ringworm/tinea or candidiasis) is caused by microscopic fungi growing on warm, moist skin areas, resulting in itchy, scaly, or ring-shaped rashes.',
+        'precautions': [
+            'Keep affected skin clean and thoroughly dry, especially in skin folds',
+            'Wear loose, breathable cotton clothing and change sweaty garments promptly',
+            'Do not share towels, combs, or personal clothing to avoid spreading infection',
+            'Use doctor-recommended antifungal treatments and avoid unprescribed steroid creams'
+        ]
+    },
+    'heart attack': {
+        'description': 'A myocardial infarction (heart attack) occurs when blood flow to a section of the heart muscle becomes blocked, depriving cardiac tissue of oxygen.',
+        'precautions': [
+            'CALL EMERGENCY SERVICES (108 / 112 / 911) IMMEDIATELY for crushing chest pain, arm/jaw pain, sweating, or breathlessness',
+            'Stop all exertion immediately, sit upright, and loosen tight clothing',
+            'Do NOT drive yourself to the hospital if acute cardiac symptoms are present',
+            'Follow long-term cardiac risk management (BP, cholesterol, diabetes, smoke-free lifestyle)'
+        ]
+    },
+    'hypoglycemia': {
+        'description': 'Hypoglycemia is an abnormally low blood glucose (sugar) level that can cause shakiness, sweating, dizziness, headache, irritability, or confusion.',
+        'precautions': [
+            'If conscious and blood sugar is low, take a quick-acting carbohydrate (glucose water, fruit juice, or candy)',
+            'Follow up with a balanced snack containing complex carbohydrates and protein',
+            'Never skip meals, especially if taking insulin or diabetes medications',
+            'Seek immediate medical help if severe confusion, fainting, or seizures occur'
+        ]
+    },
+    'urinary tract infection': {
+        'description': 'A urinary tract infection (UTI) is a bacterial infection affecting the bladder, urethra, or kidneys, commonly presenting with burning urination, urinary frequency, or lower pelvic discomfort.',
+        'precautions': [
+            'Drink plenty of clean water throughout the day to help flush bacteria from the urinary tract',
+            'Do not hold urine for long intervals; maintain proper personal hygiene',
+            'Avoid irritating beverages like excess caffeine, alcohol, and sugary sodas',
+            'Consult a doctor for urine testing and proper targeted treatment, especially if fever or flank pain develops'
+        ]
+    },
+    'peptic ulcer diseae': {
+        'description': 'Peptic ulcer disease involves painful sores in the inner lining of the stomach or upper small intestine, often linked to H. pylori infection or frequent NSAID painkiller use.',
+        'precautions': [
+            'Avoid spicy, acidic, fried foods, alcohol, and smoking which irritate stomach lining',
+            'Avoid unprescribed NSAID painkillers (such as ibuprofen or aspirin) on an empty stomach',
+            'Eat smaller, regular, bland meals and avoid lying flat immediately after eating',
+            'Consult a physician for evaluation and seek urgent care for black stools or severe stomach pain'
+        ]
+    }
+}
+
+
 def _lookup_csv_description(disease_name: str):
-    """Looks up authentic disease summary from Symptom_Description.csv."""
-    if df_desc.empty or not disease_name or 'disease' not in df_desc.columns:
+    """Looks up authentic disease summary from Symptom_Description.csv (with verified alias & 41-class clinical fallback)."""
+    if not disease_name:
         return None
-    target = disease_name.strip().lower()
-    exact = df_desc[df_desc['disease'].str.lower().str.strip() == target]
-    if not exact.empty:
-        val = str(exact['description'].values[0]).strip()
-        if val and val.lower() != 'no summary available.':
-            return val
-    # Normalized alphanumeric match
-    norm_target = re.sub(r'[^a-z0-9]+', ' ', target).strip()
-    for _, row in df_desc.iterrows():
-        d_norm = re.sub(r'[^a-z0-9]+', ' ', str(row['disease']).lower()).strip()
-        if d_norm == norm_target or (len(norm_target) >= 5 and (norm_target in d_norm or d_norm in norm_target)):
-            val = str(row['description']).strip()
+    target = re.sub(r'\s+', ' ', disease_name.strip().lower())
+    raw_lower = disease_name.strip().lower()
+    lookup_target = _CSV_DISEASE_ALIASES.get(target, target)
+
+    if not df_desc.empty and 'disease' in df_desc.columns:
+        exact = df_desc[df_desc['disease'].str.lower().str.strip() == lookup_target]
+        if not exact.empty:
+            val = str(exact['description'].values[0]).strip()
             if val and val.lower() != 'no summary available.':
                 return val
+        norm_target = re.sub(r'[^a-z0-9]+', ' ', lookup_target).strip()
+        for _, row in df_desc.iterrows():
+            d_norm = re.sub(r'[^a-z0-9]+', ' ', str(row['disease']).lower()).strip()
+            if d_norm == norm_target or (len(norm_target) >= 5 and (norm_target in d_norm or d_norm in norm_target)):
+                val = str(row['description']).strip()
+                if val and val.lower() != 'no summary available.':
+                    return val
+
+    ref = _LRV2_CLINICAL_REFERENCE.get(raw_lower) or _LRV2_CLINICAL_REFERENCE.get(target)
+    if ref and ref.get('description'):
+        return ref['description']
     return None
 
 
 def _lookup_csv_precautions(disease_name: str) -> list:
-    """Looks up authentic clinical precautions from Symptom_Precaution.csv."""
-    if df_prec.empty or not disease_name or 'disease' not in df_prec.columns:
+    """Looks up authentic clinical precautions from Symptom_Precaution.csv (with verified alias & 41-class clinical fallback)."""
+    if not disease_name:
         return []
-    target = disease_name.strip().lower()
-    cols = [c for c in df_prec.columns if 'precaution' in c.lower()]
-    exact = df_prec[df_prec['disease'].str.lower().str.strip() == target]
-    if not exact.empty:
-        found = [str(exact[c].values[0]).strip() for c in cols if pd.notna(exact[c].values[0]) and str(exact[c].values[0]).strip()]
-        if found:
-            return found
-    norm_target = re.sub(r'[^a-z0-9]+', ' ', target).strip()
-    for _, row in df_prec.iterrows():
-        d_norm = re.sub(r'[^a-z0-9]+', ' ', str(row['disease']).lower()).strip()
-        if d_norm == norm_target or (len(norm_target) >= 5 and (norm_target in d_norm or d_norm in norm_target)):
-            found = [str(row[c]).strip() for c in cols if pd.notna(row[c]) and str(row[c]).strip()]
+    target = re.sub(r'\s+', ' ', disease_name.strip().lower())
+    raw_lower = disease_name.strip().lower()
+    lookup_target = _CSV_DISEASE_ALIASES.get(target, target)
+
+    if not df_prec.empty and 'disease' in df_prec.columns:
+        cols = [c for c in df_prec.columns if 'precaution' in c.lower()]
+        exact = df_prec[df_prec['disease'].str.lower().str.strip() == lookup_target]
+        if not exact.empty:
+            found = [str(exact[c].values[0]).strip() for c in cols if pd.notna(exact[c].values[0]) and str(exact[c].values[0]).strip()]
             if found:
                 return found
+        norm_target = re.sub(r'[^a-z0-9]+', ' ', lookup_target).strip()
+        for _, row in df_prec.iterrows():
+            d_norm = re.sub(r'[^a-z0-9]+', ' ', str(row['disease']).lower()).strip()
+            if d_norm == norm_target or (len(norm_target) >= 5 and (norm_target in d_norm or d_norm in norm_target)):
+                found = [str(row[c]).strip() for c in cols if pd.notna(row[c]) and str(row[c]).strip()]
+                if found:
+                    return found
+
+    ref = _LRV2_CLINICAL_REFERENCE.get(raw_lower) or _LRV2_CLINICAL_REFERENCE.get(target)
+    if ref and ref.get('precautions'):
+        return list(ref['precautions'])
     return []
 
 
@@ -667,14 +831,16 @@ def generate_biogpt_response(prompt: str, local_biogpt_text: str = None) -> dict
     lrv1_feats = extract_lrv1_features(clean)
     topic_title = clean.rstrip('?!.').strip()[:60].title()
 
-    # Pull biomedical disease context from Symptom_Description.csv if top LRv1 disease has a real description
+    # Pull biomedical disease context from Symptom_Description.csv ONLY when LRv1 has meaningful multi-symptom confidence
     biomedical_disease_notes = []
-    if lr_model is not None and lrv1_feats:
+    if lr_model is not None and len(lrv1_feats) >= 2:
         try:
             vec = [1 if str(f) in lrv1_feats else 0 for f in symptom_features]
             probs = lr_model.predict_proba(pd.DataFrame([vec], columns=symptom_features))[0]
             top_indices = probs.argsort()[::-1][:3]
             for idx in top_indices:
+                if float(probs[idx]) < 0.12:
+                    continue
                 d_name = str(lr_model.classes_[idx])
                 d_desc = _lookup_csv_description(d_name)
                 if d_desc:
@@ -1090,11 +1256,22 @@ SYMPTOM_DISPLAY = {
 }
 
 
+_DISPLAY_LABEL_FIXES = {
+    '(vertigo) paroymsal positional vertigo': 'Paroxysmal Positional Vertigo (BPPV)',
+    'osteoarthristis': 'Osteoarthritis',
+    'peptic ulcer diseae': 'Peptic Ulcer Disease',
+    'dimorphic hemmorhoids(piles)': 'Dimorphic Hemorrhoids (Piles)',
+    'paralysis (brain hemorrhage)': 'Paralysis (Brain Hemorrhage)',
+}
+
+
 def _format_disease_label(raw_name: str) -> str:
-    """Formats lowercase CSV/model disease labels cleanly while preserving acronyms."""
+    """Formats lowercase CSV/model disease labels cleanly while preserving acronyms and fixing dataset typos."""
     s = re.sub(r'\s+', ' ', str(raw_name or '')).strip()
     if not s:
         return s
+    if s.lower() in _DISPLAY_LABEL_FIXES:
+        return _DISPLAY_LABEL_FIXES[s.lower()]
     if s.islower():
         acronyms = {'aids': 'AIDS', 'gerd': 'GERD', 'uti': 'UTI', 'tb': 'TB'}
         words = []
@@ -1106,6 +1283,29 @@ def _format_disease_label(raw_name: str) -> str:
                 words.append(w.capitalize())
         return ' '.join(words)
     return s
+
+
+def _build_confidence_guidance(model_name: str, matched_count: int, top_prob: float, total_classes: int):
+    """Returns honest ML confidence level and guidance without modifying real predict_proba values."""
+    if matched_count < 2 or top_prob < 15.0:
+        if matched_count < 2:
+            note = (
+                f"Low Confidence — Only {matched_count} symptom matched. A single general symptom appears across many of "
+                f"{model_name}'s {total_classes} trained diseases, so probabilities stay spread out ({top_prob:.2f}%). "
+                "For an accurate ML prediction, enter 2–4 symptoms together (e.g., 'fever, headache, cough' or 'headache, nausea, blurred vision')."
+            )
+        else:
+            note = (
+                f"Low Confidence ({top_prob:.2f}% across {total_classes} classes) — The entered symptoms overlap with several conditions. "
+                "Add 1–2 more specific symptoms (such as fever, rash, chills, vomiting, or body pain) to sharpen ML classification."
+            )
+        return 'low', note
+    if top_prob < 45.0:
+        return 'moderate', (
+            f"Moderate Confidence ({top_prob:.2f}%) based on {matched_count} matched symptoms. "
+            "Adding any additional co-occurring symptoms can further refine the ranking."
+        )
+    return 'high', None
 
 
 def get_lrv1_prediction(query_text: str) -> dict:
@@ -1196,6 +1396,7 @@ def get_lrv1_prediction(query_text: str) -> dict:
         f"LRv1 (Logistic Regression) predicted '{pred_disease}' with {top_prob:.2f}% probability "
         f"based on {len(matched_features)} matched symptom feature(s)."
     )
+    conf_level, conf_note = _build_confidence_guidance('LRv1', len(matched_features), top_prob, len(lr_model.classes_))
 
     return {
         'model': 'LRv1',
@@ -1204,6 +1405,8 @@ def get_lrv1_prediction(query_text: str) -> dict:
         'predicted_disease': pred_disease,
         'top_probability': top_prob,
         'top5_cumulative_probability': top5_sum,
+        'confidence_level': conf_level,
+        'confidence_note': conf_note,
         'top_predictions': top_predictions,
         'matched_symptoms': matched_features,
         'total_features': len(symptom_features),
@@ -1343,6 +1546,7 @@ def get_lrv2_prediction(query_text: str) -> dict:
             ]
 
     pretty_matched = [m.replace('_', ' ') for m in matched_v2]
+    conf_level, conf_note = _build_confidence_guidance('LRv2', len(matched_v2), top_prob, len(rf_model.classes_))
 
     return {
         'model': 'LRv2',
@@ -1351,6 +1555,8 @@ def get_lrv2_prediction(query_text: str) -> dict:
         'predicted_disease': pred_disease,
         'top_probability': top_prob,
         'top5_cumulative_probability': top5_sum,
+        'confidence_level': conf_level,
+        'confidence_note': conf_note,
         'top_predictions': top_predictions,
         'matched_symptoms': pretty_matched,
         'raw_matched_features': matched_v2,

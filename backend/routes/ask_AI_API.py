@@ -73,14 +73,29 @@ def _reload_ai_dotenv():
             pass
 
 
-def _call_gemini_rest(prompt_text: str, api_key: str):
-    """Calls Google Gemini official REST v1beta API directly over HTTPS (works with modern Gemini 2.0/2.5 keys)."""
-    for model_id in ("gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"):
+# Cache when HF free serverless rejects legacy microsoft/biogpt (HTTP 400/404/410) so we don't waste latency
+_hf_biogpt_unsupported = False
+
+
+def _call_gemini_rest(prompt_text: str, api_key: str, preferred_models=None, max_total_seconds: float = 18.0):
+    """Calls Google Gemini official REST v1beta API over HTTPS with strict total time budget (never hangs Gunicorn)."""
+    import time
+    deadline = time.monotonic() + max_total_seconds
+    models_to_try = preferred_models or (
+        "gemini-3.5-flash-lite",
+        "gemma-4-26b-a4b-it",
+        "gemini-3.5-flash",
+    )
+    for model_id in models_to_try:
+        remaining = deadline - time.monotonic()
+        if remaining < 3.0:
+            break
+        per_call_timeout = min(12.0, remaining)
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
             body = json.dumps({
                 "contents": [{"parts": [{"text": prompt_text}]}],
-                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 900}
+                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 1000}
             }).encode("utf-8")
             req = urllib.request.Request(
                 url,
@@ -88,7 +103,7 @@ def _call_gemini_rest(prompt_text: str, api_key: str):
                 headers={"Content-Type": "application/json", "User-Agent": "NiramayaHealthAI/1.0"},
                 method="POST"
             )
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=per_call_timeout) as resp:
                 if 200 <= resp.status < 300:
                     payload = json.loads(resp.read().decode("utf-8"))
                     cands = payload.get("candidates") or []
@@ -97,6 +112,16 @@ def _call_gemini_rest(prompt_text: str, api_key: str):
                         text = "".join(p.get("text", "") for p in parts).strip()
                         if text:
                             return text, model_id
+        except urllib.error.HTTPError as he:
+            err_snippet = ""
+            try:
+                err_snippet = he.read().decode("utf-8", errors="ignore")[:180]
+            except Exception:
+                pass
+            print(f"Gemini REST ({model_id}) HTTP {he.code}: {err_snippet}")
+            if he.code == 429:
+                # Quota/RPM limit hit for this key — don't hammer more models
+                break
         except Exception as e:
             print(f"Gemini REST ({model_id}) note: {e}")
     return None, None
@@ -104,6 +129,9 @@ def _call_gemini_rest(prompt_text: str, api_key: str):
 
 def _call_hf_biogpt(question: str, hf_token: str):
     """Calls Hugging Face Inference API for microsoft/biogpt over HTTPS."""
+    global _hf_biogpt_unsupported
+    if _hf_biogpt_unsupported:
+        return None
     try:
         url = "https://router.huggingface.co/hf-inference/models/microsoft/biogpt"
         prompt = f"Clinical biomedical pathophysiology and disease context for {question}:"
@@ -121,13 +149,22 @@ def _call_hf_biogpt(question: str, hf_token: str):
             },
             method="POST"
         )
-        with urllib.request.urlopen(req, timeout=12) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             if 200 <= resp.status < 300:
                 payload = json.loads(resp.read().decode("utf-8"))
                 if isinstance(payload, list) and payload and payload[0].get("generated_text"):
                     txt = payload[0]["generated_text"].strip()
                     if len(txt) > 15:
                         return txt
+    except urllib.error.HTTPError as he:
+        err_body = ""
+        try:
+            err_body = he.read().decode("utf-8", errors="ignore")[:180]
+        except Exception:
+            pass
+        if he.code in (400, 404, 410):
+            _hf_biogpt_unsupported = True
+        print(f"HuggingFace BioGPT API HTTP {he.code}: {err_body}")
     except Exception as e:
         print(f"HuggingFace BioGPT API note: {e}")
     return None
@@ -163,27 +200,31 @@ def run_biogpt_inference(question: str) -> dict:
     if local_text:
         return generate_biogpt_response(question, local_biogpt_text=local_text)
 
-    # 3. If live GEMINI_API_KEY is configured, generate live biomedical pathophysiology (strictly biomedical role, distinct from Gemini Health Assistant!)
+    # 3. Live Biomedical LLM API (strictly biomedical/pathophysiology role — distinct from Gemini Health Assistant!)
     api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY).strip()
     if api_key and not api_key.startswith("AIzaSyCxcCXwbFRd") and len(api_key) > 20:
         bio_prompt = (
             "Act strictly as BioGPT — a PubMed biomedical literature and clinical pathophysiology reference engine. "
-            "Do NOT write conversational chat, home tips, or follow-up questions. "
-            "Provide concise, accurate medical-textbook style biomedical knowledge ONLY with these exact headings:\n"
+            "Do NOT write conversational chat, home tips, lifestyle advice, or follow-up questions. "
+            "Provide concise, medically accurate textbook-style biomedical knowledge ONLY with these exact headings:\n"
             "**Condition / Clinical Assessment (Biomedical):**\n"
             "**Organ System & Symptom-Related Context:**\n"
             "**Pathophysiology & Medical Explanation:**\n"
-            "**Disease Information (Reference Medical Knowledge):**\n"
-            "**Biomedical Etiology & Underlying Mechanisms:**\n"
-            "End with a short italic medical reference disclaimer.\n\n"
+            "**Disease Information (Reference Medical Knowledge):** (discuss 2-3 clinically relevant conditions associated with these symptoms)\n"
+            "**Biomedical Etiology & Underlying Mechanisms:** (3-4 bullet points starting with '- ')\n"
+            "End with a short italic medical reference disclaimer wrapped in *(...)*.\n\n"
             f"Clinical Symptoms / Query: {question}"
         )
-        live_bio, model_id = _call_gemini_rest(bio_prompt, api_key)
+        live_bio, model_id = _call_gemini_rest(
+            bio_prompt,
+            api_key,
+            preferred_models=("gemini-3.5-flash-lite", "gemma-4-26b-a4b-it", "gemini-3.5-flash")
+        )
         if live_bio:
             return {
                 "model": "BioGPT",
                 "role": "Biomedical Knowledge & Medical Explanations",
-                "source": f"Live Biomedical LLM Engine ({model_id})",
+                "source": f"BioGPT Biomedical Mode — Live AI API ({model_id})",
                 "answer": live_bio
             }
 

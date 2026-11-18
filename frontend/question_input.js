@@ -26,7 +26,7 @@ async function fastFetch(url, options = {}, timeoutMs = 30000) {
 
 function getApiTimeoutMs() {
     const isLocal = API_BASE.includes("127.0.0.1") || API_BASE.includes("localhost");
-    return isLocal ? 10000 : 35000;
+    return isLocal ? 25000 : 45000;
 }
 
 function toTitleCase(str) {
@@ -349,6 +349,13 @@ function renderModelPanel(modelKey, data, sectionNumber) {
         diseasePara.innerHTML = `<strong>Top Predicted Disease:</strong> <span style="color:#3b82f6; font-weight:700;">${data.predicted_disease || "No condition identified."}</span>${topProbStr}`;
         card.appendChild(diseasePara);
 
+        if (data.confidence_note && data.confidence_level === "low") {
+            const warnBox = document.createElement("div");
+            warnBox.style.cssText = "margin:8px 0; padding:9px 12px; border-radius:8px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.45); color:#d97706; font-size:12.5px; line-height:1.45;";
+            warnBox.innerHTML = `<i class="fas fa-info-circle"></i> ${data.confidence_note}`;
+            card.appendChild(warnBox);
+        }
+
         if (data.matched_symptoms && data.matched_symptoms.length > 0) {
             const symLbl = document.createElement("p");
             symLbl.style.marginTop = "8px";
@@ -402,6 +409,13 @@ function renderModelPanel(modelKey, data, sectionNumber) {
         const diseasePara = document.createElement("p");
         diseasePara.innerHTML = `<strong>Top Predicted Disease:</strong> <span style="color:#10b981; font-weight:700;">${data.predicted_disease || "No condition identified."}</span>${topProbStr}`;
         card.appendChild(diseasePara);
+
+        if (data.confidence_note && data.confidence_level === "low") {
+            const warnBox = document.createElement("div");
+            warnBox.style.cssText = "margin:8px 0; padding:9px 12px; border-radius:8px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.45); color:#d97706; font-size:12.5px; line-height:1.45;";
+            warnBox.innerHTML = `<i class="fas fa-info-circle"></i> ${data.confidence_note}`;
+            card.appendChild(warnBox);
+        }
 
         if (data.matched_symptoms && data.matched_symptoms.length > 0) {
             const symLbl = document.createElement("p");
