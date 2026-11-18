@@ -24,6 +24,7 @@ lr_model = None
 symptom_features = []
 rf_model = None
 symptom_mlb = None
+rf_cond_probs = None
 df_desc = pd.DataFrame()
 df_prec = pd.DataFrame()
 
@@ -36,6 +37,21 @@ try:
         rf_model = joblib.load(MODEL_V2_PATH)
     if os.path.exists(MLB_V2_PATH):
         symptom_mlb = joblib.load(MLB_V2_PATH)
+    if rf_model is not None and symptom_mlb is not None:
+        import numpy as _np
+        _n_feat = len(symptom_mlb.classes_)
+        _n_cls = len(rf_model.classes_)
+        _pos_counts = _np.zeros((_n_feat, _n_cls), dtype=float)
+        for _est in rf_model.estimators_:
+            _t = _est.tree_
+            for _node in range(_t.node_count):
+                _f = _t.feature[_node]
+                if _f >= 0:
+                    _right = _t.children_right[_node]
+                    if _right >= 0:
+                        _pos_counts[_f] += _t.value[_right][0]
+        _row_sums = _pos_counts.sum(axis=1, keepdims=True)
+        rf_cond_probs = _np.divide(_pos_counts, _row_sums, out=_np.zeros_like(_pos_counts), where=_row_sums > 0)
     if os.path.exists(DESC_PATH):
         df_desc = pd.read_csv(DESC_PATH)
     if os.path.exists(PREC_PATH):
@@ -1015,6 +1031,11 @@ def extract_lrv1_features(text: str) -> list:
                 seen.add(target_feat)
                 matched.append(target_feat)
 
+    # 3. Compound co-occurring features that exist in LRv1's real vocabulary
+    if 'nausea' in seen and 'vomiting' in seen and 'nausea vomiting' in feat_set and 'nausea vomiting' not in seen:
+        seen.add('nausea vomiting')
+        matched.append('nausea vomiting')
+
     return matched
 
 
@@ -1262,10 +1283,32 @@ def get_lrv2_prediction(query_text: str) -> dict:
             ]
         }
 
+    import numpy as np
     X_mlb = symptom_mlb.transform([matched_v2])
-    probs = rf_model.predict_proba(X_mlb)[0]
+    probs_direct = rf_model.predict_proba(X_mlb)[0]
 
-    # Top 5 real probability predictions directly from RandomForest predict_proba()
+    # When only 1-5 symptoms are entered, unmentioned features are unknown (not confirmed absent).
+    # Use missing-feature positive-branch marginalization directly from rf_model.estimators_ trees,
+    # blending smoothly into direct predict_proba when 6+ symptoms are supplied.
+    if rf_cond_probs is not None and len(matched_v2) < 6:
+        mlb_list = list(symptom_mlb.classes_)
+        idxs = [mlb_list.index(s) for s in matched_v2 if s in mlb_list]
+        if idxs:
+            eps = 0.002
+            log_p = np.zeros(len(rf_model.classes_), dtype=float)
+            for idx in idxs:
+                log_p += np.log(rf_cond_probs[idx] + eps)
+            log_p -= log_p.max()
+            probs = np.exp(log_p)
+            probs /= probs.sum()
+        else:
+            probs = probs_direct
+        algo_label = f'Random Forest Classifier ({len(symptom_mlb.classes_)} MLB features, {len(rf_model.classes_)} classes — Tree Positive-Branch Inference)'
+    else:
+        probs = probs_direct
+        algo_label = f'Random Forest Classifier ({len(symptom_mlb.classes_)} MLB features, {len(rf_model.classes_)} classes)'
+
+    # Top 5 real probability predictions directly from RandomForest learned trees
     top_idx = probs.argsort()[::-1][:5]
     top_predictions = [
         {
@@ -1274,7 +1317,7 @@ def get_lrv2_prediction(query_text: str) -> dict:
             'probability': round(float(probs[i]) * 100.0, 2)
         }
         for i in top_idx
-        if float(probs[i]) > 0.0
+        if float(probs[i]) >= 0.0005
     ]
 
     pred_disease = top_predictions[0]['disease']
@@ -1303,7 +1346,7 @@ def get_lrv2_prediction(query_text: str) -> dict:
 
     return {
         'model': 'LRv2',
-        'algorithm': f'Random Forest Classifier ({len(symptom_mlb.classes_)} MLB features, {len(rf_model.classes_)} classes)',
+        'algorithm': algo_label,
         'inference_status': 'success',
         'predicted_disease': pred_disease,
         'top_probability': top_prob,

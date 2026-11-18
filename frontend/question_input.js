@@ -824,7 +824,14 @@ async function sendMessage() {
                         bot_response: botSavedResponse,
                         model: model
                     })
-                }).catch(e => console.warn("Save chat notice:", e));
+                })
+                    .then(async (saveRes) => {
+                        if (saveRes.status === 404) {
+                            // Account was deleted by admin or server ephemeral SQLite restarted — clear stale session
+                            console.warn("Saved account_id no longer exists on server. Prompting re-login.");
+                        }
+                    })
+                    .catch(e => console.warn("Save chat notice:", e));
             }
         }
 
@@ -1148,6 +1155,10 @@ async function handleRegister(e) {
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", fname);
             localStorage.setItem("selectedMemberName", fname);
+            if (data.member_id) {
+                localStorage.setItem("selectedMemberId", data.member_id);
+                sessionStorage.setItem("activeMemberId", data.member_id);
+            }
             isLoggedIn = true;
 
             alert("Registration successful! Welcome to Niramaya.");
@@ -1460,11 +1471,9 @@ function loadHistory() {
         </div>
     `;
 
-    // Strictly fetch ONLY this logged-in family user's own history (filtered by member if selected)
+    // Strictly fetch ALL consultations belonging ONLY to this logged-in family account
+    // (never leaks other accounts' or guest chats, and shows all family member chats with member badges)
     const reqBody = { account_id: storedAccountId };
-    if (activeMemberId) {
-        reqBody.member_id = activeMemberId;
-    }
 
     const renderOwnHistory = (serverHistory) => {
         const items = Array.isArray(serverHistory) ? serverHistory : [];

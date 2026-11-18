@@ -95,9 +95,28 @@ def register_user():
                 "message": "This email is already registered. Please login or use a different email."
             }), 400
 
+        # Create a default primary member profile for this family account so Profile & History work immediately
+        default_member_id = None
+        try:
+            cursor.execute(
+                "INSERT INTO member_tbl (account_id, name, gender, age, height, weight) "
+                "VALUES (%s, %s, 'Other', 25, 'N/A', 'N/A') RETURNING member_id",
+                (account_id, fname)
+            )
+            m_row = cursor.fetchone()
+            default_member_id = m_row[0] if m_row else None
+            conn.commit()
+        except Exception as _me:
+            print(f"Default member creation notice: {_me}")
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
         return jsonify({
             "success": True,
             "account_id": str(account_id),
+            "member_id": str(default_member_id) if default_member_id is not None else None,
             "familyname": fname,
             "email": email,
             "message": "Registration successful"

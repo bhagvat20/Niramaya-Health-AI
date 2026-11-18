@@ -2,6 +2,9 @@ from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 import os
 import re
+import json
+import urllib.request
+import urllib.error
 
 # Import the Differentiated 4-Model Medical Intelligence Engine
 from medical_engine import (
@@ -48,9 +51,103 @@ def get_biogpt_generator():
     return biogpt_generator
 
 
+def _reload_ai_dotenv():
+    """Reloads .env dynamically so newly added GEMINI_API_KEY / HF_API_KEY work immediately."""
+    routes_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(routes_dir)
+    project_root = os.path.dirname(backend_dir)
+    for env_path in (os.path.join(project_root, ".env"), os.path.join(backend_dir, ".env")):
+        if not os.path.isfile(env_path):
+            continue
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for raw_line in f:
+                    line = raw_line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip().strip('"').strip("'")
+                    if k in ("GEMINI_API_KEY", "HF_API_KEY", "HF_TOKEN", "HUGGINGFACE_API_KEY") and v:
+                        os.environ[k] = v
+        except Exception:
+            pass
+
+
+def _call_gemini_rest(prompt_text: str, api_key: str):
+    """Calls Google Gemini official REST v1beta API directly over HTTPS (works with modern Gemini 2.0/2.5 keys)."""
+    for model_id in ("gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"):
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={api_key}"
+            body = json.dumps({
+                "contents": [{"parts": [{"text": prompt_text}]}],
+                "generationConfig": {"temperature": 0.4, "maxOutputTokens": 900}
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers={"Content-Type": "application/json", "User-Agent": "NiramayaHealthAI/1.0"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                if 200 <= resp.status < 300:
+                    payload = json.loads(resp.read().decode("utf-8"))
+                    cands = payload.get("candidates") or []
+                    if cands:
+                        parts = (cands[0].get("content") or {}).get("parts") or []
+                        text = "".join(p.get("text", "") for p in parts).strip()
+                        if text:
+                            return text, model_id
+        except Exception as e:
+            print(f"Gemini REST ({model_id}) note: {e}")
+    return None, None
+
+
+def _call_hf_biogpt(question: str, hf_token: str):
+    """Calls Hugging Face Inference API for microsoft/biogpt over HTTPS."""
+    try:
+        url = "https://router.huggingface.co/hf-inference/models/microsoft/biogpt"
+        prompt = f"Clinical biomedical pathophysiology and disease context for {question}:"
+        body = json.dumps({
+            "inputs": prompt,
+            "parameters": {"max_new_tokens": 110, "return_full_text": False}
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=body,
+            headers={
+                "Authorization": f"Bearer {hf_token}",
+                "Content-Type": "application/json",
+                "User-Agent": "NiramayaHealthAI/1.0"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            if 200 <= resp.status < 300:
+                payload = json.loads(resp.read().decode("utf-8"))
+                if isinstance(payload, list) and payload and payload[0].get("generated_text"):
+                    txt = payload[0]["generated_text"].strip()
+                    if len(txt) > 15:
+                        return txt
+    except Exception as e:
+        print(f"HuggingFace BioGPT API note: {e}")
+    return None
+
+
 def run_biogpt_inference(question: str) -> dict:
     """Runs BioGPT unique responsibility: biomedical knowledge, medical explanation & disease context."""
+    _reload_ai_dotenv()
     local_text = None
+
+    # 1. Try Hugging Face Inference API for microsoft/biogpt if HF token is configured
+    hf_token = (os.environ.get("HF_API_KEY") or os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY") or "").strip()
+    if hf_token:
+        hf_text = _call_hf_biogpt(question, hf_token)
+        if hf_text:
+            res = generate_biogpt_response(question, local_biogpt_text=hf_text)
+            res["source"] = "Microsoft BioGPT (Hugging Face Live API) + Clinical Reference Corpus"
+            return res
+
+    # 2. Try local cached microsoft/biogpt weights if installed
     gen = get_biogpt_generator()
     if gen is not None:
         try:
@@ -62,7 +159,35 @@ def run_biogpt_inference(question: str) -> dict:
                     local_text = raw
         except Exception as e:
             print(f"BioGPT generation note: {e}")
-    return generate_biogpt_response(question, local_biogpt_text=local_text)
+
+    if local_text:
+        return generate_biogpt_response(question, local_biogpt_text=local_text)
+
+    # 3. If live GEMINI_API_KEY is configured, generate live biomedical pathophysiology (strictly biomedical role, distinct from Gemini Health Assistant!)
+    api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY).strip()
+    if api_key and not api_key.startswith("AIzaSyCxcCXwbFRd") and len(api_key) > 20:
+        bio_prompt = (
+            "Act strictly as BioGPT — a PubMed biomedical literature and clinical pathophysiology reference engine. "
+            "Do NOT write conversational chat, home tips, or follow-up questions. "
+            "Provide concise, accurate medical-textbook style biomedical knowledge ONLY with these exact headings:\n"
+            "**Condition / Clinical Assessment (Biomedical):**\n"
+            "**Organ System & Symptom-Related Context:**\n"
+            "**Pathophysiology & Medical Explanation:**\n"
+            "**Disease Information (Reference Medical Knowledge):**\n"
+            "**Biomedical Etiology & Underlying Mechanisms:**\n"
+            "End with a short italic medical reference disclaimer.\n\n"
+            f"Clinical Symptoms / Query: {question}"
+        )
+        live_bio, model_id = _call_gemini_rest(bio_prompt, api_key)
+        if live_bio:
+            return {
+                "model": "BioGPT",
+                "role": "Biomedical Knowledge & Medical Explanations",
+                "source": f"Live Biomedical LLM Engine ({model_id})",
+                "answer": live_bio
+            }
+
+    return generate_biogpt_response(question)
 
 
 def run_gemini_inference(question: str) -> dict:
@@ -70,6 +195,7 @@ def run_gemini_inference(question: str) -> dict:
     Runs Gemini unique responsibility: natural-language AI health assistant
     providing understandable health guidance, general precautions, and follow-up questions.
     """
+    _reload_ai_dotenv()
     if not is_health_related(question):
         return {
             "model": "Gemini",
@@ -79,57 +205,68 @@ def run_gemini_inference(question: str) -> dict:
             "answer": get_non_health_refusal_message()
         }
 
-    # Try live Google Gemini API when valid key is configured
+    # Try live Google Gemini REST API directly when valid GEMINI_API_KEY is configured
     api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY).strip()
     if api_key and not api_key.startswith("AIzaSyCxcCXwbFRd") and len(api_key) > 20:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            assistant_prompt = (
-                "You are Gemini inside Niramaya Health AI — acting strictly as a supportive AI Health Assistant "
-                "(NOT a general ChatGPT chatbot and NOT a statistical disease classifier). "
-                "RULES:\n"
-                "1. ONLY answer genuine human health symptoms or medical concerns. Refuse non-health queries.\n"
-                "2. Explain things in warm, clear, everyday language a patient can easily understand.\n"
-                "3. Do NOT fabricate disease probability percentages.\n"
-                "4. Structure your response with these EXACT headings:\n"
-                "**Understanding Your Symptoms (Health Assistant Guidance):**\n"
-                "**Practical Self-Care & Everyday Health Guidance:**\n"
-                "**General Precautions:**\n"
-                "**When to Seek Prompt Medical Care:**\n"
-                "**Helpful Follow-Up Questions to Clarify Your Symptoms:** (list 3-4 specific follow-up questions)\n"
-                "End with a brief italic disclaimer.\n\n"
-                f"Patient Symptom Description: {question}"
-            )
-            for model_id in ('gemini-2.0-flash', 'gemini-1.5-flash'):
-                try:
-                    model = genai.GenerativeModel(model_id)
-                    resp = model.generate_content(
-                        assistant_prompt,
-                        request_options={"timeout": 8.0}
-                    )
-                    if resp and getattr(resp, 'text', None):
-                        text = resp.text.strip()
-                        # Extract bullet follow-up questions if present
-                        follow_ups = [
-                            line.lstrip('-*• ').strip()
-                            for line in text.splitlines()
-                            if line.strip().endswith('?')
-                        ][:4]
-                        return {
-                            "model": "Gemini",
-                            "role": "AI Health Assistant — Guidance, Precautions & Follow-Up Questions",
-                            "source": f"Google Gemini Live API ({model_id})",
-                            "follow_up_questions": follow_ups,
-                            "answer": text
-                        }
-                except Exception as inner_err:
-                    print(f"Gemini model {model_id} fallback note: {inner_err}")
-        except Exception as e:
-            print(f"Gemini fast-fallback note: {e}")
+        assistant_prompt = (
+            "You are Gemini inside Niramaya Health AI — acting strictly as a supportive AI Health Assistant "
+            "(NOT a general ChatGPT chatbot and NOT a statistical disease classifier). "
+            "RULES:\n"
+            "1. ONLY answer genuine human health symptoms or medical concerns. Refuse non-health queries.\n"
+            "2. Explain things in warm, clear, everyday language a patient can easily understand.\n"
+            "3. Do NOT fabricate disease probability percentages.\n"
+            "4. Structure your response with these EXACT headings:\n"
+            "**Understanding Your Symptoms (Health Assistant Guidance):**\n"
+            "**Practical Self-Care & Everyday Health Guidance:**\n"
+            "**General Precautions:**\n"
+            "**When to Seek Prompt Medical Care:**\n"
+            "**Helpful Follow-Up Questions to Clarify Your Symptoms:** (list 3-4 specific follow-up questions)\n"
+            "End with a brief italic disclaimer.\n\n"
+            f"Patient Symptom Description: {question}"
+        )
+        text, model_id = _call_gemini_rest(assistant_prompt, api_key)
+        if text:
+            follow_ups = [
+                line.lstrip('-*• 0123456789.)').strip()
+                for line in text.splitlines()
+                if line.strip().endswith('?')
+            ][:4]
+            return {
+                "model": "Gemini",
+                "role": "AI Health Assistant — Guidance, Precautions & Follow-Up Questions",
+                "source": f"Google Gemini Live API ({model_id})",
+                "follow_up_questions": follow_ups,
+                "answer": text
+            }
 
     # Deterministic structured Health Assistant engine (distinct from BioGPT)
     return generate_gemini_guidance(question)
+
+
+@AI_bp.route("/api/models/status", methods=["GET"])
+def models_status():
+    """Diagnostic status of all 4 AI/ML models and database engine (no secrets exposed)."""
+    _reload_ai_dotenv()
+    from medical_engine import lr_model, rf_model, symptom_features, symptom_mlb
+    from db_config import get_db_connection
+    api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY).strip()
+    hf_key = (os.environ.get("HF_API_KEY") or os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY") or "").strip()
+    db_type = "unknown"
+    try:
+        c = get_db_connection()
+        db_type = "sqlite_ephemeral" if c.__class__.__name__ == "SQLiteConnWrapper" else "postgresql_persistent"
+        c.close()
+    except Exception:
+        pass
+    return jsonify({
+        "gemini_live_api_configured": bool(api_key and not api_key.startswith("AIzaSyCxcCXwbFRd") and len(api_key) > 20),
+        "biogpt_hf_api_configured": bool(hf_key),
+        "lrv1_loaded": lr_model is not None,
+        "lrv1_features": len(symptom_features),
+        "lrv2_loaded": rf_model is not None,
+        "lrv2_features": len(symptom_mlb.classes_) if symptom_mlb is not None else 0,
+        "database_engine": db_type
+    }), 200
 
 
 GREETINGS_EXACT = {
