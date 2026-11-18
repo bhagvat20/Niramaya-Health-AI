@@ -14,6 +14,28 @@
     // 1. Immediately apply saved theme to prevent FOUC (flash of unstyled content)
     const savedTheme = applyThemeClass(localStorage.getItem('theme') || 'dark');
 
+    // Prevent blinking text cursor "|" or accidental text selection on logo & brand title across all pages
+    (function injectLogoStyleFix() {
+        const style = document.createElement('style');
+        style.id = 'niramaya-logo-caret-fix';
+        style.textContent = `
+            .logo, .logo img, .site-name, .header .logo, .header .site-name, .brand-row, .brand-row img {
+                cursor: pointer !important;
+                user-select: none !important;
+                -webkit-user-select: none !important;
+                -moz-user-select: none !important;
+                caret-color: transparent !important;
+                outline: none !important;
+                border: none !important;
+            }
+            .logo img {
+                display: block;
+                -webkit-user-drag: none;
+            }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+    })();
+
     function updateThemeUI(theme) {
         const resolved = (theme === 'light') ? 'light' : 'dark';
         const toggleButtons = document.querySelectorAll('#theme-toggle, .theme-toggle-btn');

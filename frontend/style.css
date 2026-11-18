@@ -74,17 +74,37 @@ body {
     height: 90px;
 }
 
+.logo {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+    outline: none;
+}
+
 .logo img {
     height: 80px;
     width: auto;
     margin-left: 8px;
     margin-right: 15px;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+    border: none;
+    outline: none;
 }
 
 .site-name {
     font-size: 24px;
     color: var(--text-color);
     font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+    outline: none;
 }
 
 .nav {

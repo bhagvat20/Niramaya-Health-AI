@@ -110,6 +110,10 @@ body {
     display: flex;
     align-items: center;
     cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+    outline: none;
 }
 
 .logo img {
@@ -118,6 +122,11 @@ body {
     margin-right: 15px;
     margin-left: 20px;
     margin-bottom: 5px;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+    border: none;
+    outline: none;
     transition: opacity 0.2s;
 }
 
@@ -126,6 +135,10 @@ body {
     color: var(--text-color);
     font-weight: bold;
     cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    caret-color: transparent;
+    outline: none;
     letter-spacing: -0.3px;
 }
 

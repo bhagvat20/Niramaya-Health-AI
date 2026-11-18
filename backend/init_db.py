@@ -74,53 +74,11 @@ def setup_database():
         else:
             print("Admin user(s) already exist.")
 
-        # Step 4: Seed initial approved Health Content if health_content_tbl is empty or partial
+        # Step 4: Seed initial approved Health Content only (never re-seed dummy user accounts so deleted users never come back)
         try:
-            from seed_data import SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT
+            from seed_data import SEED_HEALTH_CONTENT
         except ImportError:
-            SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT = [], [], [], []
-
-        # Seed user accounts if account_tbl is empty
-        cursor_proj.execute("SELECT COUNT(*) FROM account_tbl;")
-        account_count = cursor_proj.fetchone()[0]
-        if account_count == 0 and SEED_ACCOUNTS:
-            print("Seeding initial user accounts...")
-            for a in SEED_ACCOUNTS:
-                cursor_proj.execute("""
-                    INSERT INTO account_tbl (account_id, family_name, email, password_hash, created_at, is_active)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (email) DO NOTHING;
-                """, (a[0], a[1], a[2], a[3], a[4], a[5]))
-            conn_proj.commit()
-            print(f"Seeded {len(SEED_ACCOUNTS)} user accounts successfully.")
-
-        # Seed members if member_tbl is empty
-        cursor_proj.execute("SELECT COUNT(*) FROM member_tbl;")
-        member_count = cursor_proj.fetchone()[0]
-        if member_count == 0 and SEED_MEMBERS:
-            print("Seeding initial family members...")
-            for m in SEED_MEMBERS:
-                cursor_proj.execute("""
-                    INSERT INTO member_tbl (member_id, account_id, name, gender, age, height, weight, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (member_id) DO NOTHING;
-                """, (m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]))
-            conn_proj.commit()
-            print(f"Seeded {len(SEED_MEMBERS)} family members successfully.")
-
-        # Seed chat history if chat_history_tbl is empty
-        cursor_proj.execute("SELECT COUNT(*) FROM chat_history_tbl;")
-        chat_count = cursor_proj.fetchone()[0]
-        if chat_count == 0 and SEED_CHATS:
-            print("Seeding initial disease predictions...")
-            for c in SEED_CHATS:
-                cursor_proj.execute("""
-                    INSERT INTO chat_history_tbl (history_id, account_id, member_id, user_input, bot_response, model, timestamp)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (history_id) DO NOTHING;
-                """, (c[0], c[1], c[2], c[3], c[4], c[5], c[6]))
-            conn_proj.commit()
-            print(f"Seeded {len(SEED_CHATS)} chats successfully.")
+            SEED_HEALTH_CONTENT = []
 
         # Seed full health content if health_content_tbl has fewer than 25 items
         cursor_proj.execute("SELECT COUNT(*) FROM health_content_tbl;")

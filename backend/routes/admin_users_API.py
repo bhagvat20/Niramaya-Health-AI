@@ -55,7 +55,7 @@ def get_all_users():
             sql += " AND a.is_active = %s"
             params.append(False)
             
-        sql += " GROUP BY a.account_id, a.family_name, a.email, a.is_active, a.created_at ORDER BY a.created_at DESC"
+        sql += " GROUP BY a.account_id, a.family_name, a.email, a.is_active, a.created_at ORDER BY a.account_id DESC"
         
         cursor.execute(sql, tuple(params))
         rows = cursor.fetchall() or []
@@ -72,11 +72,13 @@ def get_all_users():
                 "chat_count": r[6] or 0
             })
             
-        return jsonify({
+        resp = jsonify({
             "success": True,
             "count": len(users_list),
             "users": users_list
-        }), 200
+        })
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return resp, 200
         
     except Exception as e:
         print(f"Error in get_all_users: {e}")
@@ -349,7 +351,12 @@ def delete_user(account_id):
                 }
             }), 400
             
-        # Perform deletion in database transaction
+        # Perform cascading deletion in database transaction (works on both SQLite and PostgreSQL)
+        for child_tbl in ("password_reset_otps", "chat_history_tbl", "member_tbl"):
+            try:
+                cursor.execute(f"DELETE FROM {child_tbl} WHERE account_id = %s", (account_id,))
+            except Exception:
+                pass
         cursor.execute("DELETE FROM account_tbl WHERE account_id = %s", (account_id,))
         conn.commit()
         

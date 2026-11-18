@@ -179,38 +179,11 @@ def init_sqlite_db(db_path):
         """, (hashed,))
 
     try:
-        from seed_data import SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT
+        from seed_data import SEED_HEALTH_CONTENT
     except ImportError:
-        SEED_ACCOUNTS, SEED_MEMBERS, SEED_CHATS, SEED_HEALTH_CONTENT = [], [], [], []
+        SEED_HEALTH_CONTENT = []
 
-    # Seed accounts
-    cur.execute("SELECT COUNT(*) FROM account_tbl")
-    if cur.fetchone()[0] == 0 and SEED_ACCOUNTS:
-        for a in SEED_ACCOUNTS:
-            cur.execute("""
-                INSERT OR IGNORE INTO account_tbl (account_id, family_name, email, password_hash, created_at, is_active)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (a[0], a[1], a[2], a[3], a[4], 1 if a[5] else 0))
-
-    # Seed members
-    cur.execute("SELECT COUNT(*) FROM member_tbl")
-    if cur.fetchone()[0] == 0 and SEED_MEMBERS:
-        for m in SEED_MEMBERS:
-            cur.execute("""
-                INSERT OR IGNORE INTO member_tbl (member_id, account_id, name, gender, age, height, weight, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7]))
-
-    # Seed chats
-    cur.execute("SELECT COUNT(*) FROM chat_history_tbl")
-    if cur.fetchone()[0] == 0 and SEED_CHATS:
-        for c in SEED_CHATS:
-            cur.execute("""
-                INSERT OR IGNORE INTO chat_history_tbl (history_id, account_id, member_id, user_input, bot_response, model, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (c[0], c[1], c[2], c[3], c[4], c[5], c[6]))
-
-    # Seed health content
+    # Seed health content only (never re-seed dummy user accounts so deleted users stay deleted!)
     cur.execute("SELECT COUNT(*) FROM health_content_tbl")
     if cur.fetchone()[0] < 25 and SEED_HEALTH_CONTENT:
         for h in SEED_HEALTH_CONTENT:

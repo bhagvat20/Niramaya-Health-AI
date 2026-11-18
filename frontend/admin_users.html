@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="N-16.png">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
-  <script src="theme.js"></script>
+  <script src="theme.js?v=20261118_04"></script>
   <style>
     .admin-container {
       width: 92%;
@@ -536,11 +536,13 @@
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Fetching user accounts...</td></tr>`;
 
       try {
-        const url = new URL(`${API_BASE_URL}/admin/users`);
-        if (search) url.searchParams.append('search', search);
-        if (status !== 'all') url.searchParams.append('status', status);
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (status !== 'all') params.append('status', status);
+        params.append('_t', String(Date.now()));
 
-        const res = await fetch(url, {
+        const res = await apiFetch(`/admin/users?${params.toString()}`, {
+          cache: 'no-store',
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
