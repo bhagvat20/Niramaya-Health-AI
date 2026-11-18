@@ -57,11 +57,9 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initPage() {
-    // Clean out any legacy mock consultations from browser storage so only real chats remain
+    // Always clear legacy shared consultation cache so one user NEVER sees another user's or guest's history
     try {
-        let curLocal = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
-        curLocal = curLocal.filter(c => c && c.history_id && !String(c.history_id).startsWith("seed-"));
-        localStorage.setItem("niramaya_consultations", JSON.stringify(curLocal));
+        localStorage.removeItem("niramaya_consultations");
     } catch (_) {}
 
     // Persistent login: stays logged in across Home, refreshes, and tabs until explicit Logout
@@ -559,41 +557,14 @@ async function sendMessage() {
             ? JSON.stringify(data)
             : (data.answer || JSON.stringify(data));
 
-        // Always save consultation locally so it's immediately available in history
-        try {
-            const localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
-            const activeMemberName = sessionStorage.getItem("activeMemberName") || localStorage.getItem("selectedMemberName") || (isLoggedIn ? "Member" : "Guest");
-            localHistory.unshift({
-                history_id: Date.now(),
-                question: userInput,
-                response: botSavedResponse,
-                model: model,
-                timestamp: new Date().toISOString(),
-                member_name: activeMemberName
-            });
-            if (localHistory.length > 50) localHistory.pop();
-            localStorage.setItem("niramaya_consultations", JSON.stringify(localHistory));
-        } catch (_) {}
-
         if (!isLoggedIn) {
+            // Guest users: track question limit only — NEVER save guest chats to DB or shared localStorage
             guestQuestionCount++;
             localStorage.setItem("guestQuestionCount", guestQuestionCount);
-            // Also persist guest consultation to server under default account so local history matches cloud
-            fetch(API_BASE + "/savechat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    account_id: 1,
-                    member_id: null,
-                    user_input: userInput,
-                    bot_response: botSavedResponse,
-                    model: model
-                })
-            }).catch(() => {});
         } else {
-            // Save consultation history to server
-            const accountId = localStorage.getItem("accountId");
-            const memberId = localStorage.getItem("selectedMemberId") || null;
+            // Logged-in family user: save consultation history strictly under their own account & member profile
+            const accountId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
+            const memberId = localStorage.getItem("selectedMemberId") || sessionStorage.getItem("activeMemberId") || null;
             if (accountId) {
                 fetch(API_BASE + "/savechat", {
                     method: "POST",
@@ -655,7 +626,7 @@ function updateNavButtons() {
         if (loginBtn) loginBtn.style.display = "inline-flex";
         if (regBtn) regBtn.style.display = "inline-flex";
         if (profileBtn) profileBtn.style.display = "none";
-        if (historyBtn) historyBtn.style.display = "inline-flex";
+        if (historyBtn) historyBtn.style.display = "none";
     }
 }
 
@@ -961,6 +932,7 @@ function logout() {
     localStorage.removeItem("familyName");
     localStorage.removeItem("selectedMemberId");
     localStorage.removeItem("selectedMemberName");
+    localStorage.removeItem("niramaya_consultations");
     isLoggedIn = false;
     closeProfileModal();
     updateNavButtons();
@@ -1200,8 +1172,13 @@ async function handleUpdateProfile(e) {
     }
 }
 
-// Consultation History Modal
+// Consultation History Modal (Strictly for Logged-In Family Users Only)
 function openHistoryModal() {
+    if (!isLoggedIn || !(localStorage.getItem("accountId") || sessionStorage.getItem("accountId"))) {
+        alert("Please login to view your personal consultation history.");
+        openLoginModal();
+        return;
+    }
     openModal("history-modal");
     loadHistory();
 }
@@ -1209,101 +1186,80 @@ function openHistoryModal() {
 function closeHistoryModal() { closeModal("history-modal"); }
 
 function loadHistory() {
-    const storedAccountId = localStorage.getItem("accountId");
     const historyList = document.getElementById("history-list");
     if (!historyList) return;
 
-    let localHistory = [];
-    try {
-        localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
-        localHistory = localHistory.filter(c => c && c.history_id && !String(c.history_id).startsWith("seed-"));
-    } catch (_) {}
+    const storedAccountId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
+    const activeMemberId = localStorage.getItem("selectedMemberId") || sessionStorage.getItem("activeMemberId") || null;
+
+    // Strictly block unauthenticated/guest users from seeing any chat history
+    if (!isLoggedIn || !storedAccountId) {
+        historyList.innerHTML = `
+            <div style="text-align:center; padding:35px; color:var(--secondary-text);">
+                <i class="fas fa-lock fa-2x" style="color:#6366f1; margin-bottom:12px;"></i>
+                <p style="font-size:15px; font-weight:600; color:var(--text-color);">Login Required</p>
+                <p style="font-size:13px; color:var(--secondary-text); margin:6px 0 16px;">Only logged-in family members can save and view their own private consultation history.</p>
+                <button class="modal-btn" style="max-width:220px; margin:0 auto;" onclick="closeHistoryModal(); openLoginModal();"><i class="fas fa-sign-in-alt"></i> Login Now</button>
+            </div>
+        `;
+        return;
+    }
 
     historyList.innerHTML = `
-        <div style="text-align:center; padding:30px; color:#a1a1aa;">
+        <div style="text-align:center; padding:30px; color:var(--secondary-text);">
             <i class="fas fa-spinner fa-spin fa-2x" style="color:#6366f1;"></i>
-            <p style="margin-top:12px; font-size:14px;">Loading consultation history...</p>
+            <p style="margin-top:12px; font-size:14px;">Loading your consultation history...</p>
         </div>
     `;
 
-    // Query active account or fallback to default account 1 so real consultations load
-    const effectiveAccountId = storedAccountId || "1";
-    const reqBody = { account_id: effectiveAccountId };
+    // Strictly fetch ONLY this logged-in family user's own history (filtered by member if selected)
+    const reqBody = { account_id: storedAccountId };
+    if (activeMemberId) {
+        reqBody.member_id = activeMemberId;
+    }
 
-    const renderWithCombined = (serverHistory) => {
-        const combined = [...(serverHistory || [])];
-        localHistory.forEach(lh => {
-            const alreadyPresent = combined.some(sh => 
-                (sh.question && lh.question && sh.question.trim().toLowerCase() === lh.question.trim().toLowerCase()) ||
-                (sh.history_id && lh.history_id && String(sh.history_id) === String(lh.history_id))
-            );
-            if (!alreadyPresent) {
-                combined.unshift(lh);
-            }
-        });
-
-        if (combined.length === 0) {
+    const renderOwnHistory = (serverHistory) => {
+        const items = Array.isArray(serverHistory) ? serverHistory : [];
+        if (items.length === 0) {
             historyList.innerHTML = `
                 <div style="text-align:center; padding:35px; color:var(--secondary-text);">
                     <i class="fas fa-comment-medical fa-2x" style="color:#6366f1; margin-bottom:12px;"></i>
-                    <p style="font-size:14px; font-weight:600; color:var(--text-color);">No consultation history found</p>
-                    <p style="font-size:12.5px; color:#888; margin-top:4px;">Type your symptoms or health questions in the chat box to begin!</p>
+                    <p style="font-size:14px; font-weight:600; color:var(--text-color);">No consultation history yet</p>
+                    <p style="font-size:12.5px; color:var(--secondary-text); margin-top:4px;">Your own symptom checks will appear privately here.</p>
                 </div>
             `;
         } else {
-            renderHistoryCards(combined, !storedAccountId);
+            renderHistoryCards(items);
         }
     };
 
-    // Tier 1: Try active API_BASE
-    fetch(API_BASE + "/getchat", {
+    fastFetch(API_BASE + "/getchat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(reqBody)
-    })
+    }, getApiTimeoutMs())
         .then(async res => {
             const data = await res.json().catch(() => null);
-            if (!res.ok || !data || !data.success) throw new Error("Primary API fetch failed");
+            if (!res.ok || !data || !data.success) throw new Error("History fetch failed");
             return data;
         })
         .then(data => {
-            renderWithCombined(data.history || []);
+            renderOwnHistory(data.history || []);
         })
         .catch(() => {
-            // Tier 2: If on local file/runner, fetch from cloud Render endpoint
-            if (API_BASE !== CLOUD_API) {
-                fetch(CLOUD_API + "/getchat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(reqBody)
-                })
-                    .then(r => r.json())
-                    .then(cloudData => {
-                        renderWithCombined(cloudData.history || []);
-                    })
-                    .catch(() => {
-                        renderWithCombined([]);
-                    });
-            } else {
-                renderWithCombined([]);
-            }
+            historyList.innerHTML = `
+                <div style="text-align:center; padding:30px; color:#ef4444;">
+                    <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom:10px;"></i>
+                    <p style="font-size:14px;">Unable to load your consultation history right now. Please try again.</p>
+                </div>
+            `;
         });
 }
 
-function renderHistoryCards(items, isGuest) {
+function renderHistoryCards(items) {
     const historyList = document.getElementById("history-list");
     if (!historyList) return;
     historyList.innerHTML = "";
-
-    if (isGuest) {
-        const guestBanner = document.createElement("div");
-        guestBanner.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:10px 14px; margin-bottom:12px; font-size:12.5px; color:#c7d2fe;";
-        guestBanner.innerHTML = `
-            <span><i class="fas fa-info-circle"></i> Showing recent session consultations.</span>
-            <a href="javascript:void(0)" onclick="closeHistoryModal(); openLoginModal();" style="color:#818cf8; font-weight:600; text-decoration:underline;">Log in to sync</a>
-        `;
-        historyList.appendChild(guestBanner);
-    }
 
     items.forEach(item => {
         const card = document.createElement("div");
@@ -1333,21 +1289,21 @@ function renderHistoryCards(items, isGuest) {
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                <h4 style="margin:0 0 6px 0; font-size:15px; font-weight:600; color:#f4f4f5; flex:1;">${item.question}</h4>
+                <h4 style="margin:0 0 6px 0; font-size:15px; font-weight:600; color:var(--text-color); flex:1;">${item.question}</h4>
                 <i class="fas fa-trash" title="Delete" style="color:#ef4444; cursor:pointer; padding:4px;" onclick="deleteHistory(event, '${item.history_id}')"></i>
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 8px 0; align-items:center;">
-                <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(99,102,241,0.15); color:#818cf8; font-weight:600;">
+                <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(99,102,241,0.15); color:#6366f1; font-weight:600;">
                     <i class="fas fa-user-circle"></i> ${item.member_name || 'Member'}
                 </span>
-                <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(16,185,129,0.15); color:#34d399; font-weight:600;">
+                <span style="font-size:11px; padding:2px 8px; border-radius:12px; background:rgba(16,185,129,0.15); color:#10b981; font-weight:600;">
                     <i class="fas fa-brain"></i> ${item.model || 'AI Model'}
                 </span>
-                <span style="font-size:11px; color:#a1a1aa; margin-left:auto;">
+                <span style="font-size:11px; color:var(--secondary-text); margin-left:auto;">
                     <i class="far fa-clock"></i> ${formattedDate}
                 </span>
             </div>
-            ${snippet ? `<p style="font-size:13px; color:#d4d4d8; margin:0; line-height:1.4;">${snippet}</p>` : ''}
+            ${snippet ? `<p style="font-size:13px; color:var(--secondary-text); margin:0; line-height:1.4;">${snippet}</p>` : ''}
         `;
 
         card.onclick = (e) => {
@@ -1393,21 +1349,9 @@ function displayConversation(question, response, model) {
 
 function deleteHistory(event, historyId) {
     event.stopPropagation();
+    const accountId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
+    if (!isLoggedIn || !accountId) return;
     if (!confirm("Are you sure you want to delete this consultation?")) return;
-
-    // Delete from local storage
-    try {
-        let localHistory = JSON.parse(localStorage.getItem("niramaya_consultations") || "[]");
-        localHistory = localHistory.filter(item => String(item.history_id) !== String(historyId));
-        localStorage.setItem("niramaya_consultations", JSON.stringify(localHistory));
-    } catch (_) {}
-
-    const accountId = localStorage.getItem("accountId");
-    // If guest or local generated ID, reload immediately
-    if (!accountId || String(historyId).length > 10) {
-        loadHistory();
-        return;
-    }
 
     fetch(API_BASE + "/deletechat", {
         method: "POST",
@@ -1418,7 +1362,7 @@ function deleteHistory(event, historyId) {
         })
     })
         .then(r => r.json())
-        .then(data => {
+        .then(() => {
             loadHistory();
         })
         .catch(() => loadHistory());

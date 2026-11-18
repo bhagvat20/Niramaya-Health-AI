@@ -220,3 +220,52 @@ def test_verify_human_and_theme_files():
         assert "themeToggleButton.addEventListener('click'" not in content, f"Duplicate theme listener in {fname}"
 
 
+def test_chat_history_strict_isolation_per_logged_in_family_user(client):
+    """Verifies guest/invalid accounts cannot save history and each logged-in user only sees their own history."""
+    import time
+    ts = int(time.time() * 1000)
+
+    # 1. Guest / non-existent account cannot save chat into another user's account
+    guest_save = client.post('/savechat', json={
+        'account_id': 99999999,
+        'user_input': 'guest headache',
+        'bot_response': 'guest answer',
+        'model': 'BioGPT'
+    })
+    assert guest_save.status_code == 404
+
+    # 2. Register two separate family users
+    r1 = client.post('/register', json={'fname': 'FamilyOne', 'email': f'fam1_{ts}@example.com', 'password': 'Password123'})
+    r2 = client.post('/register', json={'fname': 'FamilyTwo', 'email': f'fam2_{ts}@example.com', 'password': 'Password123'})
+    acc1 = int(r1.get_json()['account_id'])
+    acc2 = int(r2.get_json()['account_id'])
+
+    # 3. Save a private chat for FamilyOne only
+    save1 = client.post('/savechat', json={
+        'account_id': acc1,
+        'user_input': 'private fever symptom family one',
+        'bot_response': 'clinical advice one',
+        'model': 'BioGPT'
+    })
+    assert save1.status_code == 200
+
+    # 4. FamilyOne sees their own chat; FamilyTwo sees 0 chats (strictly isolated!)
+    h1 = client.post('/getchat', json={'account_id': acc1}).get_json()['history']
+    h2 = client.post('/getchat', json={'account_id': acc2}).get_json()['history']
+    assert len(h1) == 1 and h1[0]['question'] == 'private fever symptom family one'
+    assert len(h2) == 0
+
+    # Cleanup
+    from db_config import get_db_connection
+    conn = get_db_connection()
+    cur = conn.cursor()
+    for aid in (acc1, acc2):
+        cur.execute("DELETE FROM chat_history_tbl WHERE account_id = %s", (aid,))
+        cur.execute("DELETE FROM member_tbl WHERE account_id = %s", (aid,))
+        cur.execute("DELETE FROM account_tbl WHERE account_id = %s", (aid,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+

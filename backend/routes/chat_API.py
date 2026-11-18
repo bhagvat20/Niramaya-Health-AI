@@ -28,33 +28,21 @@ def save_chat():
         if not all([account_id, user_input, bot_response, model]):
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Convert IDs
+        # Convert IDs strictly — never fall back to another user's account (e.g. account 1)
         try:
             account_id = int(account_id)
         except (ValueError, TypeError):
-            account_id = 1
+            return jsonify({"success": False, "message": "Valid logged-in account_id is required"}), 401
 
         # Establish database connection
         conn = connect_db()
         cursor = conn.cursor()
 
-        # Ensure account_id exists in account_tbl to prevent foreign key errors
+        # Strictly verify account_id exists in account_tbl (never save to another user's account!)
         cursor.execute("SELECT account_id, family_name FROM account_tbl WHERE account_id = %s", (account_id,))
         acc_row = cursor.fetchone()
         if not acc_row:
-            # Fall back to any active account or account 1
-            cursor.execute("SELECT account_id, family_name FROM account_tbl ORDER BY account_id ASC LIMIT 1")
-            acc_row = cursor.fetchone()
-            if acc_row:
-                account_id = acc_row[0]
-            else:
-                cursor.execute("""
-                    INSERT INTO account_tbl (family_name, email, password_hash, is_active)
-                    VALUES ('Default Family', 'guest@niramaya.com', 'none', 1)
-                    RETURNING account_id
-                """)
-                account_id = cursor.fetchone()[0]
-                acc_row = (account_id, 'Default Family')
+            return jsonify({"success": False, "message": "Account not found. Please login to save history."}), 404
 
         acc_family_name = acc_row[1] if (acc_row and len(acc_row) > 1 and acc_row[1]) else "Primary Profile"
 
