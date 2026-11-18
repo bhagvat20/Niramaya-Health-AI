@@ -327,60 +327,110 @@ function renderModelPanel(modelKey, data, sectionNumber) {
         return card;
     }
 
+    // Non-health, greeting, or input-required guardrail display
+    if (data.is_greeting || data.predicted_disease === 'Niramaya AI Health Assistant') {
+        card.className = "model-panel-card";
+        card.appendChild(formatMedicalMarkdown(data.answer || data.description || "Hello! Please describe your symptoms."));
+        return card;
+    }
+    if (data.inference_status === 'non_health' || data.predicted_disease === 'Non-Health Query') {
+        card.className = "model-panel-card";
+        card.appendChild(formatMedicalMarkdown(data.description || "Please enter health-related symptoms only."));
+        return card;
+    }
+    if (data.inference_status === 'input_required' || data.predicted_disease === 'Input Required') {
+        card.className = "model-panel-card";
+        card.appendChild(formatMedicalMarkdown(data.description || "Please enter your symptoms to analyze."));
+        return card;
+    }
+
     if (modelKey === "LRv1") {
         card.className = "model-panel-card lrv1-panel";
         card.innerHTML = `
             <div class="model-panel-header">
-                <span class="model-panel-title"><i class="fas fa-chart-bar" style="color:#3b82f6;"></i> ${numPrefix}LRv1 — Logistic Regression Classifier</span>
-                <span class="model-role-pill">Independent ML Disease Prediction</span>
+                <span class="model-panel-title"><i class="fas fa-stethoscope" style="color:#3b82f6;"></i> ${numPrefix}LRv1 — Symptom Analysis</span>
+                <span class="model-role-pill">AI Symptom Checker</span>
             </div>
         `;
-        if (data.algorithm) {
-            const meta = document.createElement("div");
-            meta.className = "model-source-meta";
-            meta.textContent = `Model: ${data.algorithm}`;
-            card.appendChild(meta);
+
+        // 1. Most Likely Condition Highlight Box (Simple, clean, no jargon)
+        const primaryBox = document.createElement("div");
+        primaryBox.style.cssText = "margin:6px 0 14px; padding:14px 16px; background:rgba(59,130,246,0.08); border-left:4px solid #3b82f6; border-radius:8px;";
+        primaryBox.innerHTML = `
+            <div style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px; color:#3b82f6; font-weight:700;">Most Likely Condition Identified</div>
+            <div style="font-size:19px; font-weight:700; color:var(--text-color); margin-top:3px;">
+                ${data.predicted_disease || "No condition identified"}
+            </div>
+        `;
+        card.appendChild(primaryBox);
+
+        // 2. Simple Medical Explanation
+        const descText = data.description || data.Description;
+        if (descText && descText !== "No summary available.") {
+            const descPara = document.createElement("div");
+            descPara.style.cssText = "margin:10px 0 12px; font-size:14px; line-height:1.6; color:var(--text-color);";
+            descPara.innerHTML = `<strong><i class="fas fa-info-circle" style="color:#3b82f6;"></i> About This Condition:</strong><p style="margin:5px 0 0; color:var(--text-color); opacity:0.95;">${descText}</p>`;
+            card.appendChild(descPara);
         }
 
-        const topProbStr = (data.top_probability !== undefined && data.top_predictions && data.top_predictions.length > 0)
-            ? ` <span style="font-size:13px; color:#3b82f6; font-weight:700;">(${Number(data.top_probability).toFixed(2)}%)</span>`
-            : "";
-        const diseasePara = document.createElement("p");
-        diseasePara.innerHTML = `<strong>Top Predicted Disease:</strong> <span style="color:#3b82f6; font-weight:700;">${data.predicted_disease || "No condition identified."}</span>${topProbStr}`;
-        card.appendChild(diseasePara);
-
-        if (data.confidence_note && data.confidence_level === "low") {
-            const warnBox = document.createElement("div");
-            warnBox.style.cssText = "margin:8px 0; padding:9px 12px; border-radius:8px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.45); color:#d97706; font-size:12.5px; line-height:1.45;";
-            warnBox.innerHTML = `<i class="fas fa-info-circle"></i> ${data.confidence_note}`;
-            card.appendChild(warnBox);
+        // 3. Recommended Precautions (if available)
+        const precautions = data.precautions || [];
+        if (precautions.length > 0) {
+            const precDiv = document.createElement("div");
+            precDiv.style.cssText = "margin:12px 0; padding:12px 14px; background:rgba(59,130,246,0.05); border-radius:8px; border:1px solid rgba(59,130,246,0.15);";
+            const items = precautions.map(p => `<li style="margin:4px 0;">${p}</li>`).join("");
+            precDiv.innerHTML = `<strong style="color:#2563eb; font-size:13.5px;"><i class="fas fa-shield-alt"></i> Recommended Self-Care &amp; Precautions:</strong><ul style="margin:6px 0 0 18px; padding:0; font-size:13px; line-height:1.55; color:var(--text-color);">${items}</ul>`;
+            card.appendChild(precDiv);
         }
 
+        // 4. Other Common Possibilities (Clean, friendly pill tags — NO complicated graphs or bars!)
+        const otherPredictions = (data.top_predictions || []).slice(1, 4);
+        if (otherPredictions.length > 0) {
+            const otherDiv = document.createElement("div");
+            otherDiv.style.cssText = "margin:12px 0 8px; font-size:13px;";
+            const otherNames = otherPredictions.map(p => `<span style="display:inline-block; margin:3px 6px 3px 0; padding:4px 10px; background:rgba(59,130,246,0.12); color:#2563eb; border-radius:12px; font-weight:600; font-size:12.5px;"><i class="fas fa-check" style="font-size:10px; margin-right:4px;"></i>${p.disease}</span>`).join(" ");
+            otherDiv.innerHTML = `<strong style="color:var(--text-color);"><i class="fas fa-search-plus" style="color:#3b82f6;"></i> Other Common Possibilities:</strong><div style="margin-top:6px;">${otherNames}</div>`;
+            card.appendChild(otherDiv);
+        }
+
+        // 5. Symptoms Analyzed
         if (data.matched_symptoms && data.matched_symptoms.length > 0) {
-            const symLbl = document.createElement("p");
-            symLbl.style.marginTop = "8px";
-            symLbl.innerHTML = `<strong>Matched LRv1 Features (${data.matched_symptoms.length}):</strong>`;
-            card.appendChild(symLbl);
-            card.appendChild(renderMatchedChips(data.matched_symptoms));
+            const symDiv = document.createElement("div");
+            symDiv.style.cssText = "margin:12px 0 6px; font-size:12.5px; color:var(--secondary-text);";
+            const symChips = data.matched_symptoms.map(s => `<span style="display:inline-block; margin:2px 4px; padding:2px 8px; background:rgba(148,163,184,0.15); border-radius:10px; font-weight:500; color:var(--text-color);">${s}</span>`).join(" ");
+            symDiv.innerHTML = `<strong>Symptoms Analyzed:</strong> ${symChips}`;
+            card.appendChild(symDiv);
         }
 
+        // 6. Friendly Tip (If single symptom entered)
+        if (data.confidence_level === "low") {
+            const tipBox = document.createElement("div");
+            tipBox.style.cssText = "margin:10px 0; padding:9px 12px; border-radius:8px; background:rgba(245,158,11,0.08); border-left:3px solid #f59e0b; color:#b45309; font-size:12px; line-height:1.45;";
+            tipBox.innerHTML = `<i class="fas fa-lightbulb"></i> <strong>Helpful Tip:</strong> Entering 2 or more symptoms together (e.g. <em>headache with fever or nausea</em>) provides a more tailored assessment.`;
+            card.appendChild(tipBox);
+        }
+
+        // 7. Optional Details (Folded by default — zero graphs or bars shown unless explicitly clicked)
         if (data.top_predictions && data.top_predictions.length > 0) {
-            const probTitle = document.createElement("p");
-            probTitle.style.marginTop = "10px";
-            probTitle.innerHTML = `<strong>Top Possible Diseases (Actual predict_proba Distribution):</strong>`;
-            card.appendChild(probTitle);
-            card.appendChild(renderProbabilityBars(data.top_predictions, "#3b82f6"));
+            const detailsEl = document.createElement("details");
+            detailsEl.style.cssText = "margin-top:14px; border-top:1px dashed rgba(148,163,184,0.3); padding-top:10px; font-size:12.5px;";
+            detailsEl.innerHTML = `
+                <summary style="cursor:pointer; color:#3b82f6; font-weight:600; outline:none; user-select:none;">
+                    <i class="fas fa-chart-pie"></i> View Technical Probability Breakdown (Optional)
+                </summary>
+                <div style="margin-top:10px; padding:12px; background:rgba(59,130,246,0.04); border-radius:8px; border:1px solid rgba(59,130,246,0.12);">
+                </div>
+            `;
+            const innerDiv = detailsEl.querySelector("div");
+            innerDiv.appendChild(renderProbabilityBars(data.top_predictions, "#3b82f6"));
+            card.appendChild(detailsEl);
         }
 
-        const descPara = document.createElement("p");
-        descPara.style.marginTop = "8px";
-        descPara.innerHTML = `<strong>Disease Description:</strong> ${data.description || data.Description || "No description available."}`;
-        card.appendChild(descPara);
-
+        // 8. Compare button
         if (!sectionNumber && data.inference_status === "success" && data._query) {
             const cmpBtn = document.createElement("button");
             cmpBtn.type = "button";
-            cmpBtn.style.cssText = "margin-top:12px; padding:7px 14px; border:1px solid #f59e0b; border-radius:8px; background:rgba(245,158,11,0.12); color:#f59e0b; font-size:12.5px; font-weight:600; cursor:pointer;";
+            cmpBtn.style.cssText = "margin-top:12px; padding:7px 14px; border:1px solid #f59e0b; border-radius:8px; background:rgba(245,158,11,0.1); color:#d97706; font-size:12.5px; font-weight:600; cursor:pointer;";
             cmpBtn.innerHTML = '<i class="fas fa-balance-scale-right"></i> Compare LRv1 vs LRv2';
             cmpBtn.onclick = () => runOnDemandComparison(data._query, cmpBtn, card);
             card.appendChild(cmpBtn);
@@ -392,72 +442,89 @@ function renderModelPanel(modelKey, data, sectionNumber) {
         card.className = "model-panel-card lrv2-panel";
         card.innerHTML = `
             <div class="model-panel-header">
-                <span class="model-panel-title"><i class="fas fa-project-diagram" style="color:#10b981;"></i> ${numPrefix}LRv2 — Enhanced Random Forest Classifier</span>
-                <span class="model-role-pill">Independent Enhanced Prediction &amp; Precautions</span>
+                <span class="model-panel-title"><i class="fas fa-notes-medical" style="color:#10b981;"></i> ${numPrefix}LRv2 — Enhanced Symptom Analysis</span>
+                <span class="model-role-pill">Clinical Assessment &amp; Precautions</span>
             </div>
         `;
-        if (data.algorithm) {
-            const meta = document.createElement("div");
-            meta.className = "model-source-meta";
-            meta.textContent = `Model: ${data.algorithm}`;
-            card.appendChild(meta);
+
+        // 1. Most Likely Condition Highlight Box (Simple, clean, no jargon)
+        const primaryBox = document.createElement("div");
+        primaryBox.style.cssText = "margin:6px 0 14px; padding:14px 16px; background:rgba(16,185,129,0.08); border-left:4px solid #10b981; border-radius:8px;";
+        primaryBox.innerHTML = `
+            <div style="font-size:11.5px; text-transform:uppercase; letter-spacing:0.5px; color:#10b981; font-weight:700;">Most Likely Condition Identified</div>
+            <div style="font-size:19px; font-weight:700; color:var(--text-color); margin-top:3px;">
+                ${data.predicted_disease || "No condition identified"}
+            </div>
+        `;
+        card.appendChild(primaryBox);
+
+        // 2. Simple Medical Explanation
+        const descText = data.description || data.Description;
+        if (descText && descText !== "No summary available.") {
+            const descPara = document.createElement("div");
+            descPara.style.cssText = "margin:10px 0 12px; font-size:14px; line-height:1.6; color:var(--text-color);";
+            descPara.innerHTML = `<strong><i class="fas fa-info-circle" style="color:#10b981;"></i> About This Condition:</strong><p style="margin:5px 0 0; color:var(--text-color); opacity:0.95;">${descText}</p>`;
+            card.appendChild(descPara);
         }
 
-        const topProbStr = (data.top_probability !== undefined && data.top_predictions && data.top_predictions.length > 0)
-            ? ` <span style="font-size:13px; color:#10b981; font-weight:700;">(${Number(data.top_probability).toFixed(2)}%)</span>`
-            : "";
-        const diseasePara = document.createElement("p");
-        diseasePara.innerHTML = `<strong>Top Predicted Disease:</strong> <span style="color:#10b981; font-weight:700;">${data.predicted_disease || "No condition identified."}</span>${topProbStr}`;
-        card.appendChild(diseasePara);
-
-        if (data.confidence_note && data.confidence_level === "low") {
-            const warnBox = document.createElement("div");
-            warnBox.style.cssText = "margin:8px 0; padding:9px 12px; border-radius:8px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.45); color:#d97706; font-size:12.5px; line-height:1.45;";
-            warnBox.innerHTML = `<i class="fas fa-info-circle"></i> ${data.confidence_note}`;
-            card.appendChild(warnBox);
-        }
-
-        if (data.matched_symptoms && data.matched_symptoms.length > 0) {
-            const symLbl = document.createElement("p");
-            symLbl.style.marginTop = "8px";
-            symLbl.innerHTML = `<strong>Matched LRv2 MLB Features (${data.matched_symptoms.length}):</strong>`;
-            card.appendChild(symLbl);
-            card.appendChild(renderMatchedChips(data.matched_symptoms));
-        }
-
-        if (data.top_predictions && data.top_predictions.length > 0) {
-            const probTitle = document.createElement("p");
-            probTitle.style.marginTop = "10px";
-            probTitle.innerHTML = `<strong>Top Possible Diseases (Actual predict_proba Distribution):</strong>`;
-            card.appendChild(probTitle);
-            card.appendChild(renderProbabilityBars(data.top_predictions, "#10b981"));
-        }
-
-        const descPara = document.createElement("p");
-        descPara.style.marginTop = "8px";
-        descPara.innerHTML = `<strong>Disease Description:</strong> ${data.description || data.Description || "No description available."}`;
-        card.appendChild(descPara);
-
+        // 3. Recommended Precautions (Clean list)
         const precautions = data.precautions || [];
         if (precautions.length > 0) {
-            const precTitle = document.createElement("p");
-            precTitle.style.marginTop = "10px";
-            precTitle.innerHTML = `<strong>Recommended Clinical Precautions:</strong>`;
-            card.appendChild(precTitle);
-
-            const ul = document.createElement("ul");
-            precautions.forEach(p => {
-                const li = document.createElement("li");
-                li.textContent = p;
-                ul.appendChild(li);
-            });
-            card.appendChild(ul);
+            const precDiv = document.createElement("div");
+            precDiv.style.cssText = "margin:12px 0; padding:12px 14px; background:rgba(16,185,129,0.05); border-radius:8px; border:1px solid rgba(16,185,129,0.15);";
+            const items = precautions.map(p => `<li style="margin:4px 0;">${p}</li>`).join("");
+            precDiv.innerHTML = `<strong style="color:#059669; font-size:13.5px;"><i class="fas fa-shield-alt"></i> Recommended Self-Care &amp; Precautions:</strong><ul style="margin:6px 0 0 18px; padding:0; font-size:13px; line-height:1.55; color:var(--text-color);">${items}</ul>`;
+            card.appendChild(precDiv);
         }
 
+        // 4. Other Common Possibilities (Clean, friendly pill tags — NO complicated graphs or bars!)
+        const otherPredictions = (data.top_predictions || []).slice(1, 4);
+        if (otherPredictions.length > 0) {
+            const otherDiv = document.createElement("div");
+            otherDiv.style.cssText = "margin:12px 0 8px; font-size:13px;";
+            const otherNames = otherPredictions.map(p => `<span style="display:inline-block; margin:3px 6px 3px 0; padding:4px 10px; background:rgba(16,185,129,0.12); color:#059669; border-radius:12px; font-weight:600; font-size:12.5px;"><i class="fas fa-check" style="font-size:10px; margin-right:4px;"></i>${p.disease}</span>`).join(" ");
+            otherDiv.innerHTML = `<strong style="color:var(--text-color);"><i class="fas fa-search-plus" style="color:#10b981;"></i> Other Common Possibilities:</strong><div style="margin-top:6px;">${otherNames}</div>`;
+            card.appendChild(otherDiv);
+        }
+
+        // 5. Symptoms Analyzed
+        if (data.matched_symptoms && data.matched_symptoms.length > 0) {
+            const symDiv = document.createElement("div");
+            symDiv.style.cssText = "margin:12px 0 6px; font-size:12.5px; color:var(--secondary-text);";
+            const symChips = data.matched_symptoms.map(s => `<span style="display:inline-block; margin:2px 4px; padding:2px 8px; background:rgba(148,163,184,0.15); border-radius:10px; font-weight:500; color:var(--text-color);">${s}</span>`).join(" ");
+            symDiv.innerHTML = `<strong>Symptoms Analyzed:</strong> ${symChips}`;
+            card.appendChild(symDiv);
+        }
+
+        // 6. Friendly Tip (If single symptom entered)
+        if (data.confidence_level === "low") {
+            const tipBox = document.createElement("div");
+            tipBox.style.cssText = "margin:10px 0; padding:9px 12px; border-radius:8px; background:rgba(245,158,11,0.08); border-left:3px solid #f59e0b; color:#b45309; font-size:12px; line-height:1.45;";
+            tipBox.innerHTML = `<i class="fas fa-lightbulb"></i> <strong>Helpful Tip:</strong> Entering 2 or more symptoms together (e.g. <em>headache with fever or nausea</em>) provides a more tailored assessment.`;
+            card.appendChild(tipBox);
+        }
+
+        // 7. Optional Details (Folded by default — zero graphs or bars shown unless explicitly clicked)
+        if (data.top_predictions && data.top_predictions.length > 0) {
+            const detailsEl = document.createElement("details");
+            detailsEl.style.cssText = "margin-top:14px; border-top:1px dashed rgba(148,163,184,0.3); padding-top:10px; font-size:12.5px;";
+            detailsEl.innerHTML = `
+                <summary style="cursor:pointer; color:#10b981; font-weight:600; outline:none; user-select:none;">
+                    <i class="fas fa-chart-pie"></i> View Technical Probability Breakdown (Optional)
+                </summary>
+                <div style="margin-top:10px; padding:12px; background:rgba(16,185,129,0.04); border-radius:8px; border:1px solid rgba(16,185,129,0.12);">
+                </div>
+            `;
+            const innerDiv = detailsEl.querySelector("div");
+            innerDiv.appendChild(renderProbabilityBars(data.top_predictions, "#10b981"));
+            card.appendChild(detailsEl);
+        }
+
+        // 8. Compare button
         if (!sectionNumber && data.inference_status === "success" && data._query) {
             const cmpBtn = document.createElement("button");
             cmpBtn.type = "button";
-            cmpBtn.style.cssText = "margin-top:12px; padding:7px 14px; border:1px solid #f59e0b; border-radius:8px; background:rgba(245,158,11,0.12); color:#f59e0b; font-size:12.5px; font-weight:600; cursor:pointer;";
+            cmpBtn.style.cssText = "margin-top:12px; padding:7px 14px; border:1px solid #f59e0b; border-radius:8px; background:rgba(245,158,11,0.1); color:#d97706; font-size:12.5px; font-weight:600; cursor:pointer;";
             cmpBtn.innerHTML = '<i class="fas fa-balance-scale-right"></i> Compare LRv1 vs LRv2';
             cmpBtn.onclick = () => runOnDemandComparison(data._query, cmpBtn, card);
             card.appendChild(cmpBtn);

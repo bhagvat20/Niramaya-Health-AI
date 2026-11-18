@@ -1396,6 +1396,7 @@ def get_lrv1_prediction(query_text: str) -> dict:
         f"LRv1 (Logistic Regression) predicted '{pred_disease}' with {top_prob:.2f}% probability "
         f"based on {len(matched_features)} matched symptom feature(s)."
     )
+    precautions = _lookup_csv_precautions(pred_disease) or _lookup_csv_precautions(top_predictions[0]['raw_class'])
     conf_level, conf_note = _build_confidence_guidance('LRv1', len(matched_features), top_prob, len(lr_model.classes_))
 
     return {
@@ -1411,7 +1412,8 @@ def get_lrv1_prediction(query_text: str) -> dict:
         'matched_symptoms': matched_features,
         'total_features': len(symptom_features),
         'total_classes': len(lr_model.classes_),
-        'description': desc
+        'description': desc,
+        'precautions': precautions
     }
 
 
