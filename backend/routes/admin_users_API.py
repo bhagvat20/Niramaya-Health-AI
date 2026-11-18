@@ -189,55 +189,54 @@ def get_user_details(account_id):
 @admin_required
 def update_user(account_id):
     """
-    Edit/update user profile information (family_name, email).
-    Validates input and checks for email uniqueness.
+    Edit/update user profile information (family_name only).
+    Registered email address is immutable and cannot be edited by admin.
     """
     conn = None
     cursor = None
     try:
         data = request.get_json(silent=True) or {}
         family_name = (data.get('family_name') or '').strip()
-        email = (data.get('email') or '').strip().lower()
-        
-        if not family_name or not email:
+        submitted_email = (data.get('email') or '').strip().lower()
+
+        if not family_name:
             return jsonify({
                 "success": False,
-                "message": "Family name and Email are required fields"
+                "message": "Family name is required"
             }), 400
-            
-        if not re.match(EMAIL_REGEX, email):
-            return jsonify({
-                "success": False,
-                "message": "Invalid email address format"
-            }), 400
-            
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # Verify user exists
-        cursor.execute("SELECT account_id FROM account_tbl WHERE account_id = %s", (account_id,))
-        if not cursor.fetchone():
+
+        # Verify user exists and fetch their registered email
+        cursor.execute("SELECT account_id, email FROM account_tbl WHERE account_id = %s", (account_id,))
+        row = cursor.fetchone()
+        if not row:
             return jsonify({"success": False, "message": "User account not found"}), 404
-            
-        # Check email uniqueness against other users
-        cursor.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s AND account_id != %s", (email, account_id))
-        if cursor.fetchone():
-            return jsonify({"success": False, "message": "Email is already in use by another account"}), 400
-            
+
+        existing_email = row[1]
+
+        # Enforce that admin cannot change a user's registered email address
+        if submitted_email and submitted_email != existing_email.lower():
+            return jsonify({
+                "success": False,
+                "message": "Admin cannot modify a user's registered email address"
+            }), 403
+
         cursor.execute("""
             UPDATE account_tbl
-            SET family_name = %s, email = %s
+            SET family_name = %s
             WHERE account_id = %s
-        """, (family_name, email, account_id))
+        """, (family_name, account_id))
         conn.commit()
-        
+
         return jsonify({
             "success": True,
             "message": "User profile updated successfully",
             "user": {
                 "account_id": account_id,
                 "family_name": family_name,
-                "email": email
+                "email": existing_email
             }
         }), 200
         

@@ -120,24 +120,32 @@ class TestAdminUserManagement(unittest.TestCase):
         self.assertNotIn("password_hash", user)
 
     def test_04_update_user_profile(self):
-        """Test editing user family name and email."""
+        """Test editing user family name works while editing email is strictly blocked for admin."""
         new_name = "UpdatedSmithFamily"
-        new_email = "updatedsmith@example.com"
 
-        res = self.client.put(f'/admin/users/{self.test_account_id_1}', 
-            json={"family_name": new_name, "email": new_email},
+        # Attempting to modify email must be rejected (403 Forbidden)
+        bad_res = self.client.put(f'/admin/users/{self.test_account_id_1}',
+            json={"family_name": new_name, "email": "hacked@example.com"},
+            headers={'Authorization': f'Bearer {self.admin_token}'}
+        )
+        self.assertEqual(bad_res.status_code, 403)
+        self.assertFalse(bad_res.get_json()["success"])
+
+        # Updating family_name only must succeed
+        res = self.client.put(f'/admin/users/{self.test_account_id_1}',
+            json={"family_name": new_name},
             headers={'Authorization': f'Bearer {self.admin_token}'}
         )
         self.assertEqual(res.status_code, 200)
         self.assertTrue(res.get_json()["success"])
 
-        # Re-fetch and verify update
+        # Re-fetch and verify family_name updated and original email unchanged
         get_res = self.client.get(f'/admin/users/{self.test_account_id_1}', headers={
             'Authorization': f'Bearer {self.admin_token}'
         })
         u = get_res.get_json()["user"]
         self.assertEqual(u["family_name"], new_name)
-        self.assertEqual(u["email"], new_email)
+        self.assertEqual(u["email"], "manageuser1@example.com")
 
     def test_05_activate_deactivate_user(self):
         """Test deactivating user account and verifying login restriction."""
@@ -151,7 +159,7 @@ class TestAdminUserManagement(unittest.TestCase):
 
         # Verify deactivated user cannot login
         login_res = self.client.post('/userlogin', json={
-            "email": "updatedsmith@example.com",
+            "email": "manageuser1@example.com",
             "password": "Secret123"
         })
         self.assertEqual(login_res.status_code, 403)
