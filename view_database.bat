@@ -1,20 +1,23 @@
 @echo off
+setlocal enabledelayedexpansion
 title Niramaya Health AI - Database Viewer
 color 0B
 cd /d "%~dp0"
 
-echo ========================================================
-echo        NIRAMAYA HEALTH AI - CLINICAL DATABASE
-echo ========================================================
-echo.
-
-set PYTHON_CMD=
+set "PYTHON_CMD="
 if exist "%~dp0backend\venv\Scripts\python.exe" (
     set "PYTHON_CMD=%~dp0backend\venv\Scripts\python.exe"
+) else if exist "%~dp0.venv\Scripts\python.exe" (
+    set "PYTHON_CMD=%~dp0.venv\Scripts\python.exe"
 ) else (
     where python >nul 2>&1
     if not errorlevel 1 (
         set "PYTHON_CMD=python"
+    ) else (
+        where py >nul 2>&1
+        if not errorlevel 1 (
+            set "PYTHON_CMD=py"
+        )
     )
 )
 
@@ -28,50 +31,68 @@ if "%PYTHON_CMD%"=="" (
 set PYTHONIOENCODING=utf-8
 set PYTHONUTF8=1
 
+:refresh
+cls
+echo ============================================================
+echo          NIRAMAYA HEALTH AI - CLINICAL DATABASE VIEWER
+echo ============================================================
+echo.
+
 cd /d "%~dp0backend"
 "%PYTHON_CMD%" show_database.py
+cd /d "%~dp0"
 
 echo.
-echo ========================================================
+echo ============================================================
 echo Additional Options:
-echo  [1] Launch pgAdmin 4 (GUI tool to show faculty)
+echo  [1] Launch pgAdmin 4 (PostgreSQL GUI)
 echo  [2] Open psql interactive command-line terminal
-echo  [3] Refresh records
+echo  [3] Refresh database records
 echo  [4] Exit
-echo ========================================================
+echo ============================================================
+set "opt="
 set /p opt="Enter choice [1, 2, 3, or 4]: "
 
 if "%opt%"=="1" (
     echo Starting pgAdmin 4...
+    set "PGADMIN_FOUND=0"
     for /d %%v in ("C:\Program Files\PostgreSQL\*") do (
         if exist "%%v\pgAdmin 4\runtime\pgAdmin4.exe" (
             start "" "%%v\pgAdmin 4\runtime\pgAdmin4.exe"
-            goto :done
+            set "PGADMIN_FOUND=1"
         )
     )
-    if exist "C:\Program Files\PostgreSQL\18\pgAdmin 4\runtime\pgAdmin4.exe" (
-        start "" "C:\Program Files\PostgreSQL\18\pgAdmin 4\runtime\pgAdmin4.exe"
-    ) else (
-        echo pgAdmin4 executable not found in default directory.
+    if "!PGADMIN_FOUND!"=="0" (
+        echo [!] pgAdmin 4 executable not found in C:\Program Files\PostgreSQL\.
+        pause
     )
+    goto :refresh
 )
 
 if "%opt%"=="2" (
     echo Opening psql interactive terminal...
+    set "PSQL_FOUND=0"
     for /d %%v in ("C:\Program Files\PostgreSQL\*") do (
         if exist "%%v\bin\psql.exe" (
             "%%v\bin\psql.exe" -U postgres -d projectH
-            goto :done
+            set "PSQL_FOUND=1"
         )
     )
-    "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d projectH
+    if "!PSQL_FOUND!"=="0" (
+        echo [!] psql.exe not found in C:\Program Files\PostgreSQL\.
+        pause
+    )
+    goto :refresh
 )
 
 if "%opt%"=="3" (
-    cls
+    goto :refresh
+)
+
+if "%opt%"=="4" (
     goto :eof
 )
 
-:done
-echo.
-pause
+echo [!] Invalid choice. Press any key to refresh...
+pause >nul
+goto :refresh

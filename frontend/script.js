@@ -130,49 +130,30 @@ function toggleResearch() {
     }
 }
 
-// Load papers and handle theme toggle on page load
+// Load papers on page load (theme toggle is managed centrally by theme.js)
 document.addEventListener("DOMContentLoaded", function () {
-    fetchResearchPapers();
-    document.getElementById('research-content').style.maxHeight = '0';
-
-    document.querySelector(".logo").onclick = function(e) {
-        e.preventDefault();
-        window.location.href = "home.html";
-    };
-
-    document.querySelector(".site-name").onclick = function(e) {
-        e.preventDefault();
-        window.location.href = "home.html";
-    };
-
-    // Theme toggle functionality
-    const htmlElement = document.documentElement;
-    const themeToggleButton = document.getElementById('theme-toggle');
-    let currentTheme = localStorage.getItem('theme') || 'dark';
-
-    if (currentTheme === 'dark') {
-        themeToggleButton.innerHTML = '<i class="fas fa-sun"></i>';
-    } else {
-        themeToggleButton.innerHTML = '<i class="fas fa-moon"></i>';
+    const papersContainer = document.getElementById('research-papers');
+    const researchContent = document.getElementById('research-content');
+    if (papersContainer) {
+        fetchResearchPapers();
+    }
+    if (researchContent) {
+        researchContent.style.maxHeight = '0';
     }
 
-    themeToggleButton.addEventListener('click', () => {
-        const logoImg = document.getElementById('logo-img');
-        if (currentTheme === 'dark') {
-            htmlElement.classList.remove('dark');
-            htmlElement.classList.add('light');
-            localStorage.setItem('theme', 'light');
-            currentTheme = 'light';
-            themeToggleButton.innerHTML = '<i class="fas fa-moon"></i>';
-        } else {
-            htmlElement.classList.remove('light');
-            htmlElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-            currentTheme = 'dark';
-            themeToggleButton.innerHTML = '<i class="fas fa-sun"></i>';
-        }
-        if (logoImg) {
-            logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
-        }
-    });
+    const logoEl = document.querySelector(".logo");
+    if (logoEl) {
+        logoEl.onclick = function(e) {
+            e.preventDefault();
+            window.location.href = "home.html";
+        };
+    }
+
+    const siteNameEl = document.querySelector(".site-name");
+    if (siteNameEl) {
+        siteNameEl.onclick = function(e) {
+            e.preventDefault();
+            window.location.href = "home.html";
+        };
+    }
 });

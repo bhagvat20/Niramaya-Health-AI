@@ -10,8 +10,8 @@ let API_BASE = (window.location.protocol.startsWith('http') && window.location.o
     ? window.location.origin 
     : LOCAL_API;
 
-// Helper: Fast fetch with automatic timeout to prevent hangs
-async function fastFetch(url, options = {}, timeoutMs = 2500) {
+// Helper: Reliable fetch with configurable timeout (generous on Render cold starts)
+async function fastFetch(url, options = {}, timeoutMs = 30000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -22,6 +22,15 @@ async function fastFetch(url, options = {}, timeoutMs = 2500) {
         clearTimeout(timeoutId);
         throw err;
     }
+}
+
+function getApiTimeoutMs() {
+    const isLocal = API_BASE.includes("127.0.0.1") || API_BASE.includes("localhost");
+    return isLocal ? 10000 : 35000;
+}
+
+function toTitleCase(str) {
+    return String(str || "").replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
 }
 
 // If opening locally via file://, probe local python server on 5000
@@ -122,9 +131,9 @@ function initPage() {
     function syncPlaceholder(sel, inp) {
         if (!sel || !inp) return;
         if (sel.value === "LRv1" || sel.value === "LRv2") {
-            inp.placeholder = "Enter symptoms (e.g. fever, headache, joint pain)...";
+            inp.placeholder = "Enter health symptoms (e.g. fever, headache, joint pain)...";
         } else {
-            inp.placeholder = "What do you want to know about your health?";
+            inp.placeholder = "Describe your health symptoms (e.g. fever, cough, stomach pain)...";
         }
     }
 
@@ -370,17 +379,17 @@ async function sendMessage() {
         let response = null;
         let data = null;
 
-        // Fast direct fetch to active API endpoint (timeout 2500ms)
+        // Direct fetch to active API endpoint (generous timeout for Render cold-start & Gemini AI)
         try {
             response = await fastFetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
-            }, 2500);
+            }, getApiTimeoutMs());
             data = await response.json().catch(() => null);
         } catch (_) {}
 
-        // Fallback: If local API failed or unreachable, try Render live cloud directly with 2500ms timeout
+        // Fallback: If local API failed or unreachable, try Render live cloud directly
         if ((!response || !response.ok || !data) && !endpoint.includes("niramaya-health-ai.onrender.com")) {
             try {
                 const cloudPath = (model === "LRv1") ? "/asklrv1" : (model === "LRv2") ? "/asklrv2" : (model === "Gemini") ? "/askgemini" : "/askbiogpt";
@@ -388,7 +397,7 @@ async function sendMessage() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
-                }, 2500);
+                }, 30000);
                 const cloudData = await cloudRes.json().catch(() => null);
                 if (cloudRes.ok && cloudData) {
                     response = cloudRes;
@@ -402,20 +411,20 @@ async function sendMessage() {
         if (currentLoader) currentLoader.remove();
 
         if (!data) {
-            // Offline clinical engine fallback guarantee: matches backend diagnostic engine exactly
+            // Offline clinical engine fallback guarantee: matches backend strict symptom-only guardrail
             const cleanSym = userInput.trim();
-            const cleanLower = cleanSym.toLowerCase().replace(/[?!.]/g, '').trim();
+            const cleanLower = cleanSym.toLowerCase().replace(/[?!.,]+$/g, '').trim();
 
-            // 1. Check greetings
-            const greetings = ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good afternoon', 'good evening', 'help', 'who are you', 'test'];
-            const isGreeting = greetings.includes(cleanLower) || greetings.some(g => cleanLower.startsWith(g + ' '));
+            // 1. Check pure short greetings ONLY
+            const greetings = ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good afternoon', 'good evening', 'help', 'hi there', 'hello there'];
+            const isGreeting = greetings.includes(cleanLower);
 
             if (isGreeting) {
                 if (model === "LRv1" || model === "LRv2") {
                     data = {
                         predicted_disease: "Niramaya AI Health Assistant",
                         matched_symptoms: [],
-                        description: "Hello! I am your Niramaya AI Health Assistant. I am specialized strictly in symptom checking, health assessment, and clinical precautions. Please enter any health symptoms you are experiencing (e.g., fever, headache, cough, stomach pain, dizziness) to receive clinical insights.",
+                        description: "Hello! I am your Niramaya AI Health Assistant. I am specialized strictly in symptom checking, health assessment, and clinical precautions (not general chat). Please enter any health symptoms you are experiencing (e.g., fever, headache, cough, stomach pain, dizziness) to receive clinical insights.",
                         precautions: [
                             "List your specific symptoms in detail",
                             "Track symptom onset and severity",
@@ -426,52 +435,41 @@ async function sendMessage() {
                 } else {
                     data = {
                         question: userInput,
-                        answer: "Hello! I am your Niramaya AI Health Assistant. I am specialized strictly in symptom checking and health assessment. Please describe any symptoms you are experiencing (e.g., fever, headache, cough, stomach pain, rash) to receive instant clinical guidance."
+                        answer: "Hello! I am your **Niramaya AI Health Assistant** (Symptom Checker Only — not a general chatbot).\n\nPlease describe the **health symptoms** you are experiencing (e.g., *fever, headache, cough, stomach pain, rash*) to receive instant clinical guidance."
                     };
                 }
             } else {
-                // 2. Strict symptom & health domain check
-                const healthKeywords = [
-                    'pain', 'ache', 'fever', 'cough', 'cold', 'flu', 'sneeze', 'vomit', 'nausea', 'diarrhea',
-                    'headache', 'dizzy', 'dizziness', 'fatigue', 'tired', 'weakness', 'swelling', 'bleed', 'blood', 'rash',
-                    'itching', 'burn', 'cramp', 'sore', 'breath', 'chills', 'sweat', 'weight', 'sleep', 'insomnia',
-                    'acidity', 'gas', 'infection', 'virus', 'viral', 'allergy', 'asthma', 'diabetes', 'sugar',
-                    'pressure', 'bp', 'doctor', 'hospital', 'medicine', 'pill', 'tablet', 'cure', 'treatment',
-                    'symptom', 'disease', 'sick', 'health', 'diet', 'vitamin', 'injury', 'wound', 'heart', 'chest',
-                    'joint', 'knee', 'back', 'neck', 'stomach', 'throat', 'eye', 'ear', 'tooth', 'teeth',
-                    'digest', 'digestive', 'digestion', 'gut', 'bowel', 'colon', 'constipat', 'liver', 'kidney', 'renal',
-                    'cardiac', 'skin', 'hair', 'nerve', 'brain', 'spine', 'bone', 'muscle', 'issue', 'problem', 'disorder',
-                    'dard', 'bukhar', 'khansi', 'sardi', 'jukam', 'ulti', 'dast', 'pet', 'sir', 'sar', 'gala',
-                    'kamar', 'chakkar', 'kamzori', 'dawa', 'ilaj', 'bimari', 'badan', 'chhati', 'khoon', 'sujan', 'khujli'
-                ];
-                const isHealth = healthKeywords.some(k => cleanLower.includes(k));
+                // 2. Strict whole-word symptom & health domain check (blocks general ChatGPT queries)
+                const outOfDomain = /\b(python|javascript|java|coding|programming|cricket|football|movie|song|capital of|weather|joke|poem|story|recipe|cook|chatgpt|openai|politics|prime minister|laptop|phone|galaxy|spain|france|teacher|homework|essay|email)\b/i;
+                const strictHealthRegex = /\b(pain|ache|fever|fevr|cough|caugh|flu|sneeze|vomit|vomiting|nausea|diarrhea|diarrhoea|headache|headche|migraine|dizzy|dizziness|fatigue|weakness|swelling|bleeding|rash|itching|cramp|cramps|sore throat|breathless|shortness of breath|chills|sweating|weight loss|weight gain|insomnia|acidity|indigestion|bloating|constipation|infection|viral|allergy|asthma|diabetes|hypertension|thyroid|dengue|malaria|typhoid|jaundice|stomach pain|chest pain|back pain|neck pain|joint pain|knee pain|earache|toothache|digestive|gastritis|piles|ulcer|dard|bukhar|khansi|sardi|jukam|ulti|dast|pet dard|sir dard|sar dard|chakkar|kamzori|sujan|khujli|gale me dard|gale me kharash)\b/i;
+                const isHealth = !outOfDomain.test(cleanLower) && strictHealthRegex.test(cleanLower);
 
                 if (!isHealth) {
                     if (model === "LRv1" || model === "LRv2") {
                         data = {
                             predicted_disease: "Non-Health Query",
                             matched_symptoms: [],
-                            description: "⚠️ Medical Domain Restriction: Niramaya AI only processes medical and health symptoms. Please enter specific health symptoms (e.g. fever, headache, stomach ache, body pain) to predict conditions.",
+                            description: "⚠️ Medical Domain Restriction: Niramaya AI only processes medical and health symptoms (not general chat). Please enter specific health symptoms (e.g. fever, headache, stomach ache, body pain) to predict conditions.",
                             precautions: ["Please ask questions strictly related to human health, symptoms, and medical wellness."]
                         };
                     } else {
                         data = {
                             question: userInput,
-                            answer: "⚠️ **Medical & Symptom Checker Domain Restriction:**\n\nI am your **Niramaya AI Health Assistant**. I am specialized **exclusively in health symptoms, medical conditions, and clinical precautions**.\n\nI do not answer questions outside the healthcare domain (such as general knowledge, coding, politics, sports, recipes, or entertainment).\n\n👉 **Please describe your health symptoms** (e.g., *fever, headache, cough, body pain, dizziness, stomach ache, rash*) to receive clinical assessment, home care, and precautions."
+                            answer: "⚠️ **Medical & Symptom Checker Domain Restriction:**\n\nI am your **Niramaya AI Health Assistant**. I am specialized **exclusively in health symptoms, medical conditions, and clinical precautions** — I do **not** act as a general chatbot like ChatGPT.\n\nI cannot answer non-medical questions (such as general knowledge, coding, essays, politics, sports, weather, recipes, or casual conversation).\n\n👉 **Please describe your health symptoms** (e.g., *fever, headache, cough, body pain, dizziness, stomach ache, rash*) to receive clinical assessment, home care, and precautions."
                         };
                     }
                 } else if (model === "LRv1" || model === "LRv2") {
-                    let predDis = cleanSym + " (Symptom Assessment)";
+                    let predDis = toTitleCase(cleanSym) + " (Symptom Assessment)";
                     let precs = [
                         "Stay well-hydrated with clean water and herbal broths",
                         "Ensure 7 to 8 hours of uninterrupted physical rest",
                         "Avoid unprescribed frequent pain medications",
                         "Seek immediate medical attention if symptoms escalate"
                     ];
-                    if (cleanLower.includes("throat") || cleanLower.includes("gala")) {
+                    if (cleanLower.includes("throat") || cleanLower.includes("gala") || cleanLower.includes("gale")) {
                         predDis = "Acute Pharyngitis & Throat Irritation (गले में खराश)";
                         precs = ["Warm saline water gargles 3-4 times daily", "Sip warm ginger-honey water", "Avoid refrigerated cold beverages", "Consult a doctor if swallowing is difficult"];
-                    } else if (cleanLower.includes("digest") || cleanLower.includes("stomach") || cleanLower.includes("pet") || cleanLower.includes("gut")) {
+                    } else if (cleanLower.includes("digest") || cleanLower.includes("stomach") || cleanLower.includes("pet dard") || cleanLower.includes("gut")) {
                         predDis = "Functional Dyspepsia & Gut Disturbance (पाचन संबंधी समस्या)";
                         precs = ["Consume fresh curd / probiotic buttermilk", "Sip warm fennel-cumin water after meals", "Adopt a light khichdi / BRAT diet", "Avoid deep-fried and spicy curries"];
                     } else if (cleanLower.includes("cough") || cleanLower.includes("khansi") || cleanLower.includes("cold")) {
@@ -480,7 +478,7 @@ async function sendMessage() {
                     } else if (cleanLower.includes("fever") || cleanLower.includes("bukhar")) {
                         predDis = "Acute Pyrexia & Immune Response (वायरल बुखार)";
                         precs = ["Total physical bed rest in cool room", "ORS and tender coconut water hydration", "Tepid sponging with lukewarm water", "Seek doctor if fever exceeds 102°F"];
-                    } else if (cleanLower.includes("headache") || cleanLower.includes("sir dard")) {
+                    } else if (cleanLower.includes("headache") || cleanLower.includes("headche") || cleanLower.includes("sir dard")) {
                         predDis = "Cephalea & Tension / Migraine (सिर दर्द)";
                         precs = ["Rest in a quiet, dark room away from screens", "Drink 500ml water immediately", "Apply a cold compress on forehead", "Avoid loud sounds and skipping meals"];
                     }
@@ -496,12 +494,12 @@ async function sendMessage() {
                     let homeCareText = "- Hydration: Drink 2.5 to 3 liters of warm water and electrolyte broths\n- Rest: Ensure 7 to 8 hours of uninterrupted rest in a quiet space\n- Nutrition: Eat freshly prepared light, nutrient-rich meals";
                     let redFlagsText = "- 🚨 High persistent fever (>102°F)\n- 🚨 Severe unremitting pain or difficulty breathing\n- 🚨 Extreme weakness or inability to keep liquids down";
 
-                    if (cleanLower.includes("throat") || cleanLower.includes("gala")) {
+                    if (cleanLower.includes("throat") || cleanLower.includes("gala") || cleanLower.includes("gale")) {
                         clinicalOverview = "Pharyngeal irritation and acute pharyngitis involve inflammation of mucous membranes in the throat or tonsils.";
                         causesText = "- Viral pharyngitis (rhinovirus, adenovirus, or flu)\n- Bacterial tonsillopharyngitis (strep throat)\n- Acid reflux (LPR) or vocal cord strain";
                         homeCareText = "- Warm Saline Gargles: Gargle with 1/2 tsp salt in warm water 3-4 times daily\n- Soothing Warm Sips: Warm water with pure honey, ginger, and tulsi\n- Steam Inhalation: Inhale warm vapor for 5-7 minutes\n- Avoid: Cold refrigerated drinks, ice cream, and spicy peppers";
                         redFlagsText = "- 🚨 Inability to swallow liquids or saliva\n- 🚨 Difficulty breathing or whistling breath sounds\n- 🚨 Asymmetric swelling of tonsils or fever > 102°F";
-                    } else if (cleanLower.includes("digest") || cleanLower.includes("stomach") || cleanLower.includes("pet") || cleanLower.includes("gut")) {
+                    } else if (cleanLower.includes("digest") || cleanLower.includes("stomach") || cleanLower.includes("pet dard") || cleanLower.includes("gut")) {
                         clinicalOverview = "Gastrointestinal disturbances involve altered gut motility, acid imbalance, or gut flora (dysbiosis) irritation.";
                         causesText = "- Gastric hyperacidity or GERD acid reflux\n- Irritable bowel syndrome (IBS) or food intolerance\n- Sluggish motility or stress-mediated gut spasms";
                         homeCareText = "- Probiotics: Fresh homemade curd, yogurt, or buttermilk with roasted cumin\n- Digestive Tea: Lukewarm water with fennel seeds (saunf) and ginger\n- Bland Diet: Light moong dal khichdi, steamed rice, and ripe bananas\n- Avoid: Deep-fried oily snacks, carbonated drinks, and late heavy dinners";
@@ -516,7 +514,7 @@ async function sendMessage() {
                         causesText = "- Systemic viral flu, dengue, or seasonal infectious agents\n- Bacterial focal infection (urinary, respiratory, or enteric)\n- Localized inflammatory immune response";
                         homeCareText = "- Complete Bed Rest: Conserve metabolic energy for immune defense\n- Electrolytes: Drink generous amounts of ORS, coconut water, and clear soups\n- Tepid Sponging: Wipe forehead and neck with lukewarm water (never cold ice)\n- Diet: Thin dal soup, barley water, and light rice porridge";
                         redFlagsText = "- 🚨 Temperature rising above 103°F or unresponsive to antipyretics\n- 🚨 Fever with stiff neck, confusion, or convulsions\n- 🚨 Tiny red/purple pinpoint spots on skin (petechiae)";
-                    } else if (cleanLower.includes("headache") || cleanLower.includes("sir dard")) {
+                    } else if (cleanLower.includes("headache") || cleanLower.includes("headche") || cleanLower.includes("sir dard")) {
                         clinicalOverview = "Cephalea arises from pericranial muscle tension, vascular spasms, or cranial nerve sensitivity.";
                         causesText = "- Tension headache from mental stress, prolonged screen time, or neck stiffness\n- Vascular migraine from sleep disruption or skipped meals\n- Dehydration or sudden caffeine withdrawal";
                         homeCareText = "- Quiet Rest: Lie down in a dark, quiet room away from screens\n- Rapid Hydration: Drink 500ml of cool water immediately\n- Cold Compress: Place an ice pack wrapped in a cloth over forehead or temples\n- Gentle Relief: Slow neck rolls and shoulder stretches";
@@ -525,7 +523,7 @@ async function sendMessage() {
 
                     data = {
                         question: userInput,
-                        answer: `**Condition / Clinical Assessment:** ${cleanSym.title()} (Clinical Evaluation)\n\n**Medical Overview:**\n${clinicalOverview}\n\n**Probable Causes & Contributing Factors:**\n${causesText}\n\n**Dietary Recommendations & Home Care:**\n${homeCareText}\n\n**When to Seek Immediate Medical Attention (Red Flags):**\n${redFlagsText}\n\n*(Disclaimer: Niramaya provides AI-guided informational health insights. This does not replace formal examination, laboratory diagnosis, or prescription by a licensed medical practitioner.)*`
+                        answer: `**Condition / Clinical Assessment:** ${toTitleCase(cleanSym)} (Clinical Evaluation)\n\n**Medical Overview:**\n${clinicalOverview}\n\n**Probable Causes & Contributing Factors:**\n${causesText}\n\n**Dietary Recommendations & Home Care:**\n${homeCareText}\n\n**When to Seek Immediate Medical Attention (Red Flags):**\n${redFlagsText}\n\n*(Disclaimer: Niramaya provides AI-guided informational health insights. This does not replace formal examination, laboratory diagnosis, or prescription by a licensed medical practitioner.)*`
                     };
                 }
             }
@@ -856,34 +854,78 @@ async function handleRegister(e) {
     const fname = document.getElementById("familyname").value.trim();
     const email = document.getElementById("register-email").value.trim();
     const password = document.getElementById("register-password").value;
+    const regBtn = document.getElementById("user-register-btn") || e.target.querySelector("button[type='submit']");
+    const origText = regBtn ? regBtn.innerHTML : "Register";
+
+    if (!fname || !email || !password) {
+        alert("Please fill in your name, email address, and password.");
+        return;
+    }
+
+    if (regBtn) {
+        regBtn.disabled = true;
+        regBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+    }
 
     try {
-        const res = await fastFetch(API_BASE + "/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fname, email, password })
-        }, 3500);
-        const data = await res.json();
+        let res = null;
+        let data = null;
 
-        if (res.ok && data.success) {
-            alert("Registration successful! Welcome to Niramaya.");
+        try {
+            res = await fastFetch(API_BASE + "/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fname, email, password })
+            }, getApiTimeoutMs());
+            data = await res.json().catch(() => null);
+        } catch (_) {}
+
+        // Fallback to cloud Render deployment ONLY when running locally and local server is unreachable
+        if (!res && API_BASE !== CLOUD_API) {
+            try {
+                const cloudRes = await fastFetch(CLOUD_API + "/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ fname, email, password })
+                }, 35000);
+                const cloudData = await cloudRes.json().catch(() => null);
+                res = cloudRes;
+                data = cloudData;
+                if (cloudRes.ok) API_BASE = CLOUD_API;
+            } catch (_) {}
+        }
+
+        if (res && res.ok && data && data.success) {
+            sessionStorage.setItem("userLoggedIn", "true");
+            sessionStorage.setItem("accountId", data.account_id);
+            sessionStorage.setItem("familyName", fname);
+            sessionStorage.setItem("userEmail", data.email || email);
+            sessionStorage.setItem("activeMemberName", fname);
+
             localStorage.setItem("accountId", data.account_id);
             localStorage.setItem("userEmail", data.email || email);
             localStorage.setItem("familyName", fname);
             localStorage.setItem("selectedMemberName", fname);
-            sessionStorage.setItem("activeMemberName", fname);
             isLoggedIn = true;
 
+            alert("Registration successful! Welcome to Niramaya.");
             closeRegisterModal();
             updateNavButtons();
             updateGreeting();
             // Open member selection / setup
             openAddMemberModal();
+        } else if (data && data.message) {
+            alert(data.message);
         } else {
-            alert(data.message || "Registration failed.");
+            alert("Unable to complete registration right now. The server may be waking up — please try again in a few seconds.");
         }
     } catch (err) {
-        alert("Server error during registration.");
+        alert("Unable to connect to the registration server. Please check your internet connection and try again.");
+    } finally {
+        if (regBtn) {
+            regBtn.disabled = false;
+            regBtn.innerHTML = origText;
+        }
     }
 }
 
@@ -1368,25 +1410,90 @@ function closeSendOtpModal() { closeModal("send-otp-modal"); }
 async function handleSendOtp(e) {
     e.preventDefault();
     const email = document.getElementById("forgot-email").value.trim();
+    const btn = document.getElementById("send-otp-btn") || e.target.querySelector("button[type='submit']");
+    const origText = btn ? btn.innerHTML : "Send OTP Code";
+
+    if (!email) {
+        alert("Please enter your registered email address.");
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending OTP...';
+    }
 
     try {
-        const res = await fetch(API_BASE + "/forgotpassword", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
-        });
-        const data = await res.json();
-        if (data.success) {
-            alert("OTP sent to your email!");
-            sessionStorage.setItem("storedOtp", data.otp);
+        let res = null;
+        let data = null;
+
+        try {
+            res = await fastFetch(API_BASE + "/forgotpassword", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email })
+            }, getApiTimeoutMs());
+            data = await res.json().catch(() => null);
+        } catch (_) {}
+
+        if (!res && API_BASE !== CLOUD_API) {
+            try {
+                const cloudRes = await fastFetch(CLOUD_API + "/forgotpassword", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                }, 35000);
+                data = await cloudRes.json().catch(() => null);
+                res = cloudRes;
+                if (cloudRes.ok) API_BASE = CLOUD_API;
+            } catch (_) {}
+        }
+
+        if (res && res.ok && data && data.success) {
+            if (data.otp) {
+                sessionStorage.setItem("storedOtp", data.otp);
+            } else {
+                sessionStorage.removeItem("storedOtp");
+            }
             sessionStorage.setItem("storedAccountId", data.account_id);
             closeSendOtpModal();
             openResetPasswordModal();
+
+            const banner = document.getElementById("otp-delivery-banner");
+            const otpInput = document.getElementById("otp");
+            if (otpInput) otpInput.value = "";
+
+            if (banner) {
+                banner.style.display = "block";
+                if (data.email_sent) {
+                    banner.style.background = "rgba(16, 185, 129, 0.14)";
+                    banner.style.border = "1px solid #10b981";
+                    banner.style.color = "#10b981";
+                    banner.innerHTML = `<i class="fas fa-check-circle"></i> <strong>OTP Sent!</strong> ${data.message}`;
+                } else if (data.otp) {
+                    banner.style.background = "rgba(59, 130, 246, 0.14)";
+                    banner.style.border = "1px solid #3b82f6";
+                    banner.style.color = "var(--text-color)";
+                    banner.innerHTML = `
+                        <div style="margin-bottom:6px;"><i class="fas fa-shield-alt" style="color:#3b82f6;"></i> <strong>Verification OTP Generated</strong></div>
+                        <div style="font-size:12px; color:var(--secondary-text); margin-bottom:8px;">Email SMTP is not configured on this server, so your secure one-time code is shown below:</div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--input-bg); border:1px dashed #3b82f6; border-radius:8px; padding:8px 12px;">
+                            <span style="font-size:20px; font-weight:700; letter-spacing:5px; color:#3b82f6;">${data.otp}</span>
+                            <button type="button" onclick="document.getElementById('otp').value='${data.otp}'" style="padding:5px 10px; border:none; border-radius:6px; background:#3b82f6; color:#fff; font-size:12px; font-weight:600; cursor:pointer;">Auto-Fill OTP</button>
+                        </div>
+                    `;
+                }
+            }
         } else {
-            alert(data.message || "Failed to send OTP.");
+            alert((data && data.message) || "Failed to send OTP. Please check your email and try again.");
         }
     } catch (_) {
-        alert("Error connecting to server.");
+        alert("Error connecting to server. Please try again.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+        }
     }
 }
 
@@ -1398,6 +1505,18 @@ async function handleResetPassword(e) {
     const otp = document.getElementById("otp").value.trim();
     const newPassword = document.getElementById("new-password").value.trim();
     const confirmPassword = document.getElementById("confirm-password").value.trim();
+    const btn = document.getElementById("reset-password-btn") || e.target.querySelector("button[type='submit']");
+    const origText = btn ? btn.innerHTML : "Reset Password";
+
+    if (!otp || otp.length !== 6) {
+        alert("Please enter the 6-digit OTP.");
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        alert("New password must be at least 6 characters long.");
+        return;
+    }
 
     if (newPassword !== confirmPassword) {
         alert("Passwords do not match!");
@@ -1410,27 +1529,42 @@ async function handleResetPassword(e) {
         return;
     }
 
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+    }
+
     try {
-        const res = await fetch(API_BASE + "/resetpassword", {
+        const res = await fastFetch(API_BASE + "/resetpassword", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 account_id: sessionStorage.getItem("storedAccountId"),
+                otp: otp,
                 new_password: newPassword
             })
-        });
-        const data = await res.json();
-        if (data.success) {
+        }, getApiTimeoutMs());
+        const data = await res.json().catch(() => null);
+        if (res.ok && data && data.success) {
             alert("Password reset successfully! Please login with your new password.");
             sessionStorage.removeItem("storedOtp");
             sessionStorage.removeItem("storedAccountId");
+            const form = document.getElementById("reset-password-form");
+            if (form) form.reset();
+            const banner = document.getElementById("otp-delivery-banner");
+            if (banner) banner.style.display = "none";
             closeResetPasswordModal();
             openLoginModal();
         } else {
-            alert(data.message || "Failed to reset password.");
+            alert((data && data.message) || "Failed to reset password.");
         }
     } catch (_) {
-        alert("Server error resetting password.");
+        alert("Server error resetting password. Please try again.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+        }
     }
 }
 

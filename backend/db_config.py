@@ -19,19 +19,20 @@ class SQLiteCursorWrapper:
         self._last_id = None
 
     def execute(self, sql, params=None):
-        has_returning = bool(re.search(r'RETURNING\s+\w+', sql, re.IGNORECASE))
-        clean_sql = re.sub(r'RETURNING\s+\w+', '', sql, flags=re.IGNORECASE)
-        clean_sql = re.sub(r'::\w+', '', clean_sql)
+        clean_sql = re.sub(r'::\w+', '', sql)
         clean_sql = re.sub(r'\bILIKE\b', 'LIKE', clean_sql, flags=re.IGNORECASE)
         clean_sql = clean_sql.replace('%s', '?')
+        self._last_id = None
         if params is None:
             self.cursor.execute(clean_sql)
         else:
-            self.cursor.execute(clean_sql, params)
-        if has_returning:
-            self._last_id = self.cursor.lastrowid
-        else:
-            self._last_id = None
+            # Convert datetime objects to ISO strings to avoid Python 3.12 sqlite3 deprecation warnings
+            from datetime import datetime
+            safe_params = tuple(
+                p.isoformat(sep=' ') if isinstance(p, datetime) else p
+                for p in params
+            ) if isinstance(params, (tuple, list)) else params
+            self.cursor.execute(clean_sql, safe_params)
         return self
 
     def fetchone(self):
@@ -156,6 +157,15 @@ def init_sqlite_db(db_path):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS password_reset_otps (
+            otp_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            email TEXT NOT NULL,
+            otp_code TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
 
     # Seed default admin if empty
@@ -227,7 +237,7 @@ def get_db_connection(dbname="projectH"):
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql://", 1)
         try:
-            return psycopg2.connect(database_url, connect_timeout=3)
+            return psycopg2.connect(database_url, connect_timeout=15)
         except Exception as e:
             print(f"[!] Warning: DATABASE_URL connection failed: {e}")
 

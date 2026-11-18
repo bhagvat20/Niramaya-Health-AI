@@ -68,4 +68,15 @@ CREATE TABLE IF NOT EXISTS health_content_tbl (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS password_reset_otps (
+    otp_id SERIAL PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES account_tbl(account_id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL,
+    otp_code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
 

@@ -38,7 +38,7 @@
 
     <!-- Center Prompt Input Container -->
     <div class="input-container" id="input-container">
-        <input type="text" id="user-input" placeholder="What do you want to know?" autocomplete="off">
+        <input type="text" id="user-input" placeholder="Describe your health symptoms (e.g., fever, headache, cough)..." autocomplete="off">
         <select class="model-select" id="model-select" title="Select AI Model">
             <option value="BioGPT">BioGPT</option>
             <option value="Gemini">Gemini</option>
@@ -54,7 +54,7 @@
     <!-- Fixed Bottom Chat Footer Input -->
     <footer class="chat-footer" id="chat-footer">
         <div class="input-container">
-            <input type="text" id="user-input-footer" placeholder="Type your message..." autocomplete="off">
+            <input type="text" id="user-input-footer" placeholder="Describe your health symptoms (e.g., fever, headache, cough)..." autocomplete="off">
             <select class="model-select" id="model-select-footer" title="Select AI Model">
                 <option value="BioGPT">BioGPT</option>
                 <option value="Gemini">Gemini</option>
@@ -255,13 +255,13 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeSendOtpModal()">&times;</span>
             <h2><i class="fas fa-envelope-open-text"></i> Reset Password</h2>
-            <p style="color:#a1a1aa; font-size:13px; text-align:center; margin-bottom:14px;">Enter your registered email address to receive a one-time verification code.</p>
+            <p style="color:var(--secondary-text); font-size:13px; text-align:center; margin-bottom:14px;">Enter your registered email address to receive a one-time verification code.</p>
             <form id="send-otp-form" onsubmit="handleSendOtp(event)">
                 <div class="form-group">
                     <label for="forgot-email">Registered Email</label>
                     <input type="email" id="forgot-email" name="email" placeholder="Enter your email" required autocomplete="email">
                 </div>
-                <button type="submit" class="modal-btn">Send OTP Code</button>
+                <button type="submit" class="modal-btn" id="send-otp-btn">Send OTP Code</button>
             </form>
             <p class="modal-link">
                 Back to <a href="javascript:void(0)" onclick="closeSendOtpModal(); openLoginModal();">Login</a>
@@ -274,20 +274,21 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeResetPasswordModal()">&times;</span>
             <h2><i class="fas fa-lock"></i> Set New Password</h2>
+            <div id="otp-delivery-banner" style="display:none; padding:12px 14px; border-radius:10px; margin-bottom:14px; font-size:13px; line-height:1.5;"></div>
             <form id="reset-password-form" onsubmit="handleResetPassword(event)">
                 <div class="form-group">
                     <label for="otp">6-Digit OTP</label>
-                    <input type="text" id="otp" name="otp" placeholder="Enter 6-digit OTP" required maxlength="6">
+                    <input type="text" id="otp" name="otp" placeholder="Enter 6-digit OTP" required maxlength="6" autocomplete="one-time-code">
                 </div>
                 <div class="form-group">
                     <label for="new-password">New Password</label>
-                    <input type="password" id="new-password" name="new-password" placeholder="Enter new password (min 6 chars)" required minlength="6">
+                    <input type="password" id="new-password" name="new-password" placeholder="Enter new password (min 6 chars)" required minlength="6" autocomplete="new-password">
                 </div>
                 <div class="form-group">
                     <label for="confirm-password">Confirm New Password</label>
-                    <input type="password" id="confirm-password" name="confirm-password" placeholder="Confirm new password" required minlength="6">
+                    <input type="password" id="confirm-password" name="confirm-password" placeholder="Confirm new password" required minlength="6" autocomplete="new-password">
                 </div>
-                <button type="submit" class="modal-btn">Reset Password</button>
+                <button type="submit" class="modal-btn" id="reset-password-btn">Reset Password</button>
             </form>
             <p class="modal-link">
                 Back to <a href="javascript:void(0)" onclick="closeResetPasswordModal(); openLoginModal();">Login</a>
@@ -323,7 +324,7 @@
     </div>
 
     <!-- Unified Modular Client Script -->
-    <script src="question_input.js?v=20261027_05"></script>
+    <script src="question_input.js?v=20261118_01"></script>
 </body>
 
 </html>

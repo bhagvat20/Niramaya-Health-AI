@@ -310,40 +310,6 @@
             e.preventDefault();
             window.location.href = "home.html";
         };
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const htmlElement = document.documentElement;
-            const themeToggleButton = document.getElementById('theme-toggle');
-            const logoImg = document.getElementById('logo-img');
-            let currentTheme = localStorage.getItem('theme') || 'dark';
-
-            if (!themeToggleButton) {
-                console.error('Error: Theme toggle button not found in DOM.');
-                return;
-            }
-
-            htmlElement.classList.add(currentTheme);
-            themeToggleButton.innerHTML = currentTheme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
-
-            themeToggleButton.addEventListener('click', () => {
-                if (currentTheme === 'dark') {
-                    htmlElement.classList.remove('dark');
-                    htmlElement.classList.add('light');
-                    localStorage.setItem('theme', 'light');
-                    currentTheme = 'light';
-                    themeToggleButton.innerHTML = '<i class="fas fa-moon"></i>';
-                    logoImg.src = 'N-light.png';
-                } else {
-                    htmlElement.classList.remove('light');
-                    htmlElement.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                    currentTheme = 'dark';
-                    themeToggleButton.innerHTML = '<i class="fas fa-sun"></i>';
-                    logoImg.src = 'N-dark.png';
-                }
-            });
-        });
     </script>
 </body>
 

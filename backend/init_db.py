@@ -6,31 +6,43 @@ from db_config import get_db_connection
 
 def setup_database():
     try:
-        conn = get_db_connection(dbname="postgres")
-        # If SQLite fallback was returned, schema is already initialized
-        if conn.__class__.__name__ == 'SQLiteConnWrapper':
-            print("SQLite database active and ready.")
-            conn.close()
-            return
+        database_url = os.environ.get("DATABASE_URL")
 
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = 'projectH'")
-        exists = cursor.fetchone()
-        if not exists:
-            print("Creating database 'projectH'...")
-            cursor.execute('CREATE DATABASE "projectH"')
-            print("Database 'projectH' created successfully.")
+        if database_url:
+            # Cloud PostgreSQL (Render / Neon): database already exists; connect directly
+            print("Connecting to cloud PostgreSQL via DATABASE_URL...")
+            conn_proj = get_db_connection()
+            if conn_proj.__class__.__name__ == 'SQLiteConnWrapper':
+                print("SQLite fallback database active and ready.")
+                conn_proj.close()
+                return
         else:
-            print("Database 'projectH' already exists.")
+            conn = get_db_connection(dbname="postgres")
+            # If SQLite fallback was returned, schema is already initialized
+            if conn.__class__.__name__ == 'SQLiteConnWrapper':
+                print("SQLite database active and ready.")
+                conn.close()
+                return
 
-        cursor.close()
-        conn.close()
+            conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+            cursor = conn.cursor()
 
-        # Step 2: Connect to projectH database and run schema.sql
-        print("Connecting to 'projectH' database...")
-        conn_proj = get_db_connection(dbname="projectH")
+            cursor.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = 'projectH'")
+            exists = cursor.fetchone()
+            if not exists:
+                print("Creating database 'projectH'...")
+                cursor.execute('CREATE DATABASE "projectH"')
+                print("Database 'projectH' created successfully.")
+            else:
+                print("Database 'projectH' already exists.")
+
+            cursor.close()
+            conn.close()
+
+            # Step 2: Connect to projectH database and run schema.sql
+            print("Connecting to 'projectH' database...")
+            conn_proj = get_db_connection(dbname="projectH")
+
         cursor_proj = conn_proj.cursor()
 
         schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
@@ -130,14 +142,25 @@ def setup_database():
             print(f"Seeded {len(SEED_HEALTH_CONTENT)} health content items successfully.")
 
         # Update PostgreSQL sequence values to prevent auto-increment conflicts
-        try:
-            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('account_tbl', 'account_id'), COALESCE(MAX(account_id), 1)) FROM account_tbl;")
-            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('member_tbl', 'member_id'), COALESCE(MAX(member_id), 1)) FROM member_tbl;")
-            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('chat_history_tbl', 'history_id'), COALESCE(MAX(history_id), 1)) FROM chat_history_tbl;")
-            cursor_proj.execute("SELECT setval(pg_get_serial_sequence('health_content_tbl', 'content_id'), COALESCE(MAX(content_id), 1)) FROM health_content_tbl;")
-            conn_proj.commit()
-        except Exception:
-            pass
+        for tbl, col in [
+            ('account_tbl', 'account_id'),
+            ('member_tbl', 'member_id'),
+            ('chat_history_tbl', 'history_id'),
+            ('admin_tbl', 'admin_id'),
+            ('admin_tokens_tbl', 'token_id'),
+            ('health_content_tbl', 'content_id'),
+            ('password_reset_otps', 'otp_id'),
+        ]:
+            try:
+                cursor_proj.execute(
+                    f"SELECT setval(pg_get_serial_sequence('{tbl}', '{col}'), COALESCE((SELECT MAX({col}) FROM {tbl}), 1), (SELECT COUNT(*) > 0 FROM {tbl}));"
+                )
+                conn_proj.commit()
+            except Exception:
+                try:
+                    conn_proj.rollback()
+                except Exception:
+                    pass
 
         cursor_proj.close()
         conn_proj.close()

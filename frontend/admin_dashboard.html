@@ -432,29 +432,30 @@
         : LOCAL_API;
 
     async function apiFetch(endpoint, options = {}) {
+      const makeOpts = (timeoutMs) => {
+        const opts = { ...options };
+        if (!opts.signal && typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+          opts.signal = AbortSignal.timeout(timeoutMs);
+        }
+        return opts;
+      };
+
+      const isLocalOrigin = API_BASE_URL.includes('127.0.0.1') || API_BASE_URL.includes('localhost');
+      const primaryTimeout = isLocalOrigin ? 8000 : 35000;
       const url = `${API_BASE_URL}${endpoint}`;
-      const opts = { ...options };
-      if (!opts.signal && typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
-        opts.signal = AbortSignal.timeout(3000);
-      }
+
       try {
-        const res = await fetch(url, opts);
-        if (res.ok || res.status < 500) return res;
-      } catch (_) {}
-
-      // Fallback to cloud Render deployment if local is unreachable
-      if (API_BASE_URL !== CLOUD_API) {
-        try {
+        const res = await fetch(url, makeOpts(primaryTimeout));
+        return res;
+      } catch (primaryErr) {
+        if (API_BASE_URL !== CLOUD_API) {
           const cloudUrl = `${CLOUD_API}${endpoint}`;
-          const cloudRes = await fetch(cloudUrl, opts);
-          if (cloudRes.ok || cloudRes.status < 500) {
-            API_BASE_URL = CLOUD_API;
-            return cloudRes;
-          }
-        } catch (_) {}
+          const cloudRes = await fetch(cloudUrl, makeOpts(35000));
+          API_BASE_URL = CLOUD_API;
+          return cloudRes;
+        }
+        throw primaryErr;
       }
-
-      return await fetch(url, opts);
     }
 
     function getAuthToken() {

@@ -36,156 +36,167 @@ except Exception as e:
     print(f"Medical engine ML load notice: {e}")
 
 # ==============================================================================
-# Health Domain Guardrail (Dynamic Model Filter)
+# Strict Symptom-Only Domain Guardrail (NO General ChatGPT-style Chat)
 # ==============================================================================
 
-# Obvious non-health domains to prevent non-medical queries
+# Obvious non-health / general-chatbot domains to strictly reject
 OUT_OF_DOMAIN_PATTERNS = [
-    r'\b(python|javascript|java|c\+\+|html|css|programming|coding|algorithm|compiler|database|sql|github|function|developer|debug|syntax|script|api key|software)\b',
+    r'\b(python|javascript|java|c\+\+|html|css|programming|coding|algorithm|compiler|database|sql|github|developer|debug|syntax|script|api key|software|react|nodejs|flask|django)\b',
     r'\b(prime minister|president of|election|politics|parliament|bjp|congress|politician|government policy|democracy|minister)\b',
-    r'\b(cricket|football|fifa|ipl|wicket|match score|messi|ronaldo|ipl score|champions trophy|batting|bowling|tennis|badminton|olympics)\b',
-    r'\b(movie|cinema|actor|actress|bollywood|hollywood|trailer|song|music|lyrics|director|film|album|singer)\b',
-    r'\b(bitcoin|crypto|cryptocurrency|stock market|share market|trading|sensex|nifty|mutual fund|forex|bank account|rupee rate)\b',
-    r'\b(capital of|weather today|flight ticket|train ticket|hotel booking|railway|irctc|geography of|tallest mountain|river)\b',
-    r'\b(tell me a joke|write a poem|write a story|sing a song|solve math|calculate|essay on|riddle|funny story)\b',
-    r'\b(how to cook|recipe for|bake a cake|car repair|bike repair|engine|mechanic|iphone|android phone|laptop)\b'
+    r'\b(cricket|football|fifa|ipl|wicket|match score|messi|ronaldo|champions trophy|batting|bowling|tennis|badminton|olympics|world cup)\b',
+    r'\b(movie|cinema|actor|actress|bollywood|hollywood|trailer|song|music|lyrics|director|film|album|singer|netflix)\b',
+    r'\b(bitcoin|crypto|cryptocurrency|stock market|share market|trading|sensex|nifty|mutual fund|forex|bank account|rupee rate|earn money|make money|business plan|startup)\b',
+    r'\b(capital of|weather|forecast|flight ticket|train ticket|hotel booking|railway|irctc|geography|tallest mountain|river|planet|galaxy|universe|spain|france|london|paris)\b',
+    r'\b(tell me a joke|write a poem|write a story|write an email|write a letter|write an essay|sing a song|solve math|calculate|essay on|riddle|funny story|translate|summarize|homework|assignment|resume|cover letter)\b',
+    r'\b(how to cook|recipe for|bake a cake|car repair|bike repair|engine|mechanic|iphone|android phone|laptop|computer|wifi|television|tv)\b',
+    r'\b(chatgpt|openai|chat with me|let\'s chat|lets chat|talk to me|who made you|who created you|horoscope|astrology|love advice|relationship advice|interview questions|quantum physics|teacher|school|college|exam)\b'
 ]
 
-# Comprehensive vocabulary of human health symptoms, medical conditions, and clinical queries
-HEALTH_SYMPTOM_TERMS = {
-    # Physical symptoms & sensory
-    'fever', 'pyrexia', 'temperature', 'chills', 'shivering', 'sweat', 'sweating', 'night sweats',
-    'headache', 'migraine', 'head ache', 'head pain', 'cephalalgia',
-    'cough', 'coughing', 'phlegm', 'sputum', 'mucus', 'wheez', 'bronchitis', 'bronchial',
-    'cold', 'flu', 'influenza', 'sneeze', 'sneezing', 'congestion', 'runny nose', 'blocked nose', 'sinus', 'sinusitis',
-    'throat', 'sore throat', 'tonsil', 'tonsillitis', 'pharyngitis', 'laryngitis',
-    'pain', 'ache', 'hurts', 'hurting', 'sore', 'cramp', 'cramps', 'tender', 'tenderness', 'stiff', 'stiffness',
-    
-    # Digestive, Gastrointestinal & Gut
-    'digest', 'digestive', 'digestion', 'digestive issues', 'digestive problem', 'digestive system',
-    'gut', 'gut health', 'gut issue', 'gut problem', 'stomach', 'abdomen', 'abdominal', 'belly',
-    'gastric', 'gastritis', 'acidity', 'gas', 'bloat', 'bloating', 'indigestion', 'heartburn', 'gerd',
-    'reflux', 'acid reflux', 'constipation', 'constipated', 'bowel', 'bowels', 'stool', 'stools',
-    'vomit', 'vomiting', 'nausea', 'queasy', 'diarrhea', 'diarrhoea', 'loose motion', 'motions', 'dysentery',
-    'flatulence', 'belching', 'burping', 'food poisoning', 'colitis', 'colon', 'ibs',
-    'liver', 'gallbladder', 'pancreas', 'appendix', 'appendicitis', 'piles', 'hemorrhoid', 'hemorrhoids',
-    'fistula', 'fissure', 'hernia',
-
-    # Cardiovascular & Respiratory
-    'chest', 'chest pain', 'angina', 'heart', 'cardiac', 'cardiovascular', 'palpitation', 'palpitations',
-    'tachycardia', 'bradycardia', 'pulse', 'circulation', 'breath', 'breathing', 'breathless',
-    'breathlessness', 'shortness of breath', 'dyspnea', 'suffocation', 'asthma', 'lungs', 'copd',
-
-    # Neurological, Sleep & Psychological
-    'dizzy', 'dizziness', 'vertigo', 'lightheaded', 'faint', 'fainting', 'syncope', 'blackout',
-    'fatigue', 'tired', 'tiredness', 'weak', 'weakness', 'lethargy', 'lethargic', 'exhaustion', 'malaise',
-    'numb', 'numbness', 'tingling', 'paralysis', 'tremor', 'tremors', 'seizure', 'convulsion',
-    'insomnia', 'sleepless', 'anxiety', 'anxious', 'depression', 'depressed', 'panic attack', 'stress',
-
-    # Dermatology, Skin & Hair
-    'rash', 'skin rash', 'skin', 'itch', 'itching', 'pruritus', 'allergy', 'allergic', 'hives', 'urticaria',
-    'swell', 'swelling', 'swollen', 'edema', 'oedema', 'inflammation', 'inflamed', 'puffy',
-    'acne', 'pimple', 'pimples', 'eczema', 'psoriasis', 'dandruff', 'hair loss', 'hairfall', 'alopecia',
-    'bleed', 'bleeding', 'blood', 'hemorrhage', 'bruise', 'bruising', 'hematoma',
-    'burn', 'burning', 'burning sensation', 'ulcer', 'ulcers', 'wound', 'injury', 'cut', 'pus', 'boil', 'blister',
-
-    # Endocrine, Metabolic & Renal
-    'appetite', 'loss of appetite', 'weight loss', 'weight gain', 'dehydration', 'dehydrated', 'thirst',
-    'urine', 'urinary', 'micturition', 'bladder', 'kidney', 'kidneys', 'kidney stone', 'uti', 'renal',
-    'diabetes', 'diabetic', 'sugar level', 'blood sugar', 'glucose', 'insulin', 'blood pressure', 'bp',
-    'hypertension', 'hypotension', 'thyroid', 'cholesterol', 'anemia', 'anaemic', 'platelet', 'platelets',
-
-    # Musculoskeletal & Joints
-    'joint', 'joints', 'knee', 'hip', 'shoulder', 'elbow', 'wrist', 'ankle', 'arthritis', 'osteoarthritis',
-    'back', 'backache', 'back pain', 'spine', 'spinal', 'neck', 'neck pain', 'muscle', 'muscles', 'myalgia',
-    'bone', 'bones', 'gout', 'sciatica', 'sprain', 'strain', 'fracture',
-
-    # Sensory Organs (Eyes, Ears, Oral)
-    'vision', 'blur', 'blurred', 'eye', 'eyes', 'red eye', 'conjunctivitis',
-    'ear', 'earache', 'ear pain', 'hearing', 'tinnitus',
-    'mouth', 'tongue', 'tooth', 'toothache', 'gum', 'gums', 'dental', 'teeth',
-
-    # Clinical, Diagnosis & Medication
-    'infection', 'infectious', 'viral', 'virus', 'bacterial', 'bacteria', 'fungal', 'fungus',
-    'disease', 'illness', 'sickness', 'syndrome', 'disorder', 'condition', 'issue', 'issues', 'problem', 'problems',
-    'dengue', 'malaria', 'typhoid', 'cholera', 'jaundice', 'hepatitis', 'tuberculosis', 'tb', 'pneumonia',
-    'stroke', 'tumor', 'cancer',
-    'medicine', 'medication', 'drug', 'pill', 'tablet', 'capsule', 'syrup', 'dosage', 'prescription',
-    'doctor', 'physician', 'specialist', 'hospital', 'clinic', 'treatment', 'therapy', 'cure', 'remedy',
-    'precaution', 'precautions', 'diagnosis', 'prognosis', 'patient', 'health', 'medical', 'wellness',
-
-    # Hindi / Hinglish symptom terms
-    'bukhar', 'bukhaar', 'sir dard', 'sar dard', 'dard', 'peeda', 'peedha',
+# Strictly unambiguous single-word medical symptoms, diseases & Hindi/Hinglish symptom terms
+# Matched ONLY on whole-word boundaries (\b...\b) — NEVER substring inside unrelated words!
+EXACT_MEDICAL_TERMS = {
+    # Core symptoms & typos
+    'fever', 'fevr', 'feaver', 'pyrexia', 'chills', 'shivering', 'sweating',
+    'headache', 'headche', 'hedache', 'heache', 'migraine', 'migrene', 'cephalalgia',
+    'cough', 'coughing', 'caugh', 'phlegm', 'sputum', 'mucus', 'wheezing', 'wheeze',
+    'flu', 'influenza', 'sneeze', 'sneezing', 'congestion', 'sinus', 'sinusitis',
+    'tonsillitis', 'pharyngitis', 'laryngitis', 'tonsil', 'tonsils',
+    'ache', 'aches', 'aching', 'pain', 'pains', 'painful', 'cramp', 'cramps', 'stiffness', 'soreness', 'hurts', 'hurting',
+    'nausea', 'nauseous', 'queasy', 'vomit', 'vomiting', 'vomitting',
+    'diarrhea', 'diarrhoea', 'diarhea', 'dysentery', 'constipation', 'constipated',
+    'indigestion', 'acidity', 'heartburn', 'gerd', 'reflux', 'bloating', 'bloated', 'flatulence', 'belching', 'gastritis', 'colitis', 'ibs',
+    'hemorrhoid', 'hemorrhoids', 'piles', 'fissure', 'fistula', 'hernia', 'appendicitis',
+    'angina', 'palpitation', 'palpitations', 'tachycardia', 'bradycardia', 'arrhythmia',
+    'breathless', 'breathlessness', 'dyspnea', 'suffocation', 'asthma', 'bronchitis', 'copd', 'pneumonia',
+    'dizzy', 'dizziness', 'dizines', 'vertigo', 'lightheaded', 'lightheadedness', 'faint', 'fainting', 'syncope', 'blackout',
+    'fatigue', 'tiredness', 'weakness', 'lethargy', 'lethargic', 'exhaustion', 'malaise',
+    'numbness', 'tingling', 'paralysis', 'tremor', 'tremors', 'seizure', 'seizures', 'convulsion', 'convulsions',
+    'insomnia', 'insomia', 'sleepless', 'sleeplessness', 'anxiety', 'anxious', 'depression', 'depressed',
+    'rash', 'rashes', 'itching', 'itchy', 'pruritus', 'allergy', 'allergic', 'allergies', 'hives', 'urticaria',
+    'swelling', 'swollen', 'edema', 'oedema', 'inflammation', 'inflamed',
+    'acne', 'pimple', 'pimples', 'eczema', 'psoriasis', 'dandruff', 'hairfall', 'alopecia',
+    'bleeding', 'hemorrhage', 'bruise', 'bruising', 'hematoma', 'ulcer', 'ulcers', 'wound', 'wounds', 'injury', 'injuries', 'blister', 'blisters', 'boil', 'boils', 'pus',
+    'dehydration', 'dehydrated', 'uti', 'nephritis',
+    'diabetes', 'diabetic', 'hyperglycemia', 'hypoglycemia', 'insulin',
+    'hypertension', 'hypotension', 'thyroid', 'hypothyroidism', 'hyperthyroidism', 'cholesterol', 'anemia', 'anaemia', 'anaemic', 'anemic',
+    'arthritis', 'osteoarthritis', 'rheumatoid', 'myalgia', 'gout', 'sciatica', 'sprain', 'strain', 'fracture', 'backache', 'earache', 'toothache', 'stomachache',
+    'conjunctivitis', 'tinnitus', 'cataract', 'glaucoma',
+    'infection', 'infections', 'infectious', 'viral', 'bacterial', 'fungal',
+    'dengue', 'malaria', 'typhoid', 'cholera', 'jaundice', 'hepatitis', 'tuberculosis', 'chikungunya', 'covid', 'coronavirus', 'measles', 'chickenpox', 'rabies', 'tetanus',
+    'stroke', 'tumor', 'tumour', 'cancer', 'leukemia',
+    'symptom', 'symptoms', 'illness', 'sickness', 'disease', 'diseases', 'syndrome', 'disorder', 'diagnosis', 'prognosis',
+    'prescription', 'dosage', 'antibiotic', 'antibiotics', 'paracetamol', 'ibuprofen', 'antacid', 'ors',
+    # Hindi / Hinglish unambiguous symptom terms
+    'bukhar', 'bukhaar', 'dard', 'peeda', 'peedha',
     'khansi', 'khaansi', 'sardi', 'jukam', 'jukaam', 'zukaam', 'nazla',
-    'ulti', 'ultiyan', 'ubkai', 'dast', 'pet dard', 'pet kharab', 'pet me dard',
-    'chhati dard', 'chhati me dard', 'seene me dard', 'jalan', 'pet me jalan',
-    'chakkar', 'chakkar aana', 'kamzori', 'kamzori lag rahi', 'thakan', 'thakawaat',
-    'sujan', 'soojan', 'khujli', 'khujli hona', 'daane', 'lal daane', 'foda', 'funsi',
-    'khoon', 'khoon aana', 'saans fulna', 'saans lene me dikkat', 'saans me taklif',
+    'ulti', 'ultiyan', 'ubkai', 'dast', 'jalan', 'chakkar', 'kamzori', 'thakan', 'thakawaat',
+    'sujan', 'soojan', 'khujli', 'daane', 'funsi', 'foda', 'khoon', 'kharash',
+    'dawai', 'dawa', 'ilaj', 'ilaaj', 'bimari', 'bimaar', 'tabiyat', 'upchar', 'perhez', 'savdhani'
+}
+
+# Multi-word medical symptom phrases (matched on word boundaries)
+MEDICAL_PHRASES = [
+    'sore throat', 'runny nose', 'blocked nose', 'stuffy nose', 'nasal congestion',
+    'shortness of breath', 'difficulty breathing', 'trouble breathing', 'chest tightness', 'chest pain',
+    'stomach pain', 'stomach ache', 'belly pain', 'abdominal pain', 'upset stomach', 'food poisoning',
+    'loose motion', 'loose motions', 'watery stool', 'blood in stool', 'black stool',
+    'back pain', 'lower back', 'neck pain', 'joint pain', 'knee pain', 'shoulder pain', 'body pain', 'muscle pain', 'leg pain', 'arm pain',
+    'head pain', 'ear pain', 'eye pain', 'red eye', 'red eyes', 'blurred vision', 'blurry vision', 'dry eyes', 'watery eyes',
+    'tooth pain', 'gum bleeding', 'bleeding gums', 'mouth ulcer', 'canker sore',
+    'skin rash', 'skin itching', 'skin infection', 'skin allergy', 'hair loss', 'hair fall',
+    'weight loss', 'weight lose', 'weight gain', 'loss of appetite', 'no appetite', 'night sweats',
+    'high temperature', 'high fever', 'mild fever', 'low fever', 'body heat',
+    'blood pressure', 'high bp', 'low bp', 'blood sugar', 'high sugar', 'low sugar', 'sugar level',
+    'kidney stone', 'kidney stones', 'gall stone', 'gallstones', 'fatty liver', 'urinary tract', 'burning urination', 'frequent urination', 'painful urination',
+    'acid reflux', 'gastric problem', 'gas problem', 'gas in stomach', 'digestive issue', 'digestive issues', 'digestive problem', 'digestive problems', 'digestive health', 'gut health', 'gut issue', 'gut problem',
+    'panic attack', 'mental stress', 'cant sleep', "can't sleep", 'cannot sleep', 'trouble sleeping', 'sleep problem', 'sleep disorder',
+    'cold and cough', 'cough and cold', 'have a cold', 'common cold', 'catching a cold', 'bad cold', 'severe cold',
+    'heart rate', 'heart beat', 'heartbeat', 'heart attack', 'heart pain', 'racing heart',
+    'sir dard', 'sar dard', 'pet dard', 'pet kharab', 'pet me dard', 'pet me jalan',
+    'chhati dard', 'chhati me dard', 'seene me dard', 'saans fulna', 'saans lene me dikkat', 'saans me taklif',
     'gala dard', 'gale me dard', 'gale me kharash', 'khich khich',
     'badan dard', 'body dard', 'kamar dard', 'peeth dard', 'jism dard',
-    'guthno me dard', 'ghutna dard', 'jod dard', 'jodon ka dard',
-    'dawa', 'dawae', 'dawai', 'ilaj', 'ilaaj', 'bimari', 'bimaar', 'tabiyat',
-    'upchar', 'gharelu nuskhe', 'perhez', 'savdhani'
+    'ghutna dard', 'guthno me dard', 'jod dard', 'jodon ka dard',
+    'chakkar aana', 'khoon aana', 'lal daane', 'gharelu nuskhe'
+]
+
+# Body parts that count as health queries ONLY when paired with a clinical/symptom qualifier
+ANATOMY_WORDS = {
+    'stomach', 'abdomen', 'abdominal', 'belly', 'gut', 'digestive', 'digestion', 'bowel', 'colon', 'liver', 'kidney', 'kidneys', 'bladder', 'pancreas', 'gallbladder',
+    'chest', 'heart', 'cardiac', 'lung', 'lungs', 'throat', 'tonsil', 'sinus', 'nose', 'nasal',
+    'head', 'brain', 'nerve', 'nerves', 'spine', 'spinal', 'back', 'neck', 'shoulder', 'knee', 'joint', 'joints', 'muscle', 'muscles', 'bone', 'bones', 'ankle', 'wrist', 'elbow', 'hip',
+    'skin', 'scalp', 'hair', 'eye', 'eyes', 'ear', 'ears', 'mouth', 'tongue', 'tooth', 'teeth', 'gum', 'gums',
+    'urine', 'urinary', 'blood', 'pulse', 'breath', 'breathing', 'period', 'periods', 'menstrual'
 }
+
+SYMPTOM_QUALIFIERS = {
+    'pain', 'ache', 'hurts', 'hurting', 'sore', 'burn', 'burning', 'itch', 'itching', 'rash', 'swell', 'swelling', 'swollen',
+    'red', 'redness', 'bleed', 'bleeding', 'cramp', 'cramps', 'stiff', 'tight', 'tightness', 'numb', 'tingling', 'weak', 'weakness',
+    'problem', 'problems', 'issue', 'issues', 'infection', 'infected', 'inflammation', 'inflamed', 'disorder', 'disease', 'condition',
+    'dry', 'watery', 'blurry', 'blurred', 'blocked', 'congestion', 'heavy', 'heaviness', 'lump', 'ulcer', 'sore', 'discharge',
+    'fever', 'cough', 'cold', 'gas', 'acid', 'acidity', 'stone', 'stones', 'loss', 'fall', 'gain', 'high', 'low', 'irregular',
+    'doctor', 'medicine', 'treatment', 'remedy', 'cure', 'care', 'health', 'precaution', 'symptom', 'symptoms', 'relief', 'check'
+}
+
 
 def is_health_related(query: str) -> bool:
     """
     Strict Symptom & Medical Domain Guardrail:
-    - ONLY allows queries describing health symptoms, medical conditions, body organs, or clinical care.
-    - STRICTLY refuses non-medical questions (coding, politics, sports, entertainment, tech, etc.).
+    - ONLY allows genuine health symptoms, medical conditions, or body-organ clinical queries.
+    - STRICTLY refuses ChatGPT-style general chat (coding, trivia, politics, sports, weather, essays, etc.).
+    - Uses whole-word boundaries (NEVER sloppy substring matching that lets 'ear' match 'year' or 'pain' match 'spain').
     """
     if not query or not query.strip():
         return False
     clean = query.lower().strip()
 
-    # 1. Reject explicit non-medical domain queries
+    # 1. Immediately reject explicit non-medical / general-chatbot queries
     for pat in OUT_OF_DOMAIN_PATTERNS:
         if re.search(pat, clean):
-            # Allow only if physical injury or clinical emergency context is present
-            if any(w in clean for w in ['pain', 'injury', 'hurt', 'fracture', 'doctor', 'hospital', 'bleeding']):
+            # Allow ONLY if accompanied by explicit physical injury / clinical emergency
+            if re.search(r'\b(injury|fracture|bleeding|hospital|emergency|burn wound)\b', clean):
                 return True
             return False
 
-    # 2. Match against trained symptom features
+    # Tokenize into exact whole words
+    words = set(re.findall(r"[a-zA-Z']+", clean))
+
+    # 2. Match multi-word medical phrases on word boundaries
+    for phrase in MEDICAL_PHRASES:
+        if re.search(r'\b' + re.escape(phrase) + r'\b', clean):
+            return True
+
+    # 3. Match exact trained ML symptom features on word boundaries
     if len(symptom_features) > 0:
         for f in symptom_features:
             f_clean = str(f).lower().replace('_', ' ').strip()
-            if f_clean and f_clean in clean:
+            if len(f_clean) >= 3 and re.search(r'\b' + re.escape(f_clean) + r'\b', clean):
                 return True
 
-    # 3. Match against symptom & health vocabulary
-    words = re.findall(r'[a-zA-Z]+', clean)
-    for term in HEALTH_SYMPTOM_TERMS:
-        if ' ' in term:
-            if term in clean:
-                return True
-        else:
-            if term in words or any(w.startswith(term) or term in w for w in words):
-                return True
-
-    # 4. Match anatomical / organ systems combined with health indicators or inquiries
-    body_organs = {
-        'digest', 'digestive', 'digestion', 'gut', 'stomach', 'belly', 'abdomen', 'abdominal',
-        'liver', 'heart', 'cardiac', 'lung', 'lungs', 'chest', 'throat', 'head', 'brain', 'skin',
-        'eye', 'eyes', 'ear', 'ears', 'mouth', 'teeth', 'tooth', 'gum', 'bone', 'bones', 'joint',
-        'joints', 'knee', 'back', 'neck', 'shoulder', 'muscle', 'muscles', 'nerve', 'nerves',
-        'kidney', 'kidneys', 'urine', 'urinary', 'blood', 'hair', 'spine', 'bowel', 'colon',
-        'rectum', 'esophagus'
-    }
-    if any(b in clean for b in body_organs):
+    # 4. Match exact unambiguous medical/symptom words
+    if words & EXACT_MEDICAL_TERMS:
         return True
 
-    # 5. If none matched, it is outside healthcare domain -> refuse
+    # 5. Match anatomical/organ terms ONLY when combined with a symptom/clinical qualifier
+    if (words & ANATOMY_WORDS) and (words & SYMPTOM_QUALIFIERS):
+        return True
+
+    # 6. Allow standalone medical/digestive/gut single-phrase inputs like "digestive" or "cold" (without weather words)
+    if 'cold' in words and not (words & {'weather', 'outside', 'today', 'winter', 'water', 'drink', 'coffee', 'tea', 'ice', 'room', 'ac'}):
+        if len(words) <= 5 or (words & {'have', 'having', 'got', 'feel', 'feeling', 'suffering', 'severe', 'mild', 'bad', 'my', 'i'}):
+            return True
+
+    # 7. Everything else is outside the symptom-checker domain -> strictly refuse
     return False
 
+
 def get_non_health_refusal_message() -> str:
-    """Standard message returned when a user asks a general non-symptom question."""
+    """Standard message returned when a user asks a general ChatGPT-style / non-symptom question."""
     return (
         "⚠️ **Medical & Symptom Checker Domain Restriction:**\n\n"
-        "I am your **Niramaya AI Health Assistant**. I am specialized **exclusively in health symptoms, medical conditions, and clinical precautions**.\n\n"
-        "I do not answer questions outside the healthcare domain (such as general knowledge, coding, politics, sports, recipes, or entertainment).\n\n"
-        "👉 **Please describe your health symptoms** (e.g., *fever, headache, cough, body pain, dizziness, stomach ache, rash*) to receive clinical assessment, home care, and precautions."
+        "I am your **Niramaya AI Health Assistant**. I am specialized **exclusively in health symptoms, medical conditions, and clinical precautions** — I do **not** act as a general chatbot like ChatGPT.\n\n"
+        "I cannot answer non-medical questions (such as general knowledge, coding, essays, politics, sports, weather, recipes, or casual conversation).\n\n"
+        "👉 **Please describe your health symptoms** (e.g., *fever, headache, cough, sore throat, body pain, dizziness, stomach ache, digestive issues, skin rash*) to receive instant clinical assessment, home care, and precautions."
     )
 
 # ==============================================================================

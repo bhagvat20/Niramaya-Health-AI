@@ -3,8 +3,32 @@ import sys
 
 # Ensure backend directory is in sys.path regardless of working directory
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
+
+
+def _load_dotenv_files():
+    """Lightweight .env loader (no extra dependency) for local and cloud configs."""
+    for env_path in (os.path.join(PROJECT_ROOT, ".env"), os.path.join(BACKEND_DIR, ".env")):
+        if not os.path.isfile(env_path):
+            continue
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for raw_line in f:
+                    line = raw_line.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, val = line.split("=", 1)
+                    key = key.strip()
+                    val = val.strip().strip('"').strip("'")
+                    if key and key not in os.environ:
+                        os.environ[key] = val
+        except Exception as _env_err:
+            print(f".env load notice: {_env_err}")
+
+
+_load_dotenv_files()
 
 from flask import Flask, send_from_directory, redirect, jsonify
 from flask_cors import CORS
