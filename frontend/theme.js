@@ -12,7 +12,7 @@
     }
 
     // 1. Immediately apply saved theme to prevent FOUC (flash of unstyled content)
-    const savedTheme = applyThemeClass(localStorage.getItem('theme') || 'dark');
+    const savedTheme = applyThemeClass(localStorage.getItem('theme') || 'light');
 
     // Prevent blinking text cursor "|" or accidental text selection on logo & brand title across all pages
     (function injectLogoStyleFix() {
@@ -60,7 +60,7 @@
     }
 
     function toggleTheme() {
-        const currentTheme = localStorage.getItem('theme') || 'dark';
+        const currentTheme = localStorage.getItem('theme') || 'light';
         const newTheme = (currentTheme === 'dark') ? 'light' : 'dark';
         setTheme(newTheme);
     }
@@ -219,14 +219,14 @@
     });
 
     window.addEventListener('pageshow', () => {
-        const resolved = applyThemeClass(localStorage.getItem('theme') || 'dark');
+        const resolved = applyThemeClass(localStorage.getItem('theme') || 'light');
         updateThemeUI(resolved);
         syncAuthNavbar();
     });
 
     // Expose helpers globally
     window.NiramayaTheme = {
-        getTheme: () => localStorage.getItem('theme') || 'dark',
+        getTheme: () => localStorage.getItem('theme') || 'light',
         setTheme: setTheme,
         toggleTheme: toggleTheme
     };

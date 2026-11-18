@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Niramaya</title>
     <link rel="icon" type="image/png" href="N-16.png">
-    <link rel="stylesheet" href="style.css?v=20261118_02">
+    <link rel="stylesheet" href="style.css?v=20261119_03">
     <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
-    <script src="theme.js?v=20261118_04"></script>
+    <script src="theme.js?v=20261119_03"></script>
 </head>
 
 <body>
@@ -23,7 +23,7 @@
             <a id="ourmodel" href="our_model.html">Our Models</a>
             <a id="wellnesstips" href="wellness_tips.html">Wellness Tips</a>
             <a id="login-link" href="question_input.html?action=login" style="font-weight:600;"><i class="fas fa-sign-in-alt"></i> Login</a>
-            <a id="register-link" href="question_input.html?action=register" style="font-weight:600;"><i class="fas fa-user-plus"></i> Register</a>
+            <a id="register-link" href="question_input.html?action=register" class="nav-btn-register"><i class="fas fa-user-plus"></i> Register</a>
             <a id="adminportal" href="admin_login.html" style="color:#60a5fa; font-weight:600;"><i
                     class="fas fa-user-shield"></i> Admin Portal</a>
         </div>
@@ -31,14 +31,33 @@
 
     <main>
         <div class="hero">
+            <div class="hero-badge"><i class="fas fa-sparkles"></i> AI-driven health insights</div>
             <h1>Niramaya: Your Personal Health Assistant</h1>
             <p>Empower your wellness journey with AI-driven insights, health tracking, and personalized advice.</p>
             <div class="cta-buttons">
-                <a href="verify_human.html" class="button">Try Niramaya Now</a>
+                <a href="verify_human.html" class="button">Try Niramaya now <i class="fas fa-arrow-right" style="margin-left:6px; font-size:14px;"></i></a>
             </div>
         </div>
 
         <div class="container">
+            <div class="feature-cards-grid">
+                <a href="question_input.html" class="feature-card">
+                    <div class="feature-icon-box mint-box"><i class="fas fa-heartbeat"></i></div>
+                    <h3>Health tracking</h3>
+                    <p>Log symptoms and vitals in one place.</p>
+                </a>
+                <a href="wellness_tips.html" class="feature-card">
+                    <div class="feature-icon-box saffron-box"><i class="fas fa-sun"></i></div>
+                    <h3>Wellness tips</h3>
+                    <p>Daily guidance for sleep, diet, and calm.</p>
+                </a>
+                <div class="feature-card" onclick="toggleResearch()" style="cursor: pointer;">
+                    <div class="feature-icon-box mint-box"><i class="fas fa-book-medical"></i></div>
+                    <h3>Latest research</h3>
+                    <p>Stay updated with cutting-edge studies.</p>
+                </div>
+            </div>
+
             <div class="research-section">
                 <div class="research-toggle" onclick="toggleResearch()">
                     <span class="toggle-icon">▶</span>
@@ -68,7 +87,7 @@
         </div>
     </footer>
 
-    <script src="script.js?v=20261118_02"></script>
+    <script src="script.js?v=20261119_03"></script>
 </body>
 
 </html>
