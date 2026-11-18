@@ -7,7 +7,7 @@
     <title>Niramaya - AI Health Assistant & Symptom Checker</title>
     <link rel="icon" type="image/png" href="N-16.png">
     <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
-    <link rel="stylesheet" href="question_input.css">
+    <link rel="stylesheet" href="question_input.css?v=20261118_06">
     <script src="theme.js?v=20261118_04"></script>
 </head>
 
@@ -40,10 +40,11 @@
     <div class="input-container" id="input-container">
         <input type="text" id="user-input" placeholder="Describe your health symptoms (e.g., fever, headache, cough)..." autocomplete="off">
         <select class="model-select" id="model-select" title="Select AI Model">
-            <option value="BioGPT">BioGPT</option>
-            <option value="Gemini">Gemini</option>
-            <option value="LRv1">LRv1</option>
-            <option value="LRv2">LRv2</option>
+            <option value="All" selected>All 4 Models (Compare)</option>
+            <option value="BioGPT">BioGPT (Biomedical)</option>
+            <option value="Gemini">Gemini (Health Assistant)</option>
+            <option value="LRv1">LRv1 (Logistic Regression)</option>
+            <option value="LRv2">LRv2 (Random Forest)</option>
         </select>
         <button type="button" onclick="sendMessage()" title="Send Message" aria-label="Send">➤</button>
     </div>
@@ -56,10 +57,11 @@
         <div class="input-container">
             <input type="text" id="user-input-footer" placeholder="Describe your health symptoms (e.g., fever, headache, cough)..." autocomplete="off">
             <select class="model-select" id="model-select-footer" title="Select AI Model">
-                <option value="BioGPT">BioGPT</option>
-                <option value="Gemini">Gemini</option>
-                <option value="LRv1">LRv1</option>
-                <option value="LRv2">LRv2</option>
+                <option value="All" selected>All 4 Models (Compare)</option>
+                <option value="BioGPT">BioGPT (Biomedical)</option>
+                <option value="Gemini">Gemini (Health Assistant)</option>
+                <option value="LRv1">LRv1 (Logistic Regression)</option>
+                <option value="LRv2">LRv2 (Random Forest)</option>
             </select>
             <button type="button" onclick="sendMessage()" title="Send Message" aria-label="Send">➤</button>
         </div>
@@ -324,7 +326,7 @@
     </div>
 
     <!-- Unified Modular Client Script -->
-    <script src="question_input.js?v=20261118_05"></script>
+    <script src="question_input.js?v=20261118_06"></script>
 </body>
 
 </html>

@@ -61,26 +61,85 @@ def test_ai_symptoms_are_properly_accepted_and_answered(client):
         "mujhe bukhar aur pet dard hai"
     ]
     for query in symptom_queries:
-        # BioGPT
+        # BioGPT: Biomedical knowledge & pathophysiology
         res_bio = client.post('/askbiogpt', json={'question': query})
         assert res_bio.status_code == 200
-        assert "Clinical Assessment" in res_bio.get_json()['answer']
+        bio_data = res_bio.get_json()
+        assert "Pathophysiology" in bio_data['answer'] or "Biomedical" in bio_data['answer']
 
-        # Gemini
+        # Gemini: Health Assistant guidance + follow-up questions (distinct from BioGPT!)
         res_gem = client.post('/askgemini', json={'question': query})
         assert res_gem.status_code == 200
-        assert "Clinical Assessment" in res_gem.get_json()['answer']
+        gem_data = res_gem.get_json()
+        assert "Health Assistant" in gem_data['answer'] or "Follow-Up" in gem_data['answer']
+        assert bio_data['answer'] != gem_data['answer'], "BioGPT and Gemini must produce differentiated outputs"
 
-        # LRv1
+        # LRv1: Independent Logistic Regression prediction with real probabilities
         res_lrv1 = client.post('/asklrv1', json={'symptoms': query})
         assert res_lrv1.status_code == 200
-        assert res_lrv1.get_json()['predicted_disease'] != "Non-Health Query"
+        v1 = res_lrv1.get_json()
+        assert v1['predicted_disease'] != "Non-Health Query"
+        if v1.get('inference_status') == 'success':
+            assert len(v1['top_predictions']) > 0
+            assert 0 < v1['top_probability'] <= 100.0
+            assert sum(p['probability'] for p in v1['top_predictions']) <= 100.05
 
-        # LRv2
+        # LRv2: Independent Random Forest prediction with real probabilities & precautions
         res_lrv2 = client.post('/asklrv2', json={'symptoms': query})
         assert res_lrv2.status_code == 200
-        assert res_lrv2.get_json()['predicted_disease'] != "Non-Health Query"
-        assert len(res_lrv2.get_json().get('precautions', [])) > 0
+        v2 = res_lrv2.get_json()
+        assert v2['predicted_disease'] != "Non-Health Query"
+        assert len(v2.get('precautions', [])) > 0
+        if v2.get('inference_status') == 'success':
+            assert len(v2['top_predictions']) > 0
+            assert 0 < v2['top_probability'] <= 100.0
+            assert sum(p['probability'] for p in v2['top_predictions']) <= 100.05
+
+
+def test_askall_four_models_differentiation_and_lrv1_vs_lrv2_comparison(client):
+    """Verifies /askall returns 4 unique, non-duplicated model outputs plus an authentic LRv1 vs LRv2 comparison."""
+    res = client.post('/askall', json={'question': 'fever, headache, cough, vomiting'})
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['is_health_related'] is True
+
+    # 1. BioGPT: Biomedical knowledge
+    assert data['biogpt']['model'] == 'BioGPT'
+    assert 'Pathophysiology' in data['biogpt']['answer']
+
+    # 2. Gemini: Health Assistant + follow-up questions
+    assert data['gemini']['model'] == 'Gemini'
+    assert 'Follow-Up Questions' in data['gemini']['answer']
+    assert len(data['gemini'].get('follow_up_questions', [])) >= 2
+
+    # Ensure BioGPT and Gemini are completely distinct (no duplicate responses)
+    assert data['biogpt']['answer'] != data['gemini']['answer']
+
+    # 3. LRv1: Independent Logistic Regression with real predict_proba
+    lrv1 = data['lrv1']
+    assert lrv1['model'] == 'LRv1'
+    assert 'Logistic Regression' in lrv1['algorithm']
+    assert lrv1['inference_status'] == 'success'
+    assert len(lrv1['top_predictions']) == 5
+    assert 0 < lrv1['top_probability'] <= 100.0
+
+    # 4. LRv2: Independent Random Forest with real predict_proba
+    lrv2 = data['lrv2']
+    assert lrv2['model'] == 'LRv2'
+    assert 'Random Forest' in lrv2['algorithm']
+    assert lrv2['inference_status'] == 'success'
+    assert len(lrv2['top_predictions']) >= 1
+    assert 0 < lrv2['top_probability'] <= 100.0
+    assert len(lrv2['precautions']) > 0
+
+    # 5. Authentic LRv1 vs LRv2 Comparison section
+    comp = data['comparison']
+    assert comp['agreement_status'] in ('Full Agreement', 'Partial Agreement', 'Disagreement')
+    assert comp['lrv1_summary']['predicted_disease'] == lrv1['predicted_disease']
+    assert comp['lrv2_summary']['predicted_disease'] == lrv2['predicted_disease']
+    assert comp['lrv1_summary']['top_probability'] == lrv1['top_probability']
+    assert comp['lrv2_summary']['top_probability'] == lrv2['top_probability']
+    assert len(comp['comparison_notes']) > 20
 
 def test_ai_greetings_guide_user_to_enter_symptoms(client):
     """Verifies that greetings guide the user specifically to enter symptoms."""
@@ -101,25 +160,30 @@ def test_system_status_and_health_endpoints(client):
         assert data['online'] is True
 
 def test_ai_different_symptoms_give_distinct_customized_answers(client):
-    """Verifies that different symptoms produce distinct, symptom-specific answers and not identical boilerplate."""
-    res_digestive = client.post('/askbiogpt', json={'question': 'Digestive Issues'}).get_json()['answer']
-    res_throat = client.post('/askbiogpt', json={'question': 'sore throat'}).get_json()['answer']
-    res_multi = client.post('/askbiogpt', json={'question': 'fever and cough'}).get_json()['answer']
+    """Verifies that BioGPT (biomedical) and Gemini (assistant guidance) give distinct, symptom-specific answers."""
+    bio_digestive = client.post('/askbiogpt', json={'question': 'Digestive Issues'}).get_json()['answer']
+    bio_throat = client.post('/askbiogpt', json={'question': 'sore throat'}).get_json()['answer']
+    bio_multi = client.post('/askbiogpt', json={'question': 'fever and cough'}).get_json()['answer']
 
-    # 1. Digestive must mention digestive-specific advice
-    assert "Gastrointestinal" in res_digestive or "Dyspepsia" in res_digestive
-    assert "curd" in res_digestive.lower() or "probiotic" in res_digestive.lower() or "fennel" in res_digestive.lower()
+    gem_digestive = client.post('/askgemini', json={'question': 'Digestive Issues'}).get_json()['answer']
+    gem_throat = client.post('/askgemini', json={'question': 'sore throat'}).get_json()['answer']
 
-    # 2. Throat must mention throat-specific advice
-    assert "Pharyngitis" in res_throat or "Gale" in res_throat or "Throat" in res_throat
-    assert "gargle" in res_throat.lower() or "honey" in res_throat.lower() or "saline" in res_throat.lower()
+    # 1. BioGPT: Biomedical terminology & pathophysiology per condition
+    assert "Gastrointestinal" in bio_digestive or "Dyspepsia" in bio_digestive
+    assert "dysbiosis" in bio_digestive.lower() or "mucosal" in bio_digestive.lower() or "gerd" in bio_digestive.lower()
+    assert "Pharyngitis" in bio_throat or "Throat" in bio_throat
+    assert "Multi-System" in bio_multi or ("Pyrexia" in bio_multi and "Respiratory" in bio_multi)
 
-    # 3. Multi symptom must detect multi-symptom complex
-    assert "Multi-Symptom" in res_multi or ("Pyrexia" in res_multi and "Respiratory" in res_multi)
+    # 2. Gemini: Practical self-care, home remedies & follow-up questions per condition
+    assert "curd" in gem_digestive.lower() or "probiotic" in gem_digestive.lower() or "fennel" in gem_digestive.lower()
+    assert "gargle" in gem_throat.lower() or "honey" in gem_throat.lower() or "saline" in gem_throat.lower()
+    assert "Follow-Up Questions" in gem_digestive
 
-    # 4. Responses must be completely distinct from each other!
-    assert res_digestive != res_throat
-    assert res_throat != res_multi
+    # 3. All responses must be completely distinct across symptoms AND across models
+    assert bio_digestive != bio_throat
+    assert bio_throat != bio_multi
+    assert bio_digestive != gem_digestive
+    assert bio_throat != gem_throat
 
 
 def test_registration_and_password_reset_otp_flow(client, monkeypatch):

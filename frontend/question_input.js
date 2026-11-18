@@ -143,25 +143,36 @@ function initPage() {
         });
     }
 
-    // Model dropdown sync
+    // Model dropdown sync (keeps hero & footer dropdowns aligned)
     const modelSelect = document.getElementById("model-select");
     const modelSelectFooter = document.getElementById("model-select-footer");
 
     function syncPlaceholder(sel, inp) {
         if (!sel || !inp) return;
         if (sel.value === "LRv1" || sel.value === "LRv2") {
-            inp.placeholder = "Enter health symptoms (e.g. fever, headache, joint pain)...";
+            inp.placeholder = "Enter health symptoms (e.g. fever, headache, cough, skin rash)...";
+        } else if (sel.value === "All") {
+            inp.placeholder = "Enter symptoms to compare all 4 models (e.g. fever, headache, cough)...";
         } else {
             inp.placeholder = "Describe your health symptoms (e.g. fever, cough, stomach pain)...";
         }
     }
 
     if (modelSelect && initialInput) {
-        modelSelect.addEventListener("change", () => syncPlaceholder(modelSelect, initialInput));
+        modelSelect.addEventListener("change", () => {
+            if (modelSelectFooter) modelSelectFooter.value = modelSelect.value;
+            syncPlaceholder(modelSelect, initialInput);
+            syncPlaceholder(modelSelectFooter, footerInput);
+        });
         syncPlaceholder(modelSelect, initialInput);
     }
     if (modelSelectFooter && footerInput) {
-        modelSelectFooter.addEventListener("change", () => syncPlaceholder(modelSelectFooter, footerInput));
+        modelSelectFooter.addEventListener("change", () => {
+            if (modelSelect) modelSelect.value = modelSelectFooter.value;
+            syncPlaceholder(modelSelectFooter, footerInput);
+            syncPlaceholder(modelSelect, initialInput);
+        });
+        syncPlaceholder(modelSelectFooter, footerInput);
     }
 }
 
@@ -228,56 +239,188 @@ function formatMedicalMarkdown(rawText) {
     return wrapper;
 }
 
-// Unified Bot Response Renderer
-function renderBotResponseContent(model, data) {
-    const container = document.createElement("div");
-    container.className = "bot-response-content";
+// Helper: Render Real ML Probability Bars (from actual model predict_proba output)
+function renderProbabilityBars(topPredictions, accentColor) {
+    const list = document.createElement("div");
+    list.className = "prob-bar-list";
 
-    if (model === "BioGPT" || model === "Gemini") {
-        const answerText = data.answer || String(data);
-        container.appendChild(formatMedicalMarkdown(answerText));
-    } else if (model === "LRv1") {
+    if (!Array.isArray(topPredictions) || topPredictions.length === 0) {
+        const empty = document.createElement("p");
+        empty.style.fontSize = "13px";
+        empty.style.color = "var(--secondary-text)";
+        empty.textContent = "No ML probability distribution available (insufficient matched symptom features).";
+        list.appendChild(empty);
+        return list;
+    }
+
+    topPredictions.forEach((pred, idx) => {
+        const pct = Number(pred.probability || 0);
+        const widthPct = Math.max(pct, 1.5);
+        const item = document.createElement("div");
+        item.className = "prob-bar-item";
+        item.innerHTML = `
+            <div class="prob-bar-header">
+                <span>${idx + 1}. <strong>${pred.disease}</strong></span>
+                <span class="prob-bar-pct" style="color:${accentColor};">${pct.toFixed(2)}%</span>
+            </div>
+            <div class="prob-bar-track">
+                <div class="prob-bar-fill" style="width:${Math.min(widthPct, 100)}%; background:${accentColor};"></div>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+
+    return list;
+}
+
+// Helper: Render Matched Symptom Chips
+function renderMatchedChips(symptoms) {
+    const row = document.createElement("div");
+    row.className = "symptom-chip-row";
+    (symptoms || []).forEach(sym => {
+        const chip = document.createElement("span");
+        chip.className = "symptom-chip";
+        chip.textContent = sym;
+        row.appendChild(chip);
+    });
+    return row;
+}
+
+// Helper: Render Individual Model Card (BioGPT, Gemini, LRv1, or LRv2)
+function renderModelPanel(modelKey, data, sectionNumber) {
+    const card = document.createElement("div");
+    const numPrefix = sectionNumber ? `${sectionNumber}. ` : "";
+
+    if (modelKey === "BioGPT") {
+        card.className = "model-panel-card biogpt-panel";
+        card.innerHTML = `
+            <div class="model-panel-header">
+                <span class="model-panel-title"><i class="fas fa-dna" style="color:#06b6d4;"></i> ${numPrefix}BioGPT</span>
+                <span class="model-role-pill">Biomedical Knowledge &amp; Medical Explanations</span>
+            </div>
+        `;
+        if (data.source) {
+            const meta = document.createElement("div");
+            meta.className = "model-source-meta";
+            meta.textContent = `Source: ${data.source}`;
+            card.appendChild(meta);
+        }
+        card.appendChild(formatMedicalMarkdown(data.answer || String(data)));
+        return card;
+    }
+
+    if (modelKey === "Gemini") {
+        card.className = "model-panel-card gemini-panel";
+        card.innerHTML = `
+            <div class="model-panel-header">
+                <span class="model-panel-title"><i class="fas fa-sparkles" style="color:#8b5cf6;"></i> ${numPrefix}Gemini</span>
+                <span class="model-role-pill">AI Health Assistant — Guidance &amp; Follow-Up Questions</span>
+            </div>
+        `;
+        if (data.source) {
+            const meta = document.createElement("div");
+            meta.className = "model-source-meta";
+            meta.textContent = `Source: ${data.source}`;
+            card.appendChild(meta);
+        }
+        card.appendChild(formatMedicalMarkdown(data.answer || String(data)));
+        return card;
+    }
+
+    if (modelKey === "LRv1") {
+        card.className = "model-panel-card lrv1-panel";
+        card.innerHTML = `
+            <div class="model-panel-header">
+                <span class="model-panel-title"><i class="fas fa-chart-bar" style="color:#3b82f6;"></i> ${numPrefix}LRv1 — Logistic Regression Classifier</span>
+                <span class="model-role-pill">Independent ML Disease Prediction</span>
+            </div>
+        `;
+        if (data.algorithm) {
+            const meta = document.createElement("div");
+            meta.className = "model-source-meta";
+            meta.textContent = `Model: ${data.algorithm}`;
+            card.appendChild(meta);
+        }
+
+        const topProbStr = (data.top_probability !== undefined && data.top_predictions && data.top_predictions.length > 0)
+            ? ` <span style="font-size:13px; color:#3b82f6; font-weight:700;">(${Number(data.top_probability).toFixed(2)}%)</span>`
+            : "";
         const diseasePara = document.createElement("p");
-        diseasePara.innerHTML = `<strong>Predicted Condition:</strong> <span style="color:#60a5fa; font-weight:600;">${data.predicted_disease || "No condition identified."}</span>`;
-        container.appendChild(diseasePara);
+        diseasePara.innerHTML = `<strong>Top Predicted Disease:</strong> <span style="color:#3b82f6; font-weight:700;">${data.predicted_disease || "No condition identified."}</span>${topProbStr}`;
+        card.appendChild(diseasePara);
 
         if (data.matched_symptoms && data.matched_symptoms.length > 0) {
-            const symPara = document.createElement("p");
-            symPara.innerHTML = `<strong>Identified Symptoms:</strong> ${data.matched_symptoms.join(", ")}`;
-            container.appendChild(symPara);
+            const symLbl = document.createElement("p");
+            symLbl.style.marginTop = "8px";
+            symLbl.innerHTML = `<strong>Matched LRv1 Features (${data.matched_symptoms.length}):</strong>`;
+            card.appendChild(symLbl);
+            card.appendChild(renderMatchedChips(data.matched_symptoms));
+        }
+
+        if (data.top_predictions && data.top_predictions.length > 0) {
+            const probTitle = document.createElement("p");
+            probTitle.style.marginTop = "10px";
+            probTitle.innerHTML = `<strong>Top Possible Diseases (Actual predict_proba Distribution):</strong>`;
+            card.appendChild(probTitle);
+            card.appendChild(renderProbabilityBars(data.top_predictions, "#3b82f6"));
         }
 
         const descPara = document.createElement("p");
-        descPara.innerHTML = `<strong>Medical Overview:</strong> ${data.description || data.Description || "No description available."}`;
-        container.appendChild(descPara);
+        descPara.style.marginTop = "8px";
+        descPara.innerHTML = `<strong>Disease Description:</strong> ${data.description || data.Description || "No description available."}`;
+        card.appendChild(descPara);
+        return card;
+    }
 
-        const disclaim = document.createElement("p");
-        disclaim.style.fontStyle = "italic";
-        disclaim.style.fontSize = "12px";
-        disclaim.style.color = "#a1a1aa";
-        disclaim.style.marginTop = "8px";
-        disclaim.textContent = "Disclaimer: Niramaya is an AI assistant. Please consult a qualified medical professional.";
-        container.appendChild(disclaim);
-    } else if (model === "LRv2") {
+    if (modelKey === "LRv2") {
+        card.className = "model-panel-card lrv2-panel";
+        card.innerHTML = `
+            <div class="model-panel-header">
+                <span class="model-panel-title"><i class="fas fa-project-diagram" style="color:#10b981;"></i> ${numPrefix}LRv2 — Enhanced Random Forest Classifier</span>
+                <span class="model-role-pill">Independent Enhanced Prediction &amp; Precautions</span>
+            </div>
+        `;
+        if (data.algorithm) {
+            const meta = document.createElement("div");
+            meta.className = "model-source-meta";
+            meta.textContent = `Model: ${data.algorithm}`;
+            card.appendChild(meta);
+        }
+
+        const topProbStr = (data.top_probability !== undefined && data.top_predictions && data.top_predictions.length > 0)
+            ? ` <span style="font-size:13px; color:#10b981; font-weight:700;">(${Number(data.top_probability).toFixed(2)}%)</span>`
+            : "";
         const diseasePara = document.createElement("p");
-        diseasePara.innerHTML = `<strong>Predicted Condition:</strong> <span style="color:#60a5fa; font-weight:600;">${data.predicted_disease || "No condition identified."}</span>`;
-        container.appendChild(diseasePara);
+        diseasePara.innerHTML = `<strong>Top Predicted Disease:</strong> <span style="color:#10b981; font-weight:700;">${data.predicted_disease || "No condition identified."}</span>${topProbStr}`;
+        card.appendChild(diseasePara);
 
         if (data.matched_symptoms && data.matched_symptoms.length > 0) {
-            const symPara = document.createElement("p");
-            symPara.innerHTML = `<strong>Identified Symptoms:</strong> ${data.matched_symptoms.join(", ")}`;
-            container.appendChild(symPara);
+            const symLbl = document.createElement("p");
+            symLbl.style.marginTop = "8px";
+            symLbl.innerHTML = `<strong>Matched LRv2 MLB Features (${data.matched_symptoms.length}):</strong>`;
+            card.appendChild(symLbl);
+            card.appendChild(renderMatchedChips(data.matched_symptoms));
+        }
+
+        if (data.top_predictions && data.top_predictions.length > 0) {
+            const probTitle = document.createElement("p");
+            probTitle.style.marginTop = "10px";
+            probTitle.innerHTML = `<strong>Top Possible Diseases (Actual predict_proba Distribution):</strong>`;
+            card.appendChild(probTitle);
+            card.appendChild(renderProbabilityBars(data.top_predictions, "#10b981"));
         }
 
         const descPara = document.createElement("p");
-        descPara.innerHTML = `<strong>Medical Overview:</strong> ${data.description || data.Description || "No description available."}`;
-        container.appendChild(descPara);
+        descPara.style.marginTop = "8px";
+        descPara.innerHTML = `<strong>Disease Description:</strong> ${data.description || data.Description || "No description available."}`;
+        card.appendChild(descPara);
 
         const precautions = data.precautions || [];
         if (precautions.length > 0) {
             const precTitle = document.createElement("p");
-            precTitle.innerHTML = `<strong>Recommended Precautions:</strong>`;
-            container.appendChild(precTitle);
+            precTitle.style.marginTop = "10px";
+            precTitle.innerHTML = `<strong>Recommended Clinical Precautions:</strong>`;
+            card.appendChild(precTitle);
 
             const ul = document.createElement("ul");
             precautions.forEach(p => {
@@ -285,22 +428,118 @@ function renderBotResponseContent(model, data) {
                 li.textContent = p;
                 ul.appendChild(li);
             });
-            container.appendChild(ul);
+            card.appendChild(ul);
         }
-
-        const disclaim = document.createElement("p");
-        disclaim.style.fontStyle = "italic";
-        disclaim.style.fontSize = "12px";
-        disclaim.style.color = "#a1a1aa";
-        disclaim.style.marginTop = "8px";
-        disclaim.textContent = "Disclaimer: Niramaya is an AI assistant. Please consult a qualified medical professional.";
-        container.appendChild(disclaim);
-    } else {
-        const fallbackP = document.createElement("p");
-        fallbackP.textContent = data.answer || JSON.stringify(data);
-        container.appendChild(fallbackP);
+        return card;
     }
 
+    card.className = "model-panel-card";
+    card.textContent = data.answer || JSON.stringify(data);
+    return card;
+}
+
+// Helper: Render LRv1 vs LRv2 Comparison Section
+function renderComparisonPanel(comp) {
+    const card = document.createElement("div");
+    card.className = "model-panel-card comparison-panel";
+
+    const code = comp.agreement_code || "insufficient";
+    const statusIcon = (code === "agree")
+        ? "fa-check-circle"
+        : (code === "partial")
+            ? "fa-balance-scale"
+            : (code === "disagree")
+                ? "fa-exchange-alt"
+                : "fa-info-circle";
+
+    const v1 = comp.lrv1_summary || {};
+    const v2 = comp.lrv2_summary || {};
+
+    let overlapHtml = "";
+    if (Array.isArray(comp.overlapping_diseases) && comp.overlapping_diseases.length > 0) {
+        const rows = comp.overlapping_diseases.map(o => `
+            <tr>
+                <td><strong>${o.disease}</strong></td>
+                <td style="color:#3b82f6; font-weight:600;">${Number(o.lrv1_probability).toFixed(2)}%</td>
+                <td style="color:#10b981; font-weight:600;">${Number(o.lrv2_probability).toFixed(2)}%</td>
+            </tr>
+        `).join("");
+        overlapHtml = `
+            <p style="margin-top:10px; font-weight:600;">Overlapping Candidates in Top-5 Predictions:</p>
+            <table class="overlap-table">
+                <thead>
+                    <tr>
+                        <th>Disease</th>
+                        <th>LRv1 Probability</th>
+                        <th>LRv2 Probability</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        `;
+    }
+
+    card.innerHTML = `
+        <div class="model-panel-header">
+            <span class="model-panel-title"><i class="fas fa-balance-scale-right" style="color:#f59e0b;"></i> 5. LRv1 vs LRv2 — Model Comparison &amp; Agreement</span>
+            <span class="agreement-badge ${code}"><i class="fas ${statusIcon}"></i> ${comp.agreement_status || "Comparison"}</span>
+        </div>
+        <div class="comparison-grid">
+            <div class="comparison-col">
+                <h5 style="color:#3b82f6;"><i class="fas fa-chart-bar"></i> LRv1 (Logistic Regression)</h5>
+                <p><strong>Top-1 Prediction:</strong> ${v1.predicted_disease || "N/A"}</p>
+                <p><strong>Top-1 Probability:</strong> ${Number(v1.top_probability || 0).toFixed(2)}%</p>
+                <p><strong>Top-5 Cumulative Prob:</strong> ${Number(v1.top5_cumulative_probability || 0).toFixed(2)}%</p>
+                <p><strong>Matched Features:</strong> ${v1.matched_feature_count || 0} (across ${v1.total_classes || 261} classes)</p>
+            </div>
+            <div class="comparison-col">
+                <h5 style="color:#10b981;"><i class="fas fa-project-diagram"></i> LRv2 (Random Forest)</h5>
+                <p><strong>Top-1 Prediction:</strong> ${v2.predicted_disease || "N/A"}</p>
+                <p><strong>Top-1 Probability:</strong> ${Number(v2.top_probability || 0).toFixed(2)}%</p>
+                <p><strong>Top-5 Cumulative Prob:</strong> ${Number(v2.top5_cumulative_probability || 0).toFixed(2)}%</p>
+                <p><strong>Matched Features:</strong> ${v2.matched_feature_count || 0} (across ${v2.total_classes || 41} classes)</p>
+            </div>
+        </div>
+        ${overlapHtml}
+        <p style="font-size:13px; color:var(--secondary-text); margin-top:8px; line-height:1.55;">
+            <strong style="color:var(--text-color);">Comparison Analysis:</strong> ${comp.comparison_notes || ""}
+        </p>
+    `;
+    return card;
+}
+
+// Unified Bot Response Renderer (Supports All 4 Differentiated Models + Individual Models)
+function renderBotResponseContent(model, data) {
+    const container = document.createElement("div");
+    container.className = "bot-response-content";
+
+    // Multi-model 4-output + LRv1 vs LRv2 Comparison payload
+    if (model === "All" || (data && data.biogpt && data.gemini && data.lrv1 && data.lrv2)) {
+        if (data.is_greeting || data.is_health_related === false) {
+            container.appendChild(formatMedicalMarkdown(data.answer || data.message || "Please enter health symptoms."));
+            return container;
+        }
+        const stack = document.createElement("div");
+        stack.className = "multi-model-stack";
+        stack.appendChild(renderModelPanel("BioGPT", data.biogpt, 1));
+        stack.appendChild(renderModelPanel("Gemini", data.gemini, 2));
+        stack.appendChild(renderModelPanel("LRv1", data.lrv1, 3));
+        stack.appendChild(renderModelPanel("LRv2", data.lrv2, 4));
+        if (data.comparison) {
+            stack.appendChild(renderComparisonPanel(data.comparison));
+        }
+        container.appendChild(stack);
+        return container;
+    }
+
+    if (model === "BioGPT" || model === "Gemini" || model === "LRv1" || model === "LRv2") {
+        container.appendChild(renderModelPanel(model, data));
+        return container;
+    }
+
+    const fallbackP = document.createElement("p");
+    fallbackP.textContent = (data && data.answer) ? data.answer : JSON.stringify(data);
+    container.appendChild(fallbackP);
     return container;
 }
 
@@ -381,13 +620,17 @@ async function sendMessage() {
         let payload = { question: userInput };
 
         switch (model) {
+            case "All":
+                endpoint = API_BASE + "/askall";
+                payload = { question: userInput, symptoms: userInput };
+                break;
             case "BioGPT": endpoint = API_BASE + "/askbiogpt"; break;
             case "Gemini": endpoint = API_BASE + "/askgemini"; break;
-            case "LRv1": 
+            case "LRv1":
                 endpoint = API_BASE + "/asklrv1";
                 payload = { symptoms: userInput };
                 break;
-            case "LRv2": 
+            case "LRv2":
                 endpoint = API_BASE + "/asklrv2";
                 payload = { symptoms: userInput };
                 break;
@@ -411,7 +654,12 @@ async function sendMessage() {
         // Fallback: If local API failed or unreachable, try Render live cloud directly
         if ((!response || !response.ok || !data) && !endpoint.includes("niramaya-health-ai.onrender.com")) {
             try {
-                const cloudPath = (model === "LRv1") ? "/asklrv1" : (model === "LRv2") ? "/asklrv2" : (model === "Gemini") ? "/askgemini" : "/askbiogpt";
+                const cloudPath = (model === "All")
+                    ? "/askall"
+                    : (model === "LRv1") ? "/asklrv1"
+                    : (model === "LRv2") ? "/asklrv2"
+                    : (model === "Gemini") ? "/askgemini"
+                    : "/askbiogpt";
                 const cloudRes = await fastFetch(CLOUD_API + cloudPath, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -553,7 +801,7 @@ async function sendMessage() {
         botMsg.appendChild(renderBotResponseContent(model, data));
         chatContainer.appendChild(botMsg);
 
-        let botSavedResponse = (model === "LRv1" || model === "LRv2")
+        let botSavedResponse = (model === "All" || model === "LRv1" || model === "LRv2")
             ? JSON.stringify(data)
             : (data.answer || JSON.stringify(data));
 
@@ -1278,7 +1526,10 @@ function renderHistoryCards(items) {
         if (item.response) {
             try {
                 const parsed = typeof item.response === 'string' ? JSON.parse(item.response) : item.response;
-                if (parsed.predicted_disease) snippet = "Predicted: " + parsed.predicted_disease;
+                if (parsed.lrv1 && parsed.lrv2) {
+                    const compStatus = parsed.comparison ? parsed.comparison.agreement_status : "";
+                    snippet = `LRv1: ${parsed.lrv1.predicted_disease} | LRv2: ${parsed.lrv2.predicted_disease}${compStatus ? " (" + compStatus + ")" : ""}`;
+                } else if (parsed.predicted_disease) snippet = "Predicted: " + parsed.predicted_disease;
                 else if (parsed.Description) snippet = parsed.Description.slice(0, 95) + "...";
                 else if (parsed.answer) snippet = parsed.answer.slice(0, 95) + "...";
                 else snippet = String(item.response).slice(0, 95) + "...";

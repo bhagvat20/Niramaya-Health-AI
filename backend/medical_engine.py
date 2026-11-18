@@ -13,21 +13,29 @@ import pandas as pd
 # Load Trained ML Models and Medical CSV Datasets
 BASE_DIR = os.path.dirname(__file__)
 MODEL_DIR = os.path.join(BASE_DIR, 'model_LR')
-MODEL_PATH = os.path.join(MODEL_DIR, 'logistic_regression_model.pkl')
-FEATURES_PATH = os.path.join(MODEL_DIR, 'symptom_features.pkl')
+MODEL_V1_PATH = os.path.join(MODEL_DIR, 'logistic_regression_model.pkl')
+FEATURES_V1_PATH = os.path.join(MODEL_DIR, 'symptom_features.pkl')
+MODEL_V2_PATH = os.path.join(MODEL_DIR, 'disease_prediction_model.pkl')
+MLB_V2_PATH = os.path.join(MODEL_DIR, 'symptom_mlb.pkl')
 DESC_PATH = os.path.join(MODEL_DIR, 'Symptom_Description.csv')
 PREC_PATH = os.path.join(MODEL_DIR, 'Symptom_Precaution.csv')
 
 lr_model = None
 symptom_features = []
+rf_model = None
+symptom_mlb = None
 df_desc = pd.DataFrame()
 df_prec = pd.DataFrame()
 
 try:
-    if os.path.exists(MODEL_PATH):
-        lr_model = joblib.load(MODEL_PATH)
-    if os.path.exists(FEATURES_PATH):
-        symptom_features = joblib.load(FEATURES_PATH)
+    if os.path.exists(MODEL_V1_PATH):
+        lr_model = joblib.load(MODEL_V1_PATH)
+    if os.path.exists(FEATURES_V1_PATH):
+        symptom_features = list(joblib.load(FEATURES_V1_PATH))
+    if os.path.exists(MODEL_V2_PATH):
+        rf_model = joblib.load(MODEL_V2_PATH)
+    if os.path.exists(MLB_V2_PATH):
+        symptom_mlb = joblib.load(MLB_V2_PATH)
     if os.path.exists(DESC_PATH):
         df_desc = pd.read_csv(DESC_PATH)
     if os.path.exists(PREC_PATH):
@@ -560,158 +568,492 @@ CLINICAL_PROFILES = {
 }
 
 # ==============================================================================
-# Dynamic Clinical Response Generator (Multi-Symptom Intelligent Engine)
+# 1. BioGPT Engine — Biomedical Knowledge, Medical Explanations & Disease Context
 # ==============================================================================
 
-def generate_clinical_response(prompt: str) -> str:
+def _match_clinical_profiles(clean_lower: str) -> list:
+    matched = []
+    for key, prof in CLINICAL_PROFILES.items():
+        for kw in prof['keywords']:
+            if re.search(r'\b' + re.escape(kw) + r'\b', clean_lower):
+                matched.append(key)
+                break
+    return matched
+
+
+def _lookup_csv_description(disease_name: str):
+    """Looks up authentic disease summary from Symptom_Description.csv."""
+    if df_desc.empty or not disease_name or 'disease' not in df_desc.columns:
+        return None
+    target = disease_name.strip().lower()
+    exact = df_desc[df_desc['disease'].str.lower().str.strip() == target]
+    if not exact.empty:
+        val = str(exact['description'].values[0]).strip()
+        if val and val.lower() != 'no summary available.':
+            return val
+    # Normalized alphanumeric match
+    norm_target = re.sub(r'[^a-z0-9]+', ' ', target).strip()
+    for _, row in df_desc.iterrows():
+        d_norm = re.sub(r'[^a-z0-9]+', ' ', str(row['disease']).lower()).strip()
+        if d_norm == norm_target or (len(norm_target) >= 5 and (norm_target in d_norm or d_norm in norm_target)):
+            val = str(row['description']).strip()
+            if val and val.lower() != 'no summary available.':
+                return val
+    return None
+
+
+def _lookup_csv_precautions(disease_name: str) -> list:
+    """Looks up authentic clinical precautions from Symptom_Precaution.csv."""
+    if df_prec.empty or not disease_name or 'disease' not in df_prec.columns:
+        return []
+    target = disease_name.strip().lower()
+    cols = [c for c in df_prec.columns if 'precaution' in c.lower()]
+    exact = df_prec[df_prec['disease'].str.lower().str.strip() == target]
+    if not exact.empty:
+        found = [str(exact[c].values[0]).strip() for c in cols if pd.notna(exact[c].values[0]) and str(exact[c].values[0]).strip()]
+        if found:
+            return found
+    norm_target = re.sub(r'[^a-z0-9]+', ' ', target).strip()
+    for _, row in df_prec.iterrows():
+        d_norm = re.sub(r'[^a-z0-9]+', ' ', str(row['disease']).lower()).strip()
+        if d_norm == norm_target or (len(norm_target) >= 5 and (norm_target in d_norm or d_norm in norm_target)):
+            found = [str(row[c]).strip() for c in cols if pd.notna(row[c]) and str(row[c]).strip()]
+            if found:
+                return found
+    return []
+
+
+def generate_biogpt_response(prompt: str, local_biogpt_text: str = None) -> dict:
     """
-    Dynamically generates a deeply customized, symptom-specific clinical medical assessment.
-    When users enter multiple symptoms, it detects all symptom clusters and produces a
-    tailored condition evaluation, causes, home remedies, dietary care, and targeted red flags.
+    BioGPT Responsibility:
+    Biomedical knowledge, pathophysiology, medical explanations, disease information,
+    and symptom-related clinical context. (Distinct from Gemini conversational guidance.)
     """
     if not prompt or not prompt.strip():
-        return "Please describe your symptoms or health questions to receive clinical AI guidance."
+        return {
+            "model": "BioGPT",
+            "role": "Biomedical Knowledge & Medical Explanations",
+            "source": "BioGPT Biomedical Knowledge Engine",
+            "answer": "Please enter health symptoms or a medical condition for biomedical context and disease information."
+        }
 
     clean = prompt.strip()
-
-    # Guardrail: Only answer health questions
     if not is_health_related(clean):
-        return get_non_health_refusal_message()
+        return {
+            "model": "BioGPT",
+            "role": "Biomedical Knowledge & Medical Explanations",
+            "source": "Domain Guardrail",
+            "answer": get_non_health_refusal_message()
+        }
 
     clean_lower = clean.lower()
+    matched_keys = _match_clinical_profiles(clean_lower)
+    lrv1_feats = extract_lrv1_features(clean)
+    topic_title = clean.rstrip('?!.').strip()[:60].title()
 
-    # Detect all matching clinical profiles from the user's manual symptoms
-    matched_keys = []
-    for key, prof in CLINICAL_PROFILES.items():
-        if any(kw in clean_lower for kw in prof['keywords']):
-            matched_keys.append(key)
+    # Pull biomedical disease context from Symptom_Description.csv if top LRv1 disease has a real description
+    biomedical_disease_notes = []
+    if lr_model is not None and lrv1_feats:
+        try:
+            vec = [1 if str(f) in lrv1_feats else 0 for f in symptom_features]
+            probs = lr_model.predict_proba(pd.DataFrame([vec], columns=symptom_features))[0]
+            top_indices = probs.argsort()[::-1][:3]
+            for idx in top_indices:
+                d_name = str(lr_model.classes_[idx])
+                d_desc = _lookup_csv_description(d_name)
+                if d_desc:
+                    biomedical_disease_notes.append(f"**{d_name}:** {d_desc}")
+        except Exception:
+            pass
 
-    # Clean display title
-    topic_title = clean.rstrip('?!.').strip()
-    if len(topic_title) > 60:
-        topic_title = topic_title[:60].strip() + "..."
-    topic_title = topic_title.title()
-
-    # If single clinical profile matched:
     if len(matched_keys) == 1:
         prof = CLINICAL_PROFILES[matched_keys[0]]
+        organ_system = prof['name']
         condition_title = prof['condition']
-        overview_text = prof['overview']
-        causes_list = prof['causes']
-        care_list = prof['home_care']
-        precautions_list = prof['precautions']
-        red_flags_list = prof['red_flags']
-        symptoms_display = [f"{clean.title()} ({prof['name']})"]
-
-    # If multiple clinical profiles matched (e.g. fever + cough + sore throat):
+        pathophysiology = prof['overview']
+        etiology_list = prof['causes']
+        clinical_context = (
+            f"Biomedically, '{clean}' maps to the **{organ_system}** domain. "
+            f"Clinical evaluation correlates symptom onset, systemic inflammatory markers, and organ-specific physiological response."
+        )
     elif len(matched_keys) > 1:
         matched_profs = [CLINICAL_PROFILES[k] for k in matched_keys]
-        prof_names = " + ".join([p['name'].split('(')[0].strip() for p in matched_profs])
-        condition_title = f"Multi-Symptom Complex: {prof_names} (संयुक्त लक्षण मूल्यांकन)"
-        overview_text = (
-            f"You have presented with multiple concurrent symptoms involving {prof_names}. "
-            "When multiple symptoms coincide, physiological systems often interact synergistically—such as an infectious viral agent "
-            "triggering upper respiratory congestion, fever, and digestive sensitivity simultaneously. A comprehensive clinical approach "
-            "addresses both the primary trigger and symptomatic comfort across each affected organ system."
+        organ_system = " + ".join([p['name'].split('(')[0].strip() for p in matched_profs])
+        condition_title = f"Multi-System Clinical Presentation: {organ_system}"
+        pathophysiology = (
+            f"Concurrent manifestations across **{organ_system}** indicate multi-system physiological involvement. "
+            "In clinical pathology, overlapping symptoms frequently arise from a shared systemic etiology (such as viral viremia, "
+            "inflammatory cytokine release, autonomic dysregulation, or secondary mucosal involvement) affecting multiple organ tracts."
         )
-        symptoms_display = []
+        etiology_list = []
+        for p in matched_profs:
+            etiology_list.extend(p['causes'][:2])
+        clinical_context = (
+            "Multi-symptom presentations require distinguishing a single unifying diagnosis from concurrent independent conditions "
+            "by correlating temporal progression, fever curves, and organ-specific clinical findings."
+        )
+    else:
+        organ_system = "General Clinical & Systemic Medicine"
+        condition_title = f"Biomedical Context: {topic_title}"
+        pathophysiology = (
+            f"Clinical inquiry regarding '{clean}' pertains to physiological homeostasis and host response mechanisms. "
+            "Symptoms represent measurable manifestations of underlying tissue irritation, metabolic imbalance, or immune activation."
+        )
+        etiology_list = [
+            "Infectious etiology (viral, bacterial, or parasitic host-pathogen interaction)",
+            "Inflammatory, metabolic, or nutritional imbalance affecting target organ function",
+            "Environmental, allergic, or physiological stress-induced homeostatic disturbance"
+        ]
+        clinical_context = (
+            f"Documenting clinical characteristics of '{clean}' (anatomical distribution, onset pattern, and associated systemic signs) "
+            "supports accurate biomedical differential evaluation."
+        )
+
+    etiology_md = "\n".join([f"- {c}" for c in etiology_list])
+    disease_info_md = (
+        "\n".join([f"- {note}" for note in biomedical_disease_notes])
+        if biomedical_disease_notes
+        else f"- Related clinical entity: **{condition_title}** — characterized by the pathophysiological mechanisms summarized above."
+    )
+
+    local_biogpt_section = ""
+    source_label = "BioGPT Biomedical Knowledge Engine + Clinical Reference Corpus"
+    if local_biogpt_text and local_biogpt_text.strip():
+        local_biogpt_section = f"\n\n**Local Microsoft BioGPT Literature Context:**\n{local_biogpt_text.strip()}"
+        source_label = "Microsoft BioGPT (Local Transformer) + Clinical Reference Corpus"
+
+    answer = (
+        f"**Condition / Clinical Assessment (Biomedical):** {condition_title}\n\n"
+        f"**Organ System & Symptom-Related Context:**\n"
+        f"- **Target System:** {organ_system}\n"
+        f"- **Clinical Context:** {clinical_context}\n\n"
+        f"**Pathophysiology & Medical Explanation:**\n"
+        f"{pathophysiology}\n\n"
+        f"**Disease Information (Reference Medical Knowledge):**\n"
+        f"{disease_info_md}\n\n"
+        f"**Biomedical Etiology & Underlying Mechanisms:**\n"
+        f"{etiology_md}"
+        f"{local_biogpt_section}\n\n"
+        f"*(Biomedical Reference Notice: Provided for medical education and symptom context only — not a substitute for clinical diagnosis by a licensed physician.)*"
+    )
+
+    return {
+        "model": "BioGPT",
+        "role": "Biomedical Knowledge & Medical Explanations",
+        "source": source_label,
+        "organ_system": organ_system,
+        "answer": answer
+    }
+
+
+# ==============================================================================
+# 2. Gemini Engine — Natural-Language AI Health Assistant, Guidance & Follow-Ups
+# ==============================================================================
+
+FOLLOW_UP_BY_PROFILE = {
+    'digestive': [
+        "Did these digestive symptoms start after eating a specific meal, outside food, or taking any new medication?",
+        "Are you experiencing burning pain before or after meals, bloating, or any change in stool color/frequency?",
+        "How many days have these stomach/digestive symptoms persisted?"
+    ],
+    'throat_ent': [
+        "Do you feel sharp pain while swallowing liquids or food, or is it mainly scratchiness and hoarseness?",
+        "Have you noticed swollen glands in your neck, fever, or white patches on your tonsils?",
+        "Are you also having a runny nose, cough, or acid reflux at night?"
+    ],
+    'respiratory_cough': [
+        "Is your cough dry and tickly, or are you bringing up mucus/phlegm (and what color is it)?",
+        "Do you experience wheezing, chest tightness, or shortness of breath during light activity or at night?",
+        "How long has the cough or congestion lasted, and do you have a history of asthma or allergies?"
+    ],
+    'fever_infection': [
+        "What is the highest temperature recorded on a thermometer, and how many days has the fever lasted?",
+        "Does the fever come with chills, shivering, body aches, or skin rashes?",
+        "Are you able to drink fluids normally and pass urine regularly?"
+    ],
+    'vomiting_diarrhea': [
+        "How many episodes of vomiting or loose stools have occurred in the last 24 hours?",
+        "Are you able to keep small sips of water or ORS down without vomiting?",
+        "Have you noticed fever, severe abdominal cramps, or any blood in vomit or stool?"
+    ],
+    'headache_migraine': [
+        "Where is the headache located (forehead, temples, one side, or back of the head) and does it throb or feel tight?",
+        "Are you sensitive to bright light, loud sounds, or experiencing nausea or visual changes?",
+        "Have you had poor sleep, skipped meals, heavy screen exposure, or dehydration today?"
+    ],
+    'cardiovascular_chest': [
+        "Does the chest discomfort feel heavy/squeezing, sharp when breathing, or burning after eating?",
+        "Does the pain spread to your left arm, shoulder, neck, jaw, or back?",
+        "Are you also having sweating, dizziness, or shortness of breath right now? (If yes, seek emergency care immediately.)"
+    ],
+    'dermatology_skin': [
+        "Where on your body did the rash or itching start, and is it spreading or forming blisters?",
+        "Have you recently tried a new soap, detergent, cosmetic, food, or medication?",
+        "Is the skin area hot to the touch, oozing, or accompanied by fever or facial swelling?"
+    ],
+    'musculoskeletal_joints': [
+        "Did the pain start after lifting, exercise, a fall, or prolonged sitting/desk work?",
+        "Is the affected joint visibly swollen, warm, red, or stiff in the morning?",
+        "Do you feel any numbness, tingling, or radiating pain down your arms or legs?"
+    ],
+    'dizziness_weakness': [
+        "Does the dizziness feel like the room is spinning (vertigo) or like you might faint when standing up?",
+        "Have you had enough water and regular meals today, or have you had a recent illness?",
+        "Are you experiencing palpitations, blurred vision, or numbness on one side of your body?"
+    ]
+}
+
+
+def generate_gemini_guidance(prompt: str) -> dict:
+    """
+    Gemini Responsibility (Fallback / Offline Health Assistant):
+    Natural-language health assistant providing plain-language symptom understanding,
+    practical everyday health guidance, general precautions, and targeted follow-up questions.
+    (Distinct from BioGPT biomedical pathophysiology!)
+    """
+    if not prompt or not prompt.strip():
+        return {
+            "model": "Gemini",
+            "role": "AI Health Assistant — Guidance, Precautions & Follow-Up Questions",
+            "source": "Gemini Health Assistant Engine",
+            "follow_up_questions": [],
+            "answer": "Please describe what symptoms you are feeling in your own words so I can offer helpful health guidance and precautions."
+        }
+
+    clean = prompt.strip()
+    if not is_health_related(clean):
+        return {
+            "model": "Gemini",
+            "role": "AI Health Assistant — Guidance, Precautions & Follow-Up Questions",
+            "source": "Domain Guardrail",
+            "follow_up_questions": [],
+            "answer": get_non_health_refusal_message()
+        }
+
+    clean_lower = clean.lower()
+    matched_keys = _match_clinical_profiles(clean_lower)
+
+    if len(matched_keys) == 1:
+        prof = CLINICAL_PROFILES[matched_keys[0]]
+        plain_summary = (
+            f"It sounds like you are dealing with **{clean}**, which commonly relates to **{prof['name'].split('(')[0].strip()}**. "
+            "Focusing on gentle symptom relief, hydration, and watching for warning signs is a safe first step while deciding whether to consult a doctor."
+        )
+        guidance_items = prof['home_care']
+        precaution_items = prof['precautions']
+        red_flags = prof['red_flags'][:3]
+        follow_ups = FOLLOW_UP_BY_PROFILE.get(matched_keys[0], [])
+    elif len(matched_keys) > 1:
+        matched_profs = [CLINICAL_PROFILES[k] for k in matched_keys]
+        areas = ", ".join([p['name'].split('(')[0].strip() for p in matched_profs])
+        plain_summary = (
+            f"You mentioned multiple symptoms together (**{clean}**), involving **{areas}**. "
+            "When symptoms appear at the same time, taking extra rest, staying hydrated, and tracking which symptom started first helps a doctor pinpoint the exact cause quickly."
+        )
+        guidance_items, precaution_items, red_flags, follow_ups = [], [], [], []
         for k in matched_keys:
             p = CLINICAL_PROFILES[k]
-            # Find the specific keywords from this profile that matched
-            matched_kws = [kw for kw in p['keywords'] if kw in clean_lower][:2]
-            kw_str = ", ".join(matched_kws).title() if matched_kws else p['name']
-            symptoms_display.append(f"{kw_str} — {p['condition']}")
-
-        # Interleave top causes from each matched profile
-        causes_list = []
-        for p in matched_profs:
-            causes_list.extend(p['causes'][:2])
-
-        # Interleave top care items from each matched profile
-        care_list = []
-        for p in matched_profs:
-            care_list.extend(p['home_care'][:2])
-
-        # Interleave precautions
-        precautions_list = []
-        for p in matched_profs:
-            precautions_list.extend(p['precautions'][:2])
-
-        # Interleave red flags
-        red_flags_list = []
-        for p in matched_profs:
-            red_flags_list.extend(p['red_flags'][:2])
-
-    # Fallback for generic health queries that didn't match a specific cluster:
+            guidance_items.extend(p['home_care'][:2])
+            precaution_items.extend(p['precautions'][:2])
+            red_flags.extend(p['red_flags'][:1])
+            follow_ups.extend(FOLLOW_UP_BY_PROFILE.get(k, [])[:2])
+        follow_ups = follow_ups[:4]
     else:
-        condition_title = f"{topic_title} (Clinical Health Evaluation)"
-        overview_text = (
-            f"Health inquiry regarding '{clean}' involves evaluating underlying physiological, metabolic, or infectious factors. "
-            "Symptoms typically reflect your body's immune or compensatory response to strain, dehydration, or environmental exposure."
+        plain_summary = (
+            f"Thank you for sharing what you are experiencing (**{clean}**). "
+            "Because symptoms can have several everyday or medical triggers, gentle supportive care and noting how your symptoms change over the next 24–48 hours is very helpful."
         )
-        symptoms_display = [f"{clean.title()} (Reported Health Symptom)"]
-        causes_list = [
-            "Physiological immune or metabolic adaptation to recent fatigue, strain, or dietary changes",
-            "Transient viral, bacterial, or seasonal allergic reactivity affecting general vitality",
-            "Hydration deficit, irregular sleep ergonomics, or heightened situational stress"
+        guidance_items = [
+            "Stay well-hydrated throughout the day with clean water, oral electrolytes, or warm herbal drinks",
+            "Eat light, freshly prepared, easily digestible meals and avoid skipping meals",
+            "Prioritize 7–8 hours of restful sleep and pause strenuous physical exertion until you feel better"
         ]
-        care_list = [
-            "Hydration: Drink 2.5 to 3 liters of warm water, oral electrolytes, and clear herbal teas",
-            "Nutritional Rest: Consume freshly cooked, light, balanced meals (steamed vegetables, oats, soups)",
-            "Physical Rest: Ensure 7 to 8 hours of uninterrupted rest in a comfortable, quiet environment"
+        precaution_items = [
+            "Avoid self-medicating with antibiotics or repeated painkillers without medical advice",
+            "Keep a brief symptom note (start time, triggers, severity from 1–10) to share with a doctor",
+            "Book a consultation with a healthcare provider if symptoms persist beyond 2–3 days or worsen"
         ]
-        precautions_list = [
-            "Avoid unprescribed self-medication with strong analgesics or antibiotics",
-            "Maintain clean personal hygiene and avoid exposure to sudden temperature extremes",
-            "Track symptom progression and record duration, intensity, or any aggravating factors"
+        red_flags = [
+            "🚨 Persistent high fever (>102°F / 38.9°C) or sudden severe pain",
+            "🚨 Trouble breathing, chest tightness, fainting, or sudden confusion",
+            "🚨 Inability to keep fluids down or rapid worsening of your condition"
         ]
-        red_flags_list = [
-            "🚨 High fever (>102°F / 38.9°C) that persists despite cooling measures",
-            "🚨 Severe acute pain, difficulty breathing, or sudden dizziness",
-            "🚨 Inability to retain oral liquids or profound physical weakness"
+        follow_ups = [
+            "When did these symptoms first begin, and are they constant or coming and going?",
+            "On a scale of 1 to 10, how mild or severe is your discomfort right now?",
+            "Are you experiencing any accompanying symptoms such as fever, fatigue, nausea, or pain elsewhere?",
+            "Do you have any existing medical conditions or daily medications a doctor should know about?"
         ]
 
-    # Format into beautiful Markdown response
-    symptoms_text = "\n".join([f"- {s}" for s in symptoms_display])
-    causes_text = "\n".join([f"- {c}" for c in causes_list])
-    care_text = "\n".join([f"- {h}" for h in care_list])
-    precautions_text = "\n".join([f"- {p}" for p in precautions_list])
-    red_flags_text = "\n".join([f"- {r}" for r in red_flags_list])
+    guidance_md = "\n".join([f"- {g}" for g in guidance_items])
+    precautions_md = "\n".join([f"- {p}" for p in precaution_items])
+    red_flags_md = "\n".join([f"- {r}" for r in red_flags])
+    followups_md = "\n".join([f"- {q}" for q in follow_ups])
 
-    response = (
-        f"**Condition / Clinical Assessment:** {condition_title}\n\n"
-        f"**Identified Symptoms & Health Inquiries:**\n"
-        f"{symptoms_text}\n\n"
-        f"**Medical Overview:**\n"
-        f"{overview_text}\n\n"
-        f"**Probable Causes & Contributing Factors:**\n"
-        f"{causes_text}\n\n"
-        f"**Dietary Recommendations & Home Care:**\n"
-        f"{care_text}\n\n"
-        f"**Key Health Precautions & Self-Care:**\n"
-        f"{precautions_text}\n\n"
-        f"**When to Seek Immediate Medical Attention (Red Flags):**\n"
-        f"{red_flags_text}\n\n"
-        f"*(Disclaimer: Niramaya provides AI-guided informational health insights. This does not replace formal examination, laboratory diagnosis, or prescription by a licensed medical practitioner.)*"
+    answer = (
+        f"**Understanding Your Symptoms (Health Assistant Guidance):**\n"
+        f"{plain_summary}\n\n"
+        f"**Practical Self-Care & Everyday Health Guidance:**\n"
+        f"{guidance_md}\n\n"
+        f"**General Precautions:**\n"
+        f"{precautions_md}\n\n"
+        f"**When to Seek Prompt Medical Care:**\n"
+        f"{red_flags_md}\n\n"
+        f"**Helpful Follow-Up Questions to Clarify Your Symptoms:**\n"
+        f"{followups_md}\n\n"
+        f"*(Health Assistant Note: General guidance only — please consult a qualified doctor for personal diagnosis or treatment.)*"
     )
-    return response
+
+    return {
+        "model": "Gemini",
+        "role": "AI Health Assistant — Guidance, Precautions & Follow-Up Questions",
+        "source": "Gemini Health Assistant Engine (Structured Fallback)",
+        "follow_up_questions": follow_ups,
+        "answer": answer
+    }
+
+
+def generate_clinical_response(prompt: str) -> str:
+    """Backwards-compatible helper returning BioGPT biomedical explanation text."""
+    return generate_biogpt_response(prompt)["answer"]
+
 
 # ==============================================================================
-# Machine Learning Disease Prediction (LRv1 and LRv2)
+# 3 & 4. Independent ML Disease Prediction Engines:
+#   - LRv1: LogisticRegression (logistic_regression_model.pkl, 489 features, 261 classes)
+#   - LRv2: RandomForestClassifier (disease_prediction_model.pkl + symptom_mlb.pkl, 131 features, 41 classes)
+#   ZERO fabricated probabilities — strictly real predict_proba() inference!
 # ==============================================================================
 
-def extract_symptoms_from_text(text: str) -> list:
-    """Extracts symptom features from text matching trained ML features."""
-    if not text:
+# Verified natural-language / Hindi-Hinglish synonym maps to each model's REAL feature vocabulary
+LRV1_SYNONYMS = {
+    'fever': 'fever', 'fevr': 'fever', 'feaver': 'fever', 'high fever': 'fever', 'mild fever': 'fever', 'bukhar': 'fever', 'bukhaar': 'fever',
+    'headache': 'headache', 'headche': 'headache', 'hedache': 'headache', 'heache': 'headache', 'sir dard': 'headache', 'sar dard': 'headache', 'migraine': 'headache',
+    'cough': 'coughing', 'caugh': 'coughing', 'khansi': 'coughing', 'dry cough': 'dry cough', 'chronic cough': 'chronic cough',
+    'sore throat': 'sore throat', 'throat pain': 'sore throat', 'gale me dard': 'sore throat', 'gale me kharash': 'sore throat', 'throat irritation': 'sore throat',
+    'stomach pain': 'stomach pain', 'stomach ache': 'stomach pain', 'stomachache': 'stomach pain', 'pet dard': 'stomach pain', 'abdominal pain': 'lower abdominal pain',
+    'vomiting': 'vomiting', 'vomit': 'vomiting', 'vomitting': 'vomiting', 'ulti': 'vomiting',
+    'nausea': 'nausea', 'queasy': 'nausea',
+    'diarrhea': 'diarrhea', 'diarrhoea': 'diarrhoea', 'diarhea': 'diarrhea', 'loose motion': 'diarrhea', 'loose motions': 'diarrhea', 'dast': 'diarrhea',
+    'chest pain': 'chest pain', 'chhati dard': 'chest pain', 'seene me dard': 'chest pain', 'chest tightness': 'chest tightness',
+    'shortness of breath': 'difficulty breathing', 'breathlessness': 'difficulty breathing', 'breathless': 'difficulty breathing', 'saans fulna': 'difficulty breathing',
+    'dizziness': 'dizziness', 'dizzy': 'dizziness', 'vertigo': 'dizziness', 'chakkar': 'dizziness',
+    'fatigue': 'fatigue', 'tired': 'fatigue', 'tiredness': 'fatigue', 'kamzori': 'muscle weakness', 'weakness': 'muscle weakness',
+    'skin rash': 'red rash', 'rash': 'red rash', 'rashes': 'red rash', 'daane': 'red rash',
+    'itching': 'itching', 'itchy': 'itching', 'itch': 'itching', 'khujli': 'itching',
+    'sneeze': 'sneezing', 'sneezing': 'sneezing',
+    'cold': 'feeling cold', 'chills': 'feeling cold', 'shivering': 'feeling cold',
+    'constipation': 'constipation', 'constipated': 'constipation',
+    'acidity': 'taste acid', 'acid reflux': 'taste acid', 'heartburn': 'taste acid',
+    'joint pain': 'muscle joint pain', 'body pain': 'muscle joint pain', 'muscle pain': 'muscle joint pain', 'jodon ka dard': 'muscle joint pain', 'badan dard': 'muscle joint pain',
+    'back pain': 'severe pain lower back abdomen', 'backache': 'severe pain lower back abdomen', 'kamar dard': 'severe pain lower back abdomen',
+    'neck pain': 'neck stiffness', 'stiff neck': 'stiff neck',
+    'weight loss': 'unexplained weight loss', 'weight lose': 'unexplained weight loss', 'weight gain': 'weight gain',
+    'anxiety': 'anxiety', 'acne': 'acne', 'pimples': 'acne', 'pimple': 'acne',
+    'digestive': 'abdominal cramp', 'indigestion': 'abdominal cramp', 'bloating': 'abdominal distention'
+}
+
+LRV2_SYNONYMS = {
+    'high fever': 'high_fever', 'severe fever': 'high_fever', 'fever': 'high_fever', 'fevr': 'high_fever', 'feaver': 'high_fever', 'bukhar': 'high_fever', 'bukhaar': 'high_fever',
+    'mild fever': 'mild_fever', 'low fever': 'mild_fever',
+    'headache': 'headache', 'headche': 'headache', 'hedache': 'headache', 'heache': 'headache', 'sir dard': 'headache', 'sar dard': 'headache', 'migraine': 'headache',
+    'cough': 'cough', 'coughing': 'cough', 'caugh': 'cough', 'khansi': 'cough',
+    'sore throat': 'throat_irritation', 'throat pain': 'throat_irritation', 'throat irritation': 'throat_irritation', 'gale me dard': 'throat_irritation', 'gale me kharash': 'throat_irritation',
+    'stomach pain': 'stomach_pain', 'stomach ache': 'stomach_pain', 'stomachache': 'stomach_pain', 'pet dard': 'stomach_pain',
+    'abdominal pain': 'abdominal_pain', 'belly pain': 'belly_pain',
+    'vomiting': 'vomiting', 'vomit': 'vomiting', 'vomitting': 'vomiting', 'ulti': 'vomiting',
+    'nausea': 'nausea', 'queasy': 'nausea',
+    'diarrhea': 'diarrhoea', 'diarrhoea': 'diarrhoea', 'diarhea': 'diarrhoea', 'loose motion': 'diarrhoea', 'loose motions': 'diarrhoea', 'dast': 'diarrhoea',
+    'chest pain': 'chest_pain', 'chhati dard': 'chest_pain', 'seene me dard': 'chest_pain',
+    'shortness of breath': 'breathlessness', 'difficulty breathing': 'breathlessness', 'breathlessness': 'breathlessness', 'breathless': 'breathlessness', 'saans fulna': 'breathlessness',
+    'dizziness': 'dizziness', 'dizzy': 'dizziness', 'vertigo': 'spinning_movements', 'chakkar': 'dizziness',
+    'fatigue': 'fatigue', 'tired': 'fatigue', 'tiredness': 'fatigue', 'weakness': 'muscle_weakness', 'kamzori': 'fatigue', 'lethargy': 'lethargy',
+    'skin rash': 'skin_rash', 'rash': 'skin_rash', 'rashes': 'skin_rash', 'daane': 'skin_rash',
+    'itching': 'itching', 'itchy': 'itching', 'itch': 'itching', 'khujli': 'itching',
+    'sneeze': 'continuous_sneezing', 'sneezing': 'continuous_sneezing',
+    'cold': 'runny_nose', 'runny nose': 'runny_nose', 'congestion': 'congestion', 'sardi': 'runny_nose', 'jukam': 'runny_nose',
+    'chills': 'chills', 'shivering': 'shivering', 'sweating': 'sweating',
+    'constipation': 'constipation', 'constipated': 'constipation',
+    'acidity': 'acidity', 'acid reflux': 'acidity', 'heartburn': 'acidity',
+    'indigestion': 'indigestion', 'digestive': 'indigestion', 'digestion': 'indigestion', 'gas': 'passage_of_gases', 'bloating': 'distention_of_abdomen',
+    'joint pain': 'joint_pain', 'knee pain': 'knee_pain', 'hip pain': 'hip_joint_pain', 'jodon ka dard': 'joint_pain',
+    'muscle pain': 'muscle_pain', 'body pain': 'muscle_pain', 'badan dard': 'muscle_pain',
+    'back pain': 'back_pain', 'backache': 'back_pain', 'kamar dard': 'back_pain',
+    'neck pain': 'neck_pain', 'stiff neck': 'stiff_neck',
+    'weight loss': 'weight_loss', 'weight lose': 'weight_loss', 'weight gain': 'weight_gain',
+    'loss of appetite': 'loss_of_appetite', 'dehydration': 'dehydration',
+    'anxiety': 'anxiety', 'depression': 'depression',
+    'blurred vision': 'blurred_and_distorted_vision', 'blurry vision': 'blurred_and_distorted_vision',
+    'red eye': 'redness_of_eyes', 'red eyes': 'redness_of_eyes', 'watery eyes': 'watering_from_eyes',
+    'pimples': 'pus_filled_pimples', 'pimple': 'pus_filled_pimples', 'acne': 'pus_filled_pimples',
+    'phlegm': 'phlegm', 'palpitations': 'palpitations', 'dark urine': 'dark_urine', 'yellow eyes': 'yellowing_of_eyes', 'jaundice': 'yellowish_skin'
+}
+
+
+def extract_lrv1_features(text: str) -> list:
+    """Maps input symptoms to LRv1's actual 489-feature vocabulary (word-boundary + verified synonyms)."""
+    if not text or not symptom_features:
         return []
     clean = text.lower()
+    feat_set = set(str(f) for f in symptom_features)
     matched = []
-    if len(symptom_features) > 0:
-        for f in symptom_features:
-            f_clean = str(f).lower().replace('_', ' ').strip()
-            if f_clean in clean:
-                matched.append(str(f))
-    return matched[:10]
+    seen = set()
+
+    # 1. Exact word-boundary matches against LRv1's 489 features
+    for f in symptom_features:
+        f_str = str(f)
+        f_clean = f_str.lower().replace('_', ' ').strip()
+        if len(f_clean) >= 3 and re.search(r'\b' + re.escape(f_clean) + r'\b', clean):
+            if f_str not in seen:
+                seen.add(f_str)
+                matched.append(f_str)
+
+    # 2. Verified clinical synonym matches (only if target exists in LRv1's real features)
+    for phrase, target_feat in LRV1_SYNONYMS.items():
+        if target_feat in feat_set and target_feat not in seen:
+            if re.search(r'\b' + re.escape(phrase) + r'\b', clean):
+                seen.add(target_feat)
+                matched.append(target_feat)
+
+    return matched
+
+
+def extract_lrv2_features(text: str) -> list:
+    """Independently maps input symptoms to LRv2's actual 131 MultiLabelBinarizer features."""
+    if not text or symptom_mlb is None:
+        return []
+    clean = text.lower()
+    mlb_classes = list(symptom_mlb.classes_)
+    mlb_set = set(str(c) for c in mlb_classes)
+    matched = []
+    seen = set()
+
+    # 1. Exact word-boundary matches against LRv2's 131 MLB features
+    for c in mlb_classes:
+        c_str = str(c)
+        c_clean = c_str.lower().replace('_', ' ').strip()
+        if len(c_clean) >= 3 and re.search(r'\b' + re.escape(c_clean) + r'\b', clean):
+            if c_str not in seen:
+                seen.add(c_str)
+                matched.append(c_str)
+
+    # 2. Verified clinical synonym matches (only if target exists in LRv2's real MLB classes)
+    for phrase, target_feat in LRV2_SYNONYMS.items():
+        if target_feat in mlb_set and target_feat not in seen:
+            if re.search(r'\b' + re.escape(phrase) + r'\b', clean):
+                # Avoid matching both high_fever and mild_fever when user specifically said "mild fever"
+                if target_feat == 'high_fever' and 'mild_fever' in seen:
+                    continue
+                seen.add(target_feat)
+                matched.append(target_feat)
+
+    return matched
+
+
+def extract_symptoms_from_text(text: str) -> list:
+    """Backwards-compatible alias returning LRv1 matched features."""
+    return extract_lrv1_features(text)[:10]
+
 
 # Display mapping dictionary for backwards compatibility
 SYMPTOM_DISPLAY = {
@@ -726,103 +1068,406 @@ SYMPTOM_DISPLAY = {
     'stomach_pain': 'Stomach Pain (पेट दर्द)'
 }
 
+
+def _format_disease_label(raw_name: str) -> str:
+    """Formats lowercase CSV/model disease labels cleanly while preserving acronyms."""
+    s = re.sub(r'\s+', ' ', str(raw_name or '')).strip()
+    if not s:
+        return s
+    if s.islower():
+        acronyms = {'aids': 'AIDS', 'gerd': 'GERD', 'uti': 'UTI', 'tb': 'TB'}
+        words = []
+        for w in s.split(' '):
+            clean_w = w.strip('()')
+            if clean_w in acronyms:
+                words.append(w.replace(clean_w, acronyms[clean_w]))
+            else:
+                words.append(w.capitalize())
+        return ' '.join(words)
+    return s
+
+
 def get_lrv1_prediction(query_text: str) -> dict:
     """
-    Returns structured data for LRv1 endpoint:
-    { predicted_disease, matched_symptoms, description }
-    Strictly verifies health relevance.
+    LRv1 — Independent Logistic Regression Classifier (logistic_regression_model.pkl).
+    Uses actual lr_model.predict_proba() over 261 disease classes and 489 features.
+    NEVER fabricates probabilities.
     """
     if not query_text or not query_text.strip():
         return {
+            'model': 'LRv1',
+            'algorithm': 'Logistic Regression (489 features, 261 classes)',
+            'inference_status': 'input_required',
             'predicted_disease': 'Input Required',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
             'matched_symptoms': [],
-            'description': 'Please enter health symptoms to run disease prediction.'
+            'description': 'Please enter health symptoms to run LRv1 disease prediction.'
         }
 
     clean = query_text.strip()
     if not is_health_related(clean):
         return {
+            'model': 'LRv1',
+            'algorithm': 'Logistic Regression (489 features, 261 classes)',
+            'inference_status': 'non_health',
             'predicted_disease': 'Non-Health Query',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
             'matched_symptoms': [],
             'description': 'Niramaya AI only processes medical and health symptoms. Please enter specific health symptoms to predict conditions.'
         }
 
-    # Match against ML features
-    matched_features = extract_symptoms_from_text(clean)
-    pred_disease = clean.title()
+    matched_features = extract_lrv1_features(clean)
 
-    if lr_model is not None and len(symptom_features) > 0:
-        try:
-            vec = [0] * len(symptom_features)
-            for i, f in enumerate(symptom_features):
-                f_clean = str(f).lower().replace('_', ' ').strip()
-                if f_clean in clean.lower():
-                    vec[i] = 1
-            if sum(vec) > 0:
-                X_df = pd.DataFrame([vec], columns=list(symptom_features))
-                pred_disease = str(lr_model.predict(X_df)[0])
-        except Exception:
-            pass
+    if lr_model is None or not symptom_features:
+        return {
+            'model': 'LRv1',
+            'algorithm': 'Logistic Regression',
+            'inference_status': 'model_unavailable',
+            'predicted_disease': 'Model Unavailable',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
+            'matched_symptoms': matched_features,
+            'description': 'LRv1 trained model artifact (logistic_regression_model.pkl) could not be loaded.'
+        }
 
-    # Lookup description from CSV
-    desc = f"Clinical evaluation regarding '{clean}'. Please monitor symptom duration, maintain adequate hydration, and consult a doctor."
-    if not df_desc.empty and 'disease' in df_desc.columns and 'description' in df_desc.columns:
-        match = df_desc[df_desc['disease'].str.lower() == pred_disease.lower()]
-        if not match.empty:
-            desc = match['description'].values[0]
+    if not matched_features:
+        return {
+            'model': 'LRv1',
+            'algorithm': f'Logistic Regression ({len(symptom_features)} features, {len(lr_model.classes_)} classes)',
+            'inference_status': 'insufficient_features',
+            'predicted_disease': 'Insufficient Matched Symptom Features',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
+            'matched_symptoms': [],
+            'description': (
+                f"No exact symptoms from '{clean}' matched LRv1's 489-feature vocabulary. "
+                "Try listing specific clinical symptoms (e.g., fever, headache, coughing, vomiting, stomach pain, itching, red rash, dizziness)."
+            )
+        }
+
+    matched_set = set(matched_features)
+    vec = [1 if str(f) in matched_set else 0 for f in symptom_features]
+    X_df = pd.DataFrame([vec], columns=symptom_features)
+    probs = lr_model.predict_proba(X_df)[0]
+
+    # Top 5 real probability predictions directly from predict_proba()
+    top_idx = probs.argsort()[::-1][:5]
+    top_predictions = [
+        {
+            'disease': _format_disease_label(lr_model.classes_[i]),
+            'raw_class': str(lr_model.classes_[i]),
+            'probability': round(float(probs[i]) * 100.0, 2)
+        }
+        for i in top_idx
+    ]
+
+    pred_disease = top_predictions[0]['disease']
+    top_prob = top_predictions[0]['probability']
+    top5_sum = round(sum(item['probability'] for item in top_predictions), 2)
+
+    desc = _lookup_csv_description(top_predictions[0]['raw_class']) or (
+        f"LRv1 (Logistic Regression) predicted '{pred_disease}' with {top_prob:.2f}% probability "
+        f"based on {len(matched_features)} matched symptom feature(s)."
+    )
 
     return {
+        'model': 'LRv1',
+        'algorithm': f'Logistic Regression ({len(symptom_features)} features, {len(lr_model.classes_)} classes)',
+        'inference_status': 'success',
         'predicted_disease': pred_disease,
-        'matched_symptoms': matched_features if matched_features else [clean.title()],
+        'top_probability': top_prob,
+        'top5_cumulative_probability': top5_sum,
+        'top_predictions': top_predictions,
+        'matched_symptoms': matched_features,
+        'total_features': len(symptom_features),
+        'total_classes': len(lr_model.classes_),
         'description': desc
     }
 
+
 def get_lrv2_prediction(query_text: str) -> dict:
     """
-    Returns structured data for LRv2 endpoint:
-    { predicted_disease, matched_symptoms, description, precautions }
-    Strictly verifies health relevance.
+    LRv2 — Independent Enhanced Random Forest Classifier (disease_prediction_model.pkl + symptom_mlb.pkl).
+    Uses actual rf_model.predict_proba() over 41 disease classes and 131 MLB features,
+    completely independent of LRv1! NEVER fabricates probabilities.
     """
     if not query_text or not query_text.strip():
         return {
+            'model': 'LRv2',
+            'algorithm': 'Random Forest Classifier (131 MLB features, 41 classes)',
+            'inference_status': 'input_required',
             'predicted_disease': 'Input Required',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
             'matched_symptoms': [],
-            'description': 'Please enter health symptoms to run disease prediction.',
-            'precautions': ['Enter symptom names like fever, headache, body pain']
+            'description': 'Please enter health symptoms to run LRv2 enhanced disease prediction.',
+            'precautions': ['Enter symptom names like fever, headache, cough, vomiting, stomach pain']
         }
 
     clean = query_text.strip()
     if not is_health_related(clean):
         return {
+            'model': 'LRv2',
+            'algorithm': 'Random Forest Classifier (131 MLB features, 41 classes)',
+            'inference_status': 'non_health',
             'predicted_disease': 'Non-Health Query',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
             'matched_symptoms': [],
             'description': 'Niramaya AI only processes medical and health symptoms. Please enter specific health symptoms to predict conditions.',
             'precautions': ['Please ask questions related to health symptoms, medical conditions, and care.']
         }
 
-    # Predict via LRv1
-    res = get_lrv1_prediction(clean)
-    pred_disease = res['predicted_disease']
+    matched_v2 = extract_lrv2_features(clean)
 
-    # Lookup precautions from CSV
-    precautions = [
-        "Maintain adequate physical rest and stay well-hydrated throughout the day",
-        "Consume freshly prepared, easily digestible meals and avoid physical overexertion",
-        "Monitor symptoms closely and track their severity and progression",
-        "Consult a certified physician or healthcare professional for clinical examination"
+    if rf_model is None or symptom_mlb is None:
+        return {
+            'model': 'LRv2',
+            'algorithm': 'Random Forest Classifier',
+            'inference_status': 'model_unavailable',
+            'predicted_disease': 'Model Unavailable',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
+            'matched_symptoms': matched_v2,
+            'description': 'LRv2 trained model artifact (disease_prediction_model.pkl) could not be loaded.',
+            'precautions': ['Consult a certified physician for clinical evaluation.']
+        }
+
+    if not matched_v2:
+        return {
+            'model': 'LRv2',
+            'algorithm': f'Random Forest Classifier ({len(symptom_mlb.classes_)} MLB features, {len(rf_model.classes_)} classes)',
+            'inference_status': 'insufficient_features',
+            'predicted_disease': 'Insufficient Matched Symptom Features',
+            'top_probability': 0.0,
+            'top5_cumulative_probability': 0.0,
+            'top_predictions': [],
+            'matched_symptoms': [],
+            'description': (
+                f"No exact symptoms from '{clean}' matched LRv2's 131-feature vocabulary. "
+                "Try entering specific symptoms (e.g., high fever, headache, cough, vomiting, stomach pain, skin rash, itching, acidity)."
+            ),
+            'precautions': [
+                'Enter specific physical symptoms for ML probability prediction',
+                'Stay hydrated, rest, and consult a healthcare professional if symptoms persist'
+            ]
+        }
+
+    X_mlb = symptom_mlb.transform([matched_v2])
+    probs = rf_model.predict_proba(X_mlb)[0]
+
+    # Top 5 real probability predictions directly from RandomForest predict_proba()
+    top_idx = probs.argsort()[::-1][:5]
+    top_predictions = [
+        {
+            'disease': _format_disease_label(rf_model.classes_[i]),
+            'raw_class': str(rf_model.classes_[i]),
+            'probability': round(float(probs[i]) * 100.0, 2)
+        }
+        for i in top_idx
+        if float(probs[i]) > 0.0
     ]
 
-    if not df_prec.empty and 'disease' in df_prec.columns:
-        match = df_prec[df_prec['disease'].str.lower() == pred_disease.lower()]
-        if not match.empty:
-            cols = [c for c in df_prec.columns if 'precaution' in c.lower()]
-            found = [str(match[c].values[0]).strip() for c in cols if pd.notna(match[c].values[0]) and str(match[c].values[0]).strip()]
-            if found:
-                precautions = found
+    pred_disease = top_predictions[0]['disease']
+    top_prob = top_predictions[0]['probability']
+    top5_sum = round(sum(item['probability'] for item in top_predictions), 2)
+
+    desc = _lookup_csv_description(top_predictions[0]['raw_class']) or (
+        f"LRv2 (Random Forest Classifier) independently predicted '{pred_disease}' with {top_prob:.2f}% probability "
+        f"based on {len(matched_v2)} matched symptom feature(s)."
+    )
+
+    precautions = _lookup_csv_precautions(top_predictions[0]['raw_class'])
+    if not precautions:
+        # Fallback precautions from matching clinical profile if disease is not in Symptom_Precaution.csv
+        prof_keys = _match_clinical_profiles(clean.lower())
+        if prof_keys:
+            precautions = list(CLINICAL_PROFILES[prof_keys[0]]['precautions'])
+        else:
+            precautions = [
+                "Maintain adequate physical rest and stay well-hydrated throughout the day",
+                "Monitor symptoms closely and track their severity and progression",
+                "Avoid unprescribed self-medication and consult a licensed physician"
+            ]
+
+    pretty_matched = [m.replace('_', ' ') for m in matched_v2]
 
     return {
+        'model': 'LRv2',
+        'algorithm': f'Random Forest Classifier ({len(symptom_mlb.classes_)} MLB features, {len(rf_model.classes_)} classes)',
+        'inference_status': 'success',
         'predicted_disease': pred_disease,
-        'matched_symptoms': res['matched_symptoms'],
-        'description': res['description'],
+        'top_probability': top_prob,
+        'top5_cumulative_probability': top5_sum,
+        'top_predictions': top_predictions,
+        'matched_symptoms': pretty_matched,
+        'raw_matched_features': matched_v2,
+        'total_features': len(symptom_mlb.classes_),
+        'total_classes': len(rf_model.classes_),
+        'description': desc,
         'precautions': precautions
     }
+
+
+# ==============================================================================
+# 5. Authentic LRv1 vs LRv2 Comparison Engine
+# ==============================================================================
+
+_DISEASE_CANONICAL_ALIASES = {
+    'acquired immuno deficiency syndrome': 'aids',
+    'chicken pox': 'chickenpox',
+    'gastroesophageal reflux disease': 'gerd',
+    'bronchial asthma': 'asthma',
+    'common cold': 'common cold',
+    'urinary tract infection': 'urinary tract infection',
+    'peptic ulcer diseae': 'peptic ulcer disease',
+    'dimorphic hemmorhoids(piles)': 'hemorrhoids',
+    'piles': 'hemorrhoids',
+    'osteocystitis': 'osteoarthritis',
+    'paralysis (brain hemorrhage)': 'brain hemorrhage',
+    '(vertigo) paroymsal  positional vertigo': 'vertigo',
+}
+
+
+def _canonical_disease(name: str) -> str:
+    n = re.sub(r'\s+', ' ', str(name or '').lower()).strip()
+    return _DISEASE_CANONICAL_ALIASES.get(n, n)
+
+
+def compare_lrv1_and_lrv2(lrv1_res: dict, lrv2_res: dict) -> dict:
+    """
+    Compares actual independent outputs of LRv1 (Logistic Regression) and LRv2 (Random Forest):
+    top predictions, probability distributions, overlapping diseases, and agreement/disagreement.
+    Strictly derived from real model outputs — ZERO fabricated metrics.
+    """
+    v1_ok = lrv1_res.get('inference_status') == 'success' and bool(lrv1_res.get('top_predictions'))
+    v2_ok = lrv2_res.get('inference_status') == 'success' and bool(lrv2_res.get('top_predictions'))
+
+    v1_top = lrv1_res.get('predicted_disease', 'N/A')
+    v2_top = lrv2_res.get('predicted_disease', 'N/A')
+    v1_prob = float(lrv1_res.get('top_probability') or 0.0)
+    v2_prob = float(lrv2_res.get('top_probability') or 0.0)
+    v1_top5_sum = float(lrv1_res.get('top5_cumulative_probability') or 0.0)
+    v2_top5_sum = float(lrv2_res.get('top5_cumulative_probability') or 0.0)
+
+    if not v1_ok or not v2_ok:
+        missing = []
+        if not v1_ok:
+            missing.append('LRv1')
+        if not v2_ok:
+            missing.append('LRv2')
+        return {
+            'agreement_status': 'Insufficient Features for Comparison',
+            'agreement_code': 'insufficient',
+            'top1_match': False,
+            'lrv1_summary': {
+                'algorithm': lrv1_res.get('algorithm', 'Logistic Regression'),
+                'predicted_disease': v1_top,
+                'top_probability': v1_prob,
+                'top5_cumulative_probability': v1_top5_sum,
+                'matched_feature_count': len(lrv1_res.get('matched_symptoms') or []),
+                'total_classes': lrv1_res.get('total_classes', len(lr_model.classes_) if lr_model is not None else 0)
+            },
+            'lrv2_summary': {
+                'algorithm': lrv2_res.get('algorithm', 'Random Forest Classifier'),
+                'predicted_disease': v2_top,
+                'top_probability': v2_prob,
+                'top5_cumulative_probability': v2_top5_sum,
+                'matched_feature_count': len(lrv2_res.get('matched_symptoms') or []),
+                'total_classes': lrv2_res.get('total_classes', len(rf_model.classes_) if rf_model is not None else 0)
+            },
+            'overlapping_diseases': [],
+            'probability_gap': round(abs(v2_prob - v1_prob), 2),
+            'comparison_notes': (
+                f"Direct comparison could not be completed because {', '.join(missing)} did not match enough symptom "
+                "features from the input text. Enter more specific clinical symptoms to compare both ML classifiers."
+            )
+        }
+
+    v1_canon_top = _canonical_disease(v1_top)
+    v2_canon_top = _canonical_disease(v2_top)
+    top1_match = (v1_canon_top == v2_canon_top) or (v1_canon_top in v2_canon_top) or (v2_canon_top in v1_canon_top)
+
+    # Check overlapping diseases across both Top-5 lists
+    v1_map = {_canonical_disease(p['disease']): p for p in lrv1_res.get('top_predictions', [])}
+    v2_map = {_canonical_disease(p['disease']): p for p in lrv2_res.get('top_predictions', [])}
+
+    overlapping = []
+    for k1, p1 in v1_map.items():
+        for k2, p2 in v2_map.items():
+            if k1 == k2 or (len(k1) >= 5 and len(k2) >= 5 and (k1 in k2 or k2 in k1)):
+                overlapping.append({
+                    'disease': p1['disease'] if len(p1['disease']) >= len(p2['disease']) else p2['disease'],
+                    'lrv1_probability': p1['probability'],
+                    'lrv2_probability': p2['probability']
+                })
+                break
+
+    if top1_match:
+        agreement_status = 'Full Agreement'
+        agreement_code = 'agree'
+        agreement_summary = (
+            f"Both models independently converged on the same top prediction ({v1_top} / {v2_top}). "
+            f"LRv1 assigned {v1_prob:.2f}% (across {lrv1_res.get('total_classes', 261)} disease classes), "
+            f"while LRv2 assigned {v2_prob:.2f}% (across {lrv2_res.get('total_classes', 41)} disease classes)."
+        )
+    elif overlapping:
+        agreement_status = 'Partial Agreement'
+        agreement_code = 'partial'
+        overlap_names = ', '.join([o['disease'] for o in overlapping])
+        agreement_summary = (
+            f"LRv1's top prediction is {v1_top} ({v1_prob:.2f}%) whereas LRv2's top prediction is {v2_top} ({v2_prob:.2f}%), "
+            f"but both models share overlapping candidate(s) in their Top-5 lists: {overlap_names}."
+        )
+    else:
+        agreement_status = 'Disagreement'
+        agreement_code = 'disagree'
+        agreement_summary = (
+            f"LRv1 predicted {v1_top} ({v1_prob:.2f}% across {lrv1_res.get('total_classes', 261)} classes) "
+            f"while LRv2 predicted {v2_top} ({v2_prob:.2f}% across {lrv2_res.get('total_classes', 41)} classes) with no Top-5 overlap. "
+            "Disagreement occurs because the two models use different algorithms (linear Logistic Regression vs non-linear Random Forest), "
+            "different feature vocabularies (489 vs 131 symptoms), and different target disease sets (261 vs 41 diseases)."
+        )
+
+    prob_gap = round(abs(v2_prob - v1_prob), 2)
+    dist_note = (
+        f"Probability Concentration: LRv1's Top-5 classes account for {v1_top5_sum:.2f}% of total probability mass "
+        f"(spread across {lrv1_res.get('total_classes', 261)} classes), whereas LRv2's Top-5 classes account for "
+        f"{v2_top5_sum:.2f}% (concentrated across {lrv2_res.get('total_classes', 41)} classes). "
+        "Lower raw percentages in LRv1 are mathematically expected from softmax over 261 classes vs 41 classes."
+    )
+
+    return {
+        'agreement_status': agreement_status,
+        'agreement_code': agreement_code,
+        'top1_match': top1_match,
+        'lrv1_summary': {
+            'algorithm': lrv1_res.get('algorithm'),
+            'predicted_disease': v1_top,
+            'top_probability': v1_prob,
+            'top5_cumulative_probability': v1_top5_sum,
+            'matched_feature_count': len(lrv1_res.get('matched_symptoms') or []),
+            'total_classes': lrv1_res.get('total_classes', 261)
+        },
+        'lrv2_summary': {
+            'algorithm': lrv2_res.get('algorithm'),
+            'predicted_disease': v2_top,
+            'top_probability': v2_prob,
+            'top5_cumulative_probability': v2_top5_sum,
+            'matched_feature_count': len(lrv2_res.get('matched_symptoms') or []),
+            'total_classes': lrv2_res.get('total_classes', 41)
+        },
+        'overlapping_diseases': overlapping,
+        'probability_gap': prob_gap,
+        'comparison_notes': f"{agreement_summary} {dist_note}"
+    }
+
