@@ -78,8 +78,8 @@ _hf_biogpt_unsupported = False
 
 
 def _call_groq_biogpt(prompt_text: str, groq_key: str):
-    """Calls Groq OpenAI-compatible Live API (100% free tier, ultra-fast <1s) for dedicated BioGPT inference."""
-    for model_id in ("llama-3.3-70b-versatile", "llama-3.1-8b-instant"):
+    """Calls Groq Live API (100% free tier, ultra-fast ~1s) for dedicated BioGPT biomedical inference."""
+    for model_id in ("qwen/qwen3.8-27b", "allam-2-7b"):
         try:
             url = "https://api.groq.com/openai/v1/chat/completions"
             body = json.dumps({
