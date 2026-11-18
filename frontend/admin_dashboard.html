@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="N-16.png">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
-  <script src="theme.js?v=20261118_04"></script>
+  <script src="theme.js?v=20261119_02"></script>
   <style>
     .admin-container {
       width: 92%;
@@ -230,15 +230,17 @@
 
 <body>
   <div class="header">
-    <div class="logo">
-      <img id="logo-img" alt="Niramaya Logo">
-      <script>
-        const logoImg = document.getElementById('logo-img');
-        const currentTheme = localStorage.getItem('theme') || 'dark';
-        logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
-      </script>
-    </div>
-    <div class="site-name">Niramaya Admin</div>
+    <a href="admin_login.html" class="brand-link" style="display:flex; align-items:center; text-decoration:none; color:inherit;" title="Niramaya Auth Portal">
+      <div class="logo">
+        <img id="logo-img" alt="Niramaya Logo">
+        <script>
+          const logoImg = document.getElementById('logo-img');
+          const currentTheme = localStorage.getItem('theme') || 'dark';
+          logoImg.src = currentTheme === 'dark' ? 'N-dark.png' : 'N-light.png';
+        </script>
+      </div>
+      <div class="site-name">Niramaya</div>
+    </a>
     <div class="nav">
       <button id="theme-toggle" aria-label="Toggle theme"><i class="fas fa-sun"></i></button>
       <a href="admin_users.html"><i class="fas fa-users"></i> Users</a>

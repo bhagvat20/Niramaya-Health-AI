@@ -184,6 +184,21 @@
                 toggleTheme();
             };
         });
+
+        // In Admin Panel pages (admin_dashboard, admin_users, admin_content), brand logo & name redirect to Auth Portal
+        const isAdminSubPage = window.location.pathname.includes('admin_') && !window.location.pathname.endsWith('admin_login.html');
+        if (isAdminSubPage) {
+            const adminBrandEls = document.querySelectorAll('.header .brand-link, .header .logo, .header .site-name');
+            adminBrandEls.forEach(el => {
+                el.style.cursor = 'pointer';
+                el.onclick = function (e) {
+                    if (el.tagName !== 'A') {
+                        e.preventDefault();
+                        window.location.href = 'admin_login.html';
+                    }
+                };
+            });
+        }
     }
 
     if (document.readyState === 'loading') {
