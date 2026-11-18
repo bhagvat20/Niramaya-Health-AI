@@ -1109,30 +1109,30 @@ def generate_clinical_response(prompt: str) -> str:
 
 # Verified natural-language / Hindi-Hinglish synonym maps to each model's REAL feature vocabulary
 LRV1_SYNONYMS = {
-    'fever': 'fever', 'fevr': 'fever', 'feaver': 'fever', 'high fever': 'fever', 'mild fever': 'fever', 'bukhar': 'fever', 'bukhaar': 'fever',
+    'fever': 'fever', 'fevr': 'fever', 'feaver': 'fever', 'high fever': 'high fever', 'mild fever': 'mild fever', 'bukhar': 'fever', 'bukhaar': 'fever',
     'headache': 'headache', 'headche': 'headache', 'hedache': 'headache', 'heache': 'headache', 'sir dard': 'headache', 'sar dard': 'headache', 'migraine': 'headache',
-    'cough': 'coughing', 'caugh': 'coughing', 'khansi': 'coughing', 'dry cough': 'dry cough', 'chronic cough': 'chronic cough',
-    'sore throat': 'sore throat', 'throat pain': 'sore throat', 'gale me dard': 'sore throat', 'gale me kharash': 'sore throat', 'throat irritation': 'sore throat',
-    'stomach pain': 'stomach pain', 'stomach ache': 'stomach pain', 'stomachache': 'stomach pain', 'pet dard': 'stomach pain', 'abdominal pain': 'lower abdominal pain',
+    'cough': 'coughing', 'coughing': 'coughing', 'caugh': 'coughing', 'khansi': 'coughing', 'dry cough': 'dry cough', 'chronic cough': 'coughing',
+    'sore throat': 'sore throat', 'throat pain': 'sore throat', 'gale me dard': 'sore throat', 'gale me kharash': 'sore throat', 'throat irritation': 'throat irritation',
+    'stomach pain': 'stomach pain', 'stomach ache': 'stomach pain', 'stomachache': 'stomach pain', 'pet dard': 'stomach pain',
+    'abdominal pain': 'abdominal pain', 'belly pain': 'abdominal pain',
     'vomiting': 'vomiting', 'vomit': 'vomiting', 'vomitting': 'vomiting', 'ulti': 'vomiting',
     'nausea': 'nausea', 'queasy': 'nausea',
-    'diarrhea': 'diarrhea', 'diarrhoea': 'diarrhoea', 'diarhea': 'diarrhea', 'loose motion': 'diarrhea', 'loose motions': 'diarrhea', 'dast': 'diarrhea',
+    'diarrhea': 'diarrhea', 'diarrhoea': 'diarrhea', 'diarhea': 'diarrhea', 'loose motion': 'diarrhea', 'loose motions': 'diarrhea', 'dast': 'diarrhea',
     'chest pain': 'chest pain', 'chhati dard': 'chest pain', 'seene me dard': 'chest pain', 'chest tightness': 'chest tightness',
-    'shortness of breath': 'difficulty breathing', 'breathlessness': 'difficulty breathing', 'breathless': 'difficulty breathing', 'saans fulna': 'difficulty breathing',
+    'shortness of breath': 'shortness breath', 'difficulty breathing': 'difficulty breathing', 'breathlessness': 'shortness breath', 'breathless': 'shortness breath', 'saans fulna': 'shortness breath',
     'dizziness': 'dizziness', 'dizzy': 'dizziness', 'vertigo': 'dizziness', 'chakkar': 'dizziness',
-    'fatigue': 'fatigue', 'tired': 'fatigue', 'tiredness': 'fatigue', 'kamzori': 'muscle weakness', 'weakness': 'muscle weakness',
-    'skin rash': 'red rash', 'rash': 'red rash', 'rashes': 'red rash', 'daane': 'red rash',
+    'fatigue': 'fatigue', 'tired': 'feeling tired', 'tiredness': 'feeling tired', 'kamzori': 'muscle weakness', 'weakness': 'muscle weakness',
+    'skin rash': 'skin rash', 'rash': 'skin rash', 'rashes': 'skin rash', 'red rash': 'red rash', 'daane': 'skin rash',
     'itching': 'itching', 'itchy': 'itching', 'itch': 'itching', 'khujli': 'itching',
     'sneeze': 'sneezing', 'sneezing': 'sneezing',
-    'cold': 'feeling cold', 'chills': 'feeling cold', 'shivering': 'feeling cold',
+    'cold': 'runny nose', 'chills': 'chills', 'shivering': 'shivering', 'sweating': 'sweating', 'night sweats': 'night sweats',
     'constipation': 'constipation', 'constipated': 'constipation',
-    'acidity': 'taste acid', 'acid reflux': 'taste acid', 'heartburn': 'taste acid',
-    'joint pain': 'muscle joint pain', 'body pain': 'muscle joint pain', 'muscle pain': 'muscle joint pain', 'jodon ka dard': 'muscle joint pain', 'badan dard': 'muscle joint pain',
-    'back pain': 'severe pain lower back abdomen', 'backache': 'severe pain lower back abdomen', 'kamar dard': 'severe pain lower back abdomen',
+    'acidity': 'acidity', 'acid reflux': 'acidity', 'heartburn': 'heartburn',
+    'joint pain': 'joint pain', 'body pain': 'muscle pain', 'muscle pain': 'muscle pain', 'jodon ka dard': 'joint pain', 'badan dard': 'muscle pain',
+    'back pain': 'back pain', 'backache': 'back pain', 'kamar dard': 'back pain',
     'neck pain': 'neck stiffness', 'stiff neck': 'stiff neck',
-    'weight loss': 'unexplained weight loss', 'weight lose': 'unexplained weight loss', 'weight gain': 'weight gain',
-    'anxiety': 'anxiety', 'acne': 'acne', 'pimples': 'acne', 'pimple': 'acne',
-    'digestive': 'abdominal cramp', 'indigestion': 'abdominal cramp', 'bloating': 'abdominal distention'
+    'weight loss': 'weight loss', 'weight lose': 'weight loss',
+    'digestive': 'abdominal cramp', 'indigestion': 'indigestion', 'bloating': 'bloating'
 }
 
 LRV2_SYNONYMS = {
