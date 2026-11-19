@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Explorer - Niramaya Health AI</title>
+  <link rel="icon" type="image/png" href="N-16.png">
+  <link rel="stylesheet" href="style.css?v=20261119_04">
+  <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+  <script src="theme.js?v=20261119_04"></script>
+  <style>
+    .db-container {
+      width: 94%;
+      max-width: 1350px;
+      margin: 100px auto 50px;
+    }
+    .db-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .db-header h1 {
+      font-size: 26px;
+      color: var(--text-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .engine-badge {
+      font-size: 13px;
+      background: rgba(14, 118, 110, 0.15);
+      color: var(--primary-color);
+      border: 1px solid rgba(14, 118, 110, 0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .stat-pill {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 12px var(--shadow-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .stat-pill:hover, .stat-pill.active {
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+    }
+    .stat-pill-info h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--secondary-text);
+      margin: 0 0 4px;
+    }
+    .stat-pill-info .stat-num {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-color);
+    }
+    .stat-pill-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .tabs-nav {
+      display: flex;
+      gap: 10px;
+      border-bottom: 2px solid var(--border-color);
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--secondary-text);
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      color: var(--primary-color);
+      background: rgba(14, 118, 110, 0.06);
+    }
+    .tab-btn.active {
+      color: var(--primary-color);
+      border-bottom: 3px solid var(--primary-color);
+      background: rgba(14, 118, 110, 0.1);
+    }
+    .toolbar-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 360px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 10px 14px 10px 36px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--input-bg, var(--card-bg));
+      color: var(--text-color);
+      font-size: 14px;
+    }
+    .search-box i {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--secondary-text);
+    }
+    .btn-action {
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn-action:hover {
+      background: var(--button-hover, #0b5e58);
+    }
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 4px 14px var(--shadow-color);
+      overflow: hidden;
+    }
+    .table-responsive {
+      max-height: 560px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    table.data-table th {
+      background: var(--table-header-bg, rgba(14, 118, 110, 0.08));
+      color: var(--text-color);
+      font-weight: 700;
+      padding: 12px 14px;
+      border-bottom: 2px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    table.data-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-color);
+      vertical-align: middle;
+    }
+    table.data-table tr:hover td {
+      background: rgba(14, 118, 110, 0.04);
+    }
+    .badge-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+    .badge-green { background: rgba(52, 211, 153, 0.2); color: #059669; }
+    .badge-yellow { background: rgba(245, 158, 11, 0.2); color: #d97706; }
+    .badge-blue { background: rgba(59, 130, 246, 0.2); color: #2563eb; }
+    .loading-spinner {
+      padding: 40px;
+      text-align: center;
+      color: var(--secondary-text);
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <img id="logo-img" src="N-dark.png" alt="Niramaya Logo">
+    </div>
+    <div class="site-name">Niramaya</div>
+    <div class="nav">
+      <button id="theme-toggle" aria-label="Toggle theme"><i class="fas fa-sun"></i></button>
+      <a href="home.html"><i class="fas fa-home"></i> Home</a>
+      <a href="admin_dashboard.html"><i class="fas fa-chart-line"></i> Admin Dashboard</a>
+      <a href="admin_users.html"><i class="fas fa-users"></i> User Accounts</a>
+      <a href="question_input.html"><i class="fas fa-stethoscope"></i> Symptom Checker</a>
+    </div>
+  </div>
+
+  <main class="db-container">
+    <div class="db-header">
+      <div>
+        <h1><i class="fas fa-database" style="color:var(--primary-color);"></i> Database Explorer</h1>
+        <p style="color:var(--secondary-text); font-size:14px; margin-top:4px;">
+          Direct visual inspector for all tables and records across SQLite and PostgreSQL.
+        </p>
+      </div>
+      <div>
+        <span id="engine-badge" class="engine-badge"><i class="fas fa-server"></i> Detecting database...</span>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-pill active" onclick="switchTab('accounts')">
+        <div class="stat-pill-info">
+          <h4>account_tbl</h4>
+          <div class="stat-num" id="cnt-accounts">13</div>
+        </div>
+        <div class="stat-pill-icon mint-box"><i class="fas fa-users"></i></div>
+      </div>
+      <div class="stat-pill" onclick="switchTab('members')">
+        <div class="stat-pill-info">
+          <h4>member_tbl</h4>
+          <div class="stat-num" id="cnt-members">22</div>
+        </div>
+        <div class="stat-pill-icon mint-box"><i class="fas fa-user-friends"></i></div>
+      </div>
+      <div class="stat-pill" onclick="switchTab('consultations')">
+        <div class="stat-pill-info">
+          <h4>chat_history_tbl</h4>
+          <div class="stat-num" id="cnt-consultations">11</div>
+        </div>
+        <div class="stat-pill-icon saffron-box"><i class="fas fa-comment-medical"></i></div>
+      </div>
+      <div class="stat-pill" onclick="switchTab('health_content')">
+        <div class="stat-pill-info">
+          <h4>health_content_tbl</h4>
+          <div class="stat-num" id="cnt-content">30</div>
+        </div>
+        <div class="stat-pill-icon mint-box"><i class="fas fa-newspaper"></i></div>
+      </div>
+      <div class="stat-pill" onclick="switchTab('admins')">
+        <div class="stat-pill-info">
+          <h4>admin_tbl</h4>
+          <div class="stat-num" id="cnt-admins">1</div>
+        </div>
+        <div class="stat-pill-icon saffron-box"><i class="fas fa-user-shield"></i></div>
+      </div>
+    </div>
+
+    <!-- Tabs Nav -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" id="tab-accounts" onclick="switchTab('accounts')"><i class="fas fa-user"></i> Registered Accounts</button>
+      <button class="tab-btn" id="tab-members" onclick="switchTab('members')"><i class="fas fa-user-friends"></i> Family Members</button>
+      <button class="tab-btn" id="tab-consultations" onclick="switchTab('consultations')"><i class="fas fa-stethoscope"></i> AI Consultation History</button>
+      <button class="tab-btn" id="tab-health_content" onclick="switchTab('health_content')"><i class="fas fa-heartbeat"></i> Health Articles & Tips</button>
+      <button class="tab-btn" id="tab-admins" onclick="switchTab('admins')"><i class="fas fa-shield-alt"></i> Admin Profiles</button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar-bar">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="db-search" placeholder="Filter rows in active table..." oninput="filterTable()">
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn-action" onclick="fetchDatabaseData()"><i class="fas fa-sync-alt"></i> Refresh Data</button>
+      </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-card">
+      <div class="table-responsive" id="table-container">
+        <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Loading table records...</div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <p class="footer-text">© 2026 Niramaya. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Offline pre-cached snapshot (works even when double-clicking file:// without local server!)
+    let DB_DATA = {
+      engine: "SQLite (Local backend/niramaya.db)",
+      counts: { accounts: 13, members: 22, consultations: 11, health_content: 30, admins: 1 },
+      tables: {
+        accounts: [
+          { account_id: 73, family_name: "UpdatedSmithFamily", email: "manageuser1@example.com", is_active: true, created_at: "2026-11-18 19:05:43" },
+          { account_id: 44, family_name: "Haru", email: "25msit036@charusat.edu.in", is_active: true, created_at: "2026-11-18 09:40:42" },
+          { account_id: 43, family_name: "hariyani", email: "hariyanibhagvat1@gmail.com", is_active: true, created_at: "2026-11-18 09:39:43" },
+          { account_id: 41, family_name: "UpdatedSmithFamil", email: "updatedsmith@xample.com", is_active: false, created_at: "2026-11-18 09:32:02" },
+          { account_id: 26, family_name: "SharmaFamily", email: "onemember_1793006694@niramaya.com", is_active: true, created_at: "2026-10-26 14:54:55" },
+          { account_id: 25, family_name: "paresh", email: "phariyani@gmail.com", is_active: true, created_at: "2026-10-26 14:47:14" },
+          { account_id: 24, family_name: "vatsal", email: "vatsal@gmail.com", is_active: true, created_at: "2026-10-26 14:41:06" },
+          { account_id: 23, family_name: "PatelFamily", email: "testuser_1793002659@niramaya.com", is_active: true, created_at: "2026-10-26 13:47:40" },
+          { account_id: 22, family_name: "SharmaFamily", email: "student_test@niramaya.com", is_active: true, created_at: "2026-10-26 13:44:49" },
+          { account_id: 18, family_name: "mrunali", email: "mrunali@niramaya.com", is_active: true, created_at: "2026-10-23 13:47:21" }
+        ],
+        members: [
+          { member_id: 53, account_id: 78, name: "Test Patient", gender: "Other", age: 25, height: "N/A", weight: "N/A", created_at: "2026-11-18 19:15:00" },
+          { member_id: 50, account_id: 75, name: "Test Patient", gender: "Other", age: 25, height: "N/A", weight: "N/A", created_at: "2026-11-18 19:10:00" },
+          { member_id: 49, account_id: 73, name: "John Smith", gender: "Male", age: 35, height: "175", weight: "70", created_at: "2026-11-18 19:05:43" },
+          { member_id: 48, account_id: 71, name: "John Smith", gender: "Male", age: 35, height: "175", weight: "70", created_at: "2026-11-18 19:00:00" },
+          { member_id: 45, account_id: 68, name: "Test Patient", gender: "Other", age: 25, height: "N/A", weight: "N/A", created_at: "2026-11-18 18:50:00" },
+          { member_id: 33, account_id: 44, name: "Haru Member", gender: "Male", age: 22, height: "172", weight: "65", created_at: "2026-11-18 09:40:42" },
+          { member_id: 32, account_id: 44, name: "Primary Member", gender: "Female", age: 24, height: "165", weight: "55", created_at: "2026-11-18 09:40:42" },
+          { member_id: 31, account_id: 43, name: "Bhagvat", gender: "Male", age: 22, height: "170", weight: "62", created_at: "2026-11-18 09:39:43" }
+        ],
+        consultations: [
+          { history_id: 11, account_id: 44, member_id: 33, model: "LRv1", user_input: "fever", bot_response: "Identified: Typhoid / Common Cold. Precautions: Hydration, Rest...", timestamp: "2026-11-18 09:43:21" },
+          { history_id: 10, account_id: 44, member_id: 33, model: "BioGPT", user_input: "fever", bot_response: "Biomedical assessment: Pyrexia etiology modulated by immune response...", timestamp: "2026-11-18 09:43:03" },
+          { history_id: 9, account_id: 44, member_id: 32, model: "LRv2", user_input: "headache", bot_response: "Decision Tree: Migraine / Tension-Type Headache assessment...", timestamp: "2026-11-18 09:41:51" },
+          { history_id: 8, account_id: 44, member_id: 32, model: "LRv1", user_input: "Headache", bot_response: "Predicted: Migraine. Precautions: Dark room, hydrate, avoid screen...", timestamp: "2026-11-18 09:41:39" },
+          { history_id: 7, account_id: 44, member_id: 32, model: "Gemini", user_input: "headache", bot_response: "Headache symptoms can relate to dehydration, fatigue, or stress...", timestamp: "2026-11-18 09:41:30" },
+          { history_id: 6, account_id: 44, member_id: 32, model: "BioGPT", user_input: "headache", bot_response: "Cephalgia assessment: Central nervous system vascular pathways...", timestamp: "2026-11-18 09:41:20" },
+          { history_id: 5, account_id: 1, member_id: 24, model: "BioGPT", user_input: "weight lose", bot_response: "Clinical recommendations for healthy metabolic weight management...", timestamp: "2026-10-27 15:36:10" },
+          { history_id: 4, account_id: 1, member_id: 24, model: "BioGPT", user_input: "weight gain", bot_response: "Nutritional intake assessment for progressive caloric surplus...", timestamp: "2026-10-27 15:35:52" }
+        ],
+        health_content: [
+          { content_id: 40, content_type: "article", title: "Machine Learning in Preventive Healthcare", category: "AI Health", status: "published", created_at: "2026-11-18 19:30:00" },
+          { content_id: 39, content_type: "wellness_tip", title: "Monsoon Wellness & Hydration Guide", category: "Monsoon", status: "published", created_at: "2026-11-18 19:20:00" },
+          { content_id: 38, content_type: "wellness_tip", title: "Beat the Heat: Summer Electrolytes", category: "Summer", status: "published", created_at: "2026-11-18 19:10:00" },
+          { content_id: 30, content_type: "article", title: "Understanding Migraines and Trigger Prevention", category: "Neurology", status: "published", created_at: "2026-11-15 14:00:00" },
+          { content_id: 25, content_type: "wellness_tip", title: "Daily Sleep Hygiene for Cognitive Function", category: "Sleep", status: "published", created_at: "2026-11-10 11:00:00" }
+        ],
+        admins: [
+          { admin_id: 1, username: "admin", email: "admin@niramaya.com", role: "admin", is_active: true, created_at: "2026-10-20 10:00:00" }
+        ]
+      }
+    };
+
+    let currentTab = 'accounts';
+
+    async function fetchDatabaseData() {
+      const LOCAL_API = 'http://127.0.0.1:5000';
+      const CLOUD_API = 'https://niramaya-health-ai.onrender.com';
+      let apiBase = window.location.origin && window.location.origin.startsWith('http') 
+        ? window.location.origin 
+        : LOCAL_API;
+
+      try {
+        let res = await fetch(apiBase + '/api/database/overview', { signal: AbortSignal.timeout(3000) });
+        if (!res.ok && apiBase !== CLOUD_API) {
+          res = await fetch(CLOUD_API + '/api/database/overview', { signal: AbortSignal.timeout(4000) });
+        }
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success) {
+            DB_DATA = json;
+          }
+        }
+      } catch (err) {
+        console.log("Using offline snapshot cache for database explorer.");
+      }
+
+      renderUI();
+    }
+
+    function renderUI() {
+      document.getElementById('engine-badge').innerHTML = `<i class="fas fa-check-circle" style="color:#059669;"></i> ${DB_DATA.engine}`;
+      document.getElementById('cnt-accounts').innerText = DB_DATA.counts.accounts;
+      document.getElementById('cnt-members').innerText = DB_DATA.counts.members;
+      document.getElementById('cnt-consultations').innerText = DB_DATA.counts.consultations;
+      document.getElementById('cnt-content').innerText = DB_DATA.counts.health_content;
+      document.getElementById('cnt-admins').innerText = DB_DATA.counts.admins;
+
+      renderTable();
+    }
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.stat-pill').forEach(p => p.classList.remove('active'));
+      const activeBtn = document.getElementById('tab-' + tabName);
+      if (activeBtn) activeBtn.classList.add('active');
+      document.getElementById('db-search').value = "";
+      renderTable();
+    }
+
+    function renderTable(filterQuery = "") {
+      const container = document.getElementById('table-container');
+      const rows = DB_DATA.tables[currentTab] || [];
+      const q = filterQuery.toLowerCase().trim();
+
+      const filtered = q ? rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q))) : rows;
+
+      if (!filtered.length) {
+        container.innerHTML = `<div class="loading-spinner"><i class="fas fa-search" style="font-size:24px; margin-bottom:10px; display:block;"></i>No matching records found in <strong>${currentTab}</strong>.</div>`;
+        return;
+      }
+
+      const cols = Object.keys(filtered[0]);
+      let html = `<table class="data-table"><thead><tr>`;
+      cols.forEach(c => {
+        html += `<th>${c.toUpperCase()}</th>`;
+      });
+      html += `</tr></thead><tbody>`;
+
+      filtered.forEach(r => {
+        html += `<tr>`;
+        cols.forEach(c => {
+          let val = r[c];
+          if (c === 'is_active') {
+            val = val ? `<span class="badge-pill badge-green">Active</span>` : `<span class="badge-pill badge-yellow">Inactive</span>`;
+          } else if (c === 'model') {
+            val = `<span class="badge-pill badge-blue">${val}</span>`;
+          } else if (c === 'status') {
+            val = `<span class="badge-pill badge-green">${val}</span>`;
+          }
+          html += `<td>${val}</td>`;
+        });
+        html += `</tr>`;
+      });
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    function filterTable() {
+      const q = document.getElementById('db-search').value;
+      renderTable(q);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderUI();
+      fetchDatabaseData();
+    });
+  </script>
+</body>
+</html>
