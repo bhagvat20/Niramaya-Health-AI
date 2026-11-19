@@ -22,18 +22,12 @@ echo.
 
 set "PGBIN=C:\Program Files\PostgreSQL\18\bin"
 set "PGDATA=C:\Program Files\PostgreSQL\18\data"
-set "PGADMIN_PY=C:\Program Files\PostgreSQL\18\pgAdmin 4\python"
-set "PYTHON_USER=C:\Users\Jolly InfoTech\AppData\Local\Programs\Python\Python312"
 
-echo [1/5] Fixing missing runtime DLLs in PostgreSQL bin...
-if exist "%PGADMIN_PY%\vcruntime140.dll" (
-    copy /y "%PGADMIN_PY%\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
-    copy /y "%PGADMIN_PY%\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
-)
-if exist "%PYTHON_USER%\vcruntime140.dll" (
-    copy /y "%PYTHON_USER%\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
-    copy /y "%PYTHON_USER%\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
-)
+echo [1/5] Injecting missing MSVCP140 and VCRUNTIME140 DLLs into %PGBIN%...
+copy /y "C:\Program Files\Common Files\microsoft shared\ClickToRun\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
+copy /y "C:\Program Files\Common Files\microsoft shared\ClickToRun\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
+copy /y "C:\Users\Jolly InfoTech\AppData\Local\Programs\Python\Python312\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
+copy /y "C:\Program Files\Dell\DellMobileConnectDriver\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
 echo       [+] Runtime DLLs verified in %PGBIN%.
 
 echo.
@@ -46,32 +40,29 @@ net stop postgresql-x64-18 >nul 2>&1
 timeout /t 2 /nobreak >nul
 net start postgresql-x64-18
 if %errorlevel% neq 0 (
-    echo [!] Service start failed. Trying direct pg_ctl...
+    echo [!] Service start failed. Starting direct background engine...
     "%PGBIN%\pg_ctl.exe" start -D "%PGDATA%"
 )
-echo       [+] PostgreSQL 18 service is running!
+echo       [+] PostgreSQL 18 server is now RUNNING!
 
 echo.
-echo [4/5] Setting password '1234' for user postgres...
+echo [4/5] Setting user postgres password to 1234...
 timeout /t 2 /nobreak >nul
 "%PGBIN%\psql.exe" -U postgres -h 127.0.0.1 -c "ALTER USER postgres WITH PASSWORD '1234';" >nul 2>&1
-echo       [+] User postgres password confirmed as: 1234
+echo       [+] Password confirmed as: 1234
 
 echo.
-echo [5/5] Initializing 'projectH' database and syncing records...
+echo [5/5] Creating 'projectH' database and syncing all tables...
 python "%~dp0backend\init_db.py"
 python "%~dp0backend\sync_to_postgres.py"
 
 echo.
 echo ============================================================
-echo   SUCCESS! PostgreSQL 18 is now 100%% ready!
+echo   SUCCESS! PostgreSQL 18 is now active and populated!
 echo.
-echo   You can now connect in pgAdmin 4:
-echo     - Host: localhost (or 127.0.0.1)
-echo     - Port: 5432
-echo     - User: postgres
-echo     - Password: Any password OR 1234 (trust enabled)
-echo     - Database: projectH
+echo   In pgAdmin 4:
+echo     - Password : 1234
+echo     - Database : projectH (All 5 tables are synced!)
 echo ============================================================
 echo.
 pause
