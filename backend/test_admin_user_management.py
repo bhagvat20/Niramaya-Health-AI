@@ -30,7 +30,7 @@ class TestAdminUserManagement(unittest.TestCase):
         cls.admin_token = login_res.get_json()["token"]
 
         # Clean up existing test users from previous runs
-        cursor.execute("SELECT account_id FROM account_tbl WHERE email IN ('manageuser1@example.com', 'updatedsmith@example.com', 'deluser@example.com')")
+        cursor.execute("SELECT account_id FROM account_tbl WHERE email IN ('manageuser1@example.com', 'updatedsmith@example.com', 'deluser@example.com', 'testdirectadd@example.com')")
         old_ids = [r[0] for r in cursor.fetchall()]
         if old_ids:
             for tbl in ('password_reset_otps', 'chat_history_tbl', 'member_tbl'):
@@ -218,6 +218,16 @@ class TestAdminUserManagement(unittest.TestCase):
 
     def test_08_create_user_by_admin(self):
         """Test admin can directly create a user account and retrieve it."""
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT account_id FROM account_tbl WHERE email = 'testdirectadd@example.com'")
+        old_id = cur.fetchone()
+        if old_id:
+            cur.execute("DELETE FROM member_tbl WHERE account_id = %s", (old_id[0],))
+            cur.execute("DELETE FROM account_tbl WHERE account_id = %s", (old_id[0],))
+            conn.commit()
+        conn.close()
+
         res = self.client.post('/admin/users', json={
             "family_name": "TestDirectAdd",
             "email": "testdirectadd@example.com",

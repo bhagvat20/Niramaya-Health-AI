@@ -97,11 +97,13 @@ def run_one_sync_cycle(timeout_sec=15):
             "chats": local_chats
         }).encode('utf-8')
 
+        sync_key = os.environ.get("SYNC_AUTH_KEY", "niramaya_sync_sec_2026_e7d8f9").strip()
         req = urllib.request.Request(
             CLOUD_API_URL,
             data=payload,
             headers={
                 "Content-Type": "application/json",
+                "X-Sync-Token": sync_key,
                 "User-Agent": "Niramaya-Local-Sync-Engine/1.0"
             }
         )

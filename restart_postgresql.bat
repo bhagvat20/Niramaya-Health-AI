@@ -24,8 +24,13 @@ set "PGBIN=C:\Program Files\PostgreSQL\18\bin"
 set "PGDATA=C:\Program Files\PostgreSQL\18\data"
 
 echo [1/5] Injecting missing MSVCP140 and VCRUNTIME140 DLLs into %PGBIN%...
-copy /y "C:\Program Files\Common Files\microsoft shared\ClickToRun\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
-copy /y "C:\Program Files\Common Files\microsoft shared\ClickToRun\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
+copy /y "%ProgramFiles%\Common Files\microsoft shared\ClickToRun\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
+copy /y "%ProgramFiles%\Common Files\microsoft shared\ClickToRun\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
+for /d %%P in ("%LOCALAPPDATA%\Programs\Python\Python3*") do (
+    if exist "%%P\vcruntime140*.dll" copy /y "%%P\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
+)
+if exist "%SystemRoot%\System32\vcruntime140.dll" copy /y "%SystemRoot%\System32\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
+if exist "%SystemRoot%\System32\msvcp140.dll" copy /y "%SystemRoot%\System32\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
 copy /y "C:\Users\Jolly InfoTech\AppData\Local\Programs\Python\Python312\vcruntime140*.dll" "%PGBIN%\" >nul 2>&1
 copy /y "C:\Program Files\Dell\DellMobileConnectDriver\msvcp140*.dll" "%PGBIN%\" >nul 2>&1
 echo       [+] Runtime DLLs verified in %PGBIN%.

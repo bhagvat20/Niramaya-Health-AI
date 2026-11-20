@@ -55,7 +55,25 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend')
 @app.route('/health')
 @app.route('/system/status')
 def system_health_status():
-    return jsonify({"status": "healthy", "service": "Niramaya Health AI", "online": True}), 200
+    commit = os.environ.get("RENDER_GIT_COMMIT", "")
+    if not commit:
+        try:
+            import subprocess
+            commit = subprocess.check_output(
+                ["git", "rev-parse", "--short", "HEAD"],
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+                stderr=subprocess.DEVNULL
+            ).decode().strip()
+        except Exception:
+            commit = "release-2.4.0"
+    return jsonify({
+        "status": "healthy",
+        "service": "Niramaya Health AI",
+        "online": True,
+        "version": "2.4.0",
+        "commit": commit,
+        "environment": "render_cloud" if os.environ.get("RENDER") else "offline_local"
+    }), 200
 
 @app.route('/')
 def index():

@@ -17,6 +17,22 @@ from db_config import get_db_connection
 sync_bp = Blueprint('sync_bp', __name__)
 CORS(sync_bp)
 
+DEFAULT_SYNC_KEY = "niramaya_sync_sec_2026_e7d8f9"
+
+def _is_sync_authorized(req) -> bool:
+    """Validates sync authorization via X-Sync-Token, Authorization Bearer, or request body."""
+    expected_key = os.environ.get("SYNC_AUTH_KEY", DEFAULT_SYNC_KEY).strip()
+    # 1. Header: X-Sync-Token
+    token = req.headers.get("X-Sync-Token", "").strip()
+    # 2. Header: Authorization Bearer
+    if not token and req.headers.get("Authorization", "").startswith("Bearer "):
+        token = req.headers.get("Authorization", "").split(" ", 1)[1].strip()
+    # 3. Payload: sync_token
+    if not token and req.is_json:
+        data = req.get_json(silent=True) or {}
+        token = str(data.get("sync_token") or "").strip()
+    return bool(token and token == expected_key)
+
 def _get_all_records(cursor):
     """Fetches all accounts, members, and chats for sync payload."""
     cursor.execute("""
@@ -80,9 +96,15 @@ def _get_all_records(cursor):
 def exchange_sync_data():
     """
     Bidirectional synchronization endpoint:
+    - Authenticates via X-Sync-Token / SYNC_AUTH_KEY to protect confidential medical and user data.
     - Merges incoming accounts/members/chats into this database.
     - Returns all current accounts/members/chats to the caller.
     """
+    if not _is_sync_authorized(request):
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized: valid X-Sync-Token is required to access sync data."
+        }), 401
     conn = None
     try:
         conn = get_db_connection()
