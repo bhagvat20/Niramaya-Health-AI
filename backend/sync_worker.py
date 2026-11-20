@@ -90,11 +90,34 @@ def run_one_sync_cycle(timeout_sec=15):
                 "account_email": str(r[7]).strip().lower() if r[7] else ""
             })
 
-        # 4. Send payload to Render Cloud
+        # 4. Fetch local password reset OTPs
+        local_otps = []
+        try:
+            cursor.execute("""
+                SELECT o.otp_id, o.account_id, o.email, o.otp_code, o.expires_at, o.used, o.created_at, a.email
+                FROM password_reset_otps o
+                LEFT JOIN account_tbl a ON o.account_id = a.account_id;
+            """)
+            for r in cursor.fetchall():
+                local_otps.append({
+                    "otp_id": r[0],
+                    "account_id": r[1],
+                    "email": str(r[2]).strip().lower() if r[2] else "",
+                    "otp_code": str(r[3]),
+                    "expires_at": str(r[4]) if r[4] else "",
+                    "used": bool(r[5]),
+                    "created_at": str(r[6]) if r[6] else "",
+                    "account_email": str(r[7]).strip().lower() if r[7] else (str(r[2]).strip().lower() if r[2] else "")
+                })
+        except Exception:
+            pass
+
+        # 5. Send payload to Render Cloud
         payload = json.dumps({
             "accounts": local_accounts,
             "members": local_members,
-            "chats": local_chats
+            "chats": local_chats,
+            "otps": local_otps
         }).encode('utf-8')
 
         sync_key = os.environ.get("SYNC_AUTH_KEY", "niramaya_sync_sec_2026_e7d8f9").strip()
@@ -216,6 +239,84 @@ def run_one_sync_cycle(timeout_sec=15):
                             """, (acc_id, mem_id, u_input, b_resp, model, ts))
 
                     conn.commit()
+
+                    # Merge cloud password reset OTPs into local
+                    cloud_otps = cloud_data.get("otps", [])
+                    if cloud_otps:
+                        for o in cloud_otps:
+                            acc_email = str(o.get("account_email") or o.get("email") or "").strip().lower()
+                            otp_code = str(o.get("otp_code") or "").strip()
+                            if not acc_email or not otp_code:
+                                continue
+
+                            cursor.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s;", (acc_email,))
+                            parent = cursor.fetchone()
+                            if not parent:
+                                continue
+                            acc_id = parent[0]
+
+                            used = bool(o.get("used", False))
+                            expires_at = o.get("expires_at") or datetime.now().isoformat()
+                            created_at = o.get("created_at") or datetime.now().isoformat()
+
+                            cursor.execute("""
+                                SELECT otp_id FROM password_reset_otps 
+                                WHERE account_id = %s AND otp_code = %s;
+                            """, (acc_id, otp_code))
+                            existing_o = cursor.fetchone()
+
+                            is_sqlite = conn.__class__.__name__ == 'SQLiteConnWrapper'
+                            if existing_o:
+                                cursor.execute("""
+                                    UPDATE password_reset_otps SET used = %s WHERE otp_id = %s;
+                                """, (1 if (is_sqlite and used) else used, existing_o[0]))
+                            else:
+                                if is_sqlite:
+                                    cursor.execute("""
+                                        INSERT INTO password_reset_otps (account_id, email, otp_code, expires_at, used, created_at)
+                                        VALUES (%s, %s, %s, %s, %s, %s);
+                                    """, (acc_id, acc_email, otp_code, expires_at, 1 if used else 0, created_at))
+                                else:
+                                    cursor.execute("""
+                                        INSERT INTO password_reset_otps (account_id, email, otp_code, expires_at, used, created_at)
+                                        VALUES (%s, %s, %s, %s, %s, %s);
+                                    """, (acc_id, acc_email, otp_code, expires_at, used, created_at))
+
+                        conn.commit()
+
+                        # Replicate into postgres db if running local PostgreSQL so both databases have it
+                        if conn.__class__.__name__ != 'SQLiteConnWrapper' and not os.environ.get('DATABASE_URL'):
+                            try:
+                                import psycopg2
+                                m_conn = psycopg2.connect(dbname='postgres', user='postgres', password='postgres', host='localhost', port=5432)
+                                m_conn.autocommit = True
+                                m_cur = m_conn.cursor()
+                                for o in cloud_otps:
+                                    acc_email = str(o.get("account_email") or o.get("email") or "").strip().lower()
+                                    otp_code = str(o.get("otp_code") or "").strip()
+                                    if not acc_email or not otp_code:
+                                        continue
+                                    m_cur.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s;", (acc_email,))
+                                    parent = m_cur.fetchone()
+                                    if not parent:
+                                        continue
+                                    acc_id = parent[0]
+                                    used = bool(o.get("used", False))
+                                    expires_at = o.get("expires_at") or datetime.now().isoformat()
+                                    created_at = o.get("created_at") or datetime.now().isoformat()
+                                    m_cur.execute("SELECT otp_id FROM password_reset_otps WHERE account_id = %s AND otp_code = %s;", (acc_id, otp_code))
+                                    existing_pg = m_cur.fetchone()
+                                    if existing_pg:
+                                        m_cur.execute("UPDATE password_reset_otps SET used = %s WHERE otp_id = %s;", (used, existing_pg[0]))
+                                    else:
+                                        m_cur.execute("""
+                                            INSERT INTO password_reset_otps (account_id, email, otp_code, expires_at, used, created_at)
+                                            VALUES (%s, %s, %s, %s, %s, %s);
+                                        """, (acc_id, acc_email, otp_code, expires_at, used, created_at))
+                                m_conn.close()
+                            except Exception:
+                                pass
+
                     return True
 
     except Exception as e:

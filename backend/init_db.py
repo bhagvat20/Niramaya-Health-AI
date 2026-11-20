@@ -41,6 +41,21 @@ def setup_database():
                 schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
                 with open(schema_path, 'r', encoding='utf-8') as f:
                     cursor.execute(f.read())
+                for tbl, col in [
+                    ('account_tbl', 'account_id'),
+                    ('member_tbl', 'member_id'),
+                    ('chat_history_tbl', 'history_id'),
+                    ('admin_tbl', 'admin_id'),
+                    ('admin_tokens_tbl', 'token_id'),
+                    ('health_content_tbl', 'content_id'),
+                    ('password_reset_otps', 'otp_id'),
+                ]:
+                    try:
+                        cursor.execute(
+                            f"SELECT setval(pg_get_serial_sequence('{tbl}', '{col}'), COALESCE((SELECT MAX({col}) FROM {tbl}), 1), (SELECT COUNT(*) > 0 FROM {tbl}));"
+                        )
+                    except Exception:
+                        pass
             except Exception:
                 pass
 

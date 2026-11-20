@@ -30,7 +30,7 @@ def generate_otp():
 
 
 def _ensure_otp_table(conn, cursor):
-    """Ensure password_reset_otps table exists on both PostgreSQL and SQLite."""
+    """Ensure password_reset_otps table exists on both PostgreSQL and SQLite and sequence is synced."""
     is_sqlite = conn.__class__.__name__ == 'SQLiteConnWrapper'
     if is_sqlite:
         cursor.execute("""
@@ -56,6 +56,13 @@ def _ensure_otp_table(conn, cursor):
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        try:
+            cursor.execute("""
+                SELECT setval(pg_get_serial_sequence('password_reset_otps', 'otp_id'), coalesce(max(otp_id), 0) + 1, false)
+                FROM password_reset_otps;
+            """)
+        except Exception:
+            pass
     conn.commit()
 
 
@@ -365,6 +372,30 @@ def forgot_password():
             )
         conn.commit()
 
+        # Mirror to 'postgres' database if running local PostgreSQL so pgAdmin viewers see it in both places
+        if not is_sqlite and not os.environ.get("DATABASE_URL"):
+            try:
+                import psycopg2
+                m_conn = psycopg2.connect(dbname="postgres", user="postgres", password="postgres", host="localhost", port=5432)
+                m_conn.autocommit = True
+                m_cur = m_conn.cursor()
+                _ensure_otp_table(m_conn, m_cur)
+                m_cur.execute("UPDATE password_reset_otps SET used = TRUE WHERE account_id = %s AND used = FALSE;", (account_id,))
+                m_cur.execute(
+                    "INSERT INTO password_reset_otps (account_id, email, otp_code, expires_at, used) VALUES (%s, %s, %s, %s, FALSE);",
+                    (account_id, registered_email, otp, expires_at)
+                )
+                m_conn.close()
+            except Exception:
+                pass
+
+        # Trigger background sync so OTP is available in cloud and across environments
+        try:
+            from sync_worker import trigger_instant_sync
+            trigger_instant_sync()
+        except Exception:
+            pass
+
         email_sent, provider_info = send_otp_email(registered_email, otp)
 
         if email_sent:
@@ -493,6 +524,27 @@ def reset_password():
             (hashed_password, account_id)
         )
         conn.commit()
+
+        # Mirror password reset to 'postgres' database if running local PostgreSQL
+        if not is_sqlite and not os.environ.get("DATABASE_URL"):
+            try:
+                import psycopg2
+                m_conn = psycopg2.connect(dbname="postgres", user="postgres", password="postgres", host="localhost", port=5432)
+                m_conn.autocommit = True
+                m_cur = m_conn.cursor()
+                if otp:
+                    m_cur.execute("UPDATE password_reset_otps SET used = TRUE WHERE account_id = %s AND otp_code = %s;", (account_id, otp))
+                m_cur.execute("UPDATE account_tbl SET password_hash = %s WHERE account_id = %s;", (hashed_password, account_id))
+                m_conn.close()
+            except Exception:
+                pass
+
+        # Trigger background sync so updated credentials are synced to cloud
+        try:
+            from sync_worker import trigger_instant_sync
+            trigger_instant_sync()
+        except Exception:
+            pass
 
         return jsonify({
             "success": True,

@@ -89,7 +89,29 @@ def _get_all_records(cursor):
             "account_email": str(r[7]).strip().lower() if r[7] else ""
         })
 
-    return accounts, members, chats
+    otps = []
+    try:
+        cursor.execute("""
+            SELECT o.otp_id, o.account_id, o.email, o.otp_code, o.expires_at, o.used, o.created_at, a.email
+            FROM password_reset_otps o
+            LEFT JOIN account_tbl a ON o.account_id = a.account_id
+            ORDER BY o.otp_id ASC;
+        """)
+        for r in cursor.fetchall():
+            otps.append({
+                "otp_id": r[0],
+                "account_id": r[1],
+                "email": str(r[2]).strip().lower() if r[2] else "",
+                "otp_code": str(r[3]),
+                "expires_at": str(r[4]) if r[4] else "",
+                "used": bool(r[5]),
+                "created_at": str(r[6]) if r[6] else "",
+                "account_email": str(r[7]).strip().lower() if r[7] else (str(r[2]).strip().lower() if r[2] else "")
+            })
+    except Exception:
+        pass
+
+    return accounts, members, chats, otps
 
 
 @sync_bp.route('/api/sync/exchange', methods=['GET', 'POST'])
@@ -97,8 +119,8 @@ def exchange_sync_data():
     """
     Bidirectional synchronization endpoint:
     - Authenticates via X-Sync-Token / SYNC_AUTH_KEY to protect confidential medical and user data.
-    - Merges incoming accounts/members/chats into this database.
-    - Returns all current accounts/members/chats to the caller.
+    - Merges incoming accounts/members/chats/otps into this database.
+    - Returns all current accounts/members/chats/otps to the caller.
     """
     if not _is_sync_authorized(request):
         return jsonify({
@@ -114,6 +136,7 @@ def exchange_sync_data():
         in_accounts = data.get("accounts", [])
         in_members = data.get("members", [])
         in_chats = data.get("chats", [])
+        in_otps = data.get("otps", [])
 
         # 1. Merge incoming accounts (keyed by unique email)
         for acc in in_accounts:
@@ -220,8 +243,56 @@ def exchange_sync_data():
 
         conn.commit()
 
+        # 4. Merge incoming password reset OTPs
+        if in_otps:
+            try:
+                for o in in_otps:
+                    acc_email = str(o.get("account_email") or o.get("email") or "").strip().lower()
+                    otp_code = str(o.get("otp_code") or "").strip()
+                    if not acc_email or not otp_code:
+                        continue
+
+                    cursor.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s;", (acc_email,))
+                    parent = cursor.fetchone()
+                    if not parent:
+                        continue
+                    acc_id = parent[0]
+
+                    used = bool(o.get("used", False))
+                    expires_at = o.get("expires_at") or datetime.now().isoformat()
+                    created_at = o.get("created_at") or datetime.now().isoformat()
+
+                    cursor.execute("""
+                        SELECT otp_id FROM password_reset_otps 
+                        WHERE account_id = %s AND otp_code = %s;
+                    """, (acc_id, otp_code))
+                    existing_o = cursor.fetchone()
+
+                    is_sqlite = conn.__class__.__name__ == 'SQLiteConnWrapper'
+                    if existing_o:
+                        cursor.execute("""
+                            UPDATE password_reset_otps SET used = %s WHERE otp_id = %s;
+                        """, (1 if (is_sqlite and used) else used, existing_o[0]))
+                    else:
+                        if is_sqlite:
+                            cursor.execute("""
+                                INSERT INTO password_reset_otps (account_id, email, otp_code, expires_at, used, created_at)
+                                VALUES (%s, %s, %s, %s, %s, %s);
+                            """, (acc_id, acc_email, otp_code, expires_at, 1 if used else 0, created_at))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO password_reset_otps (account_id, email, otp_code, expires_at, used, created_at)
+                                VALUES (%s, %s, %s, %s, %s, %s);
+                            """, (acc_id, acc_email, otp_code, expires_at, used, created_at))
+                conn.commit()
+            except Exception as _oe:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+
         # Return latest comprehensive records from this database
-        all_accounts, all_members, all_chats = _get_all_records(cursor)
+        all_accounts, all_members, all_chats, all_otps = _get_all_records(cursor)
 
         return jsonify({
             "success": True,
@@ -229,11 +300,13 @@ def exchange_sync_data():
             "counts": {
                 "accounts": len(all_accounts),
                 "members": len(all_members),
-                "chats": len(all_chats)
+                "chats": len(all_chats),
+                "otps": len(all_otps)
             },
             "accounts": all_accounts,
             "members": all_members,
-            "chats": all_chats
+            "chats": all_chats,
+            "otps": all_otps
         }), 200
 
     except Exception as e:
