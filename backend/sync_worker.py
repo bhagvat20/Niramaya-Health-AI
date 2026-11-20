@@ -196,10 +196,18 @@ def run_one_sync_cycle(timeout_sec=15):
                         ts = c.get("timestamp") or datetime.now().isoformat()
 
                         cursor.execute("""
-                            SELECT history_id FROM chat_history_tbl 
-                            WHERE account_id = %s AND user_input = %s AND timestamp = %s;
-                        """, (acc_id, u_input, ts))
-                        if not cursor.fetchone():
+                            SELECT history_id, timestamp FROM chat_history_tbl 
+                            WHERE account_id = %s AND user_input = %s;
+                        """, (acc_id, u_input))
+                        existing_rows = cursor.fetchall() or []
+                        is_dup = False
+                        ts_prefix = str(ts).replace('T', ' ')[:16]
+                        for er in existing_rows:
+                            er_ts = str(er[1] or '').replace('T', ' ')[:16]
+                            if er_ts and er_ts == ts_prefix:
+                                is_dup = True
+                                break
+                        if not is_dup:
                             cursor.execute("""
                                 INSERT INTO chat_history_tbl (account_id, member_id, user_input, bot_response, model, timestamp)
                                 VALUES (%s, %s, %s, %s, %s, %s);

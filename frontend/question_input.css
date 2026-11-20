@@ -742,6 +742,9 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    max-height: calc(85vh - 130px);
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .history-card {

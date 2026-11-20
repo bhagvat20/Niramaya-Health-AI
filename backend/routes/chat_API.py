@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_cors import CORS
 import psycopg2
+from datetime import datetime
 
 from db_config import get_db_connection
 
@@ -20,82 +21,104 @@ def save_chat():
         # Get data from the request body
         data = request.json or {}
         account_id = data.get('account_id')
+        email = (data.get('email') or '').strip().lower()
         member_id = data.get('member_id')
         user_input = data.get('user_input')
         bot_response = data.get('bot_response')
         model = data.get('model')
 
-        if not all([account_id, user_input, bot_response, model]):
+        if not all([user_input, bot_response, model]):
             return jsonify({"success": False, "message": "Missing required fields"}), 400
 
-        # Convert IDs strictly — never fall back to another user's account (e.g. account 1)
-        try:
-            account_id = int(account_id)
-        except (ValueError, TypeError):
-            return jsonify({"success": False, "message": "Valid logged-in account_id is required"}), 401
+        if not account_id and not email:
+            return jsonify({"success": False, "message": "Valid logged-in account_id or email is required"}), 401
 
         # Establish database connection
         conn = connect_db()
         cursor = conn.cursor()
 
-        # Strictly verify account_id exists in account_tbl (never save to another user's account!)
-        cursor.execute("SELECT account_id, family_name FROM account_tbl WHERE account_id = %s", (account_id,))
-        acc_row = cursor.fetchone()
+        acc_row = None
+        # 1. Resolve strictly by user email first if available (universal across Local PostgreSQL & Render Cloud SQLite)
+        if email:
+            cursor.execute("SELECT account_id, family_name FROM account_tbl WHERE LOWER(email) = %s LIMIT 1", (email,))
+            acc_row = cursor.fetchone()
+
+        # 2. Fall back to account_id if email was not supplied or not yet found
+        if not acc_row and account_id:
+            try:
+                acc_int = int(account_id)
+                cursor.execute("SELECT account_id, family_name FROM account_tbl WHERE account_id = %s LIMIT 1", (acc_int,))
+                acc_row = cursor.fetchone()
+            except (ValueError, TypeError):
+                pass
+
+        # 3. If still not found and email was provided, run quick sync in case user registered on another node
+        if not acc_row and email:
+            try:
+                from sync_worker import sync_now
+                sync_now(timeout_sec=2.5)
+                cursor.execute("SELECT account_id, family_name FROM account_tbl WHERE LOWER(email) = %s LIMIT 1", (email,))
+                acc_row = cursor.fetchone()
+            except Exception:
+                pass
+
         if not acc_row:
             return jsonify({"success": False, "message": "Account not found. Please login to save history."}), 404
 
-        acc_family_name = acc_row[1] if (acc_row and len(acc_row) > 1 and acc_row[1]) else "Primary Profile"
+        resolved_account_id = acc_row[0]
+        acc_family_name = acc_row[1] if (len(acc_row) > 1 and acc_row[1]) else "Primary Profile"
 
-        # If member_id is missing, null, or empty string, resolve to an existing member or create a default primary profile
-        if not member_id or str(member_id).lower() in ['null', 'undefined', '', 'none', '0']:
-            cursor.execute("SELECT member_id FROM member_tbl WHERE account_id = %s ORDER BY member_id ASC LIMIT 1", (account_id,))
+        # Resolve member_id: check if requested member belongs to this account
+        resolved_member_id = None
+        if member_id and str(member_id).lower() not in ['null', 'undefined', '', 'none', '0']:
+            try:
+                mem_candidate = int(member_id)
+                cursor.execute("SELECT member_id FROM member_tbl WHERE member_id = %s AND account_id = %s", (mem_candidate, resolved_account_id))
+                m_found = cursor.fetchone()
+                if m_found:
+                    resolved_member_id = m_found[0]
+            except Exception:
+                pass
+
+        if not resolved_member_id:
+            # Fall back to the first registered family member for this account
+            cursor.execute("SELECT member_id FROM member_tbl WHERE account_id = %s ORDER BY member_id ASC LIMIT 1", (resolved_account_id,))
             m_row = cursor.fetchone()
             if m_row:
-                member_id = m_row[0]
+                resolved_member_id = m_row[0]
             else:
+                # Create a default member profile if none exists
                 cursor.execute("""
                     INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
                     VALUES (%s, %s, 'Other', 25, '170', '65')
                     RETURNING member_id
-                """, (account_id, acc_family_name))
+                """, (resolved_account_id, acc_family_name))
                 m_new = cursor.fetchone()
-                member_id = m_new[0] if m_new else 1
-        else:
-            try:
-                member_id = int(member_id)
-                # Verify member belongs to this account or exists
-                cursor.execute("SELECT member_id FROM member_tbl WHERE member_id = %s", (member_id,))
-                if not cursor.fetchone():
-                    cursor.execute("SELECT member_id FROM member_tbl WHERE account_id = %s ORDER BY member_id ASC LIMIT 1", (account_id,))
-                    fallback_m = cursor.fetchone()
-                    member_id = fallback_m[0] if fallback_m else None
-            except Exception:
-                member_id = None
+                resolved_member_id = m_new[0] if m_new else 1
 
-            if not member_id:
-                cursor.execute("""
-                    INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
-                    VALUES (%s, %s, 'Other', 25, '170', '65')
-                    RETURNING member_id
-                """, (account_id, acc_family_name))
-                m_new = cursor.fetchone()
-                member_id = m_new[0] if m_new else 1
-
-        # Insert chat history into the database
+        # Insert consultation history into database
         cursor.execute("""
             INSERT INTO chat_history_tbl (account_id, member_id, user_input, bot_response, model)
             VALUES (%s, %s, %s, %s, %s)
             RETURNING history_id
-        """, (account_id, member_id, user_input, bot_response, model))
-        
+        """, (resolved_account_id, resolved_member_id, user_input, bot_response, model))
+
         row = cursor.fetchone()
         history_id = row[0] if (row and len(row) > 0) else 1
         conn.commit()
 
+        # Trigger instant bidirectional sync to Cloud / Local
+        try:
+            from sync_worker import trigger_instant_sync
+            trigger_instant_sync()
+        except Exception:
+            pass
+
         return jsonify({
             "success": True,
             "message": "Chat history saved successfully",
-            "history_id": history_id
+            "history_id": history_id,
+            "account_id": resolved_account_id
         }), 200
 
     except psycopg2.Error as e:
@@ -118,32 +141,80 @@ def get_chat():
     try:
         data = request.json or {}
         account_id = data.get('account_id')
+        email = (data.get('email') or '').strip().lower()
         member_id = data.get('member_id')
-        if not account_id:
-            return jsonify({"success": False, "message": "Account ID is required"}), 400
+
+        if not account_id and not email:
+            return jsonify({"success": False, "message": "Account ID or Email is required"}), 400
+
+        # Trigger fast sync so chats performed on Cloud/Local are immediately visible
+        try:
+            from sync_worker import sync_now
+            sync_now(timeout_sec=2.0)
+        except Exception:
+            pass
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        acc_id = int(account_id)
+        acc_id = None
+        # 1. Resolve by email first
+        if email:
+            cursor.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s LIMIT 1", (email,))
+            r = cursor.fetchone()
+            if r:
+                acc_id = r[0]
 
-        if member_id and str(member_id).lower() not in ['all', 'null', 'undefined', '']:
-            mem_id = int(member_id)
-            cursor.execute("""
-                SELECT c.history_id, c.user_input, c.bot_response, c.model, c.timestamp, m.name, c.member_id
-                FROM chat_history_tbl c
-                LEFT JOIN member_tbl m ON c.member_id = m.member_id
-                WHERE c.account_id = %s AND c.member_id = %s
-                ORDER BY c.timestamp DESC
-            """, (acc_id, mem_id))
+        # 2. Resolve by numeric account_id if not found by email
+        if not acc_id and account_id:
+            try:
+                cand_id = int(account_id)
+                cursor.execute("SELECT account_id FROM account_tbl WHERE account_id = %s LIMIT 1", (cand_id,))
+                r = cursor.fetchone()
+                if r:
+                    acc_id = r[0]
+                else:
+                    acc_id = cand_id
+            except (ValueError, TypeError):
+                pass
+
+        if not acc_id and not email:
+            return jsonify({
+                "success": True,
+                "message": "No chat history found for this account",
+                "history": []
+            }), 200
+
+        # Query all consultations belonging to this account or user email
+        if member_id and str(member_id).lower() not in ['all', 'null', 'undefined', '', 'none', '0']:
+            try:
+                mem_id = int(member_id)
+                cursor.execute("""
+                    SELECT c.history_id, c.user_input, c.bot_response, c.model, c.timestamp, m.name, c.member_id
+                    FROM chat_history_tbl c
+                    LEFT JOIN member_tbl m ON c.member_id = m.member_id
+                    LEFT JOIN account_tbl a ON c.account_id = a.account_id
+                    WHERE (c.account_id = %s OR (LOWER(a.email) = %s AND %s != '')) AND c.member_id = %s
+                    ORDER BY c.timestamp DESC
+                """, (acc_id, email, email, mem_id))
+            except Exception:
+                cursor.execute("""
+                    SELECT c.history_id, c.user_input, c.bot_response, c.model, c.timestamp, m.name, c.member_id
+                    FROM chat_history_tbl c
+                    LEFT JOIN member_tbl m ON c.member_id = m.member_id
+                    LEFT JOIN account_tbl a ON c.account_id = a.account_id
+                    WHERE (c.account_id = %s OR (LOWER(a.email) = %s AND %s != ''))
+                    ORDER BY c.timestamp DESC
+                """, (acc_id, email, email))
         else:
             cursor.execute("""
                 SELECT c.history_id, c.user_input, c.bot_response, c.model, c.timestamp, m.name, c.member_id
                 FROM chat_history_tbl c
                 LEFT JOIN member_tbl m ON c.member_id = m.member_id
-                WHERE c.account_id = %s
+                LEFT JOIN account_tbl a ON c.account_id = a.account_id
+                WHERE (c.account_id = %s OR (LOWER(a.email) = %s AND %s != ''))
                 ORDER BY c.timestamp DESC
-            """, (acc_id,))
+            """, (acc_id, email, email))
 
         history = cursor.fetchall() or []
 
@@ -187,24 +258,49 @@ def delete_chat():
     try:
         data = request.json or {}
         account_id = data.get('account_id')
+        email = (data.get('email') or '').strip().lower()
         history_id = data.get('history_id')
         member_id = data.get('member_id')
 
-        if not account_id or not history_id:
-            return jsonify({"success": False, "message": "Account ID and History ID are required"}), 400
+        if (not account_id and not email) or not history_id:
+            return jsonify({"success": False, "message": "Account ID/Email and History ID are required"}), 400
 
-        acc_id = int(account_id)
-        hist_id = int(history_id)
+        try:
+            hist_id = int(history_id)
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "message": "Invalid history_id"}), 400
 
         conn = connect_db()
         cursor = conn.cursor()
 
-        if member_id and str(member_id).lower() not in ['all', 'null', 'undefined', '']:
-            mem_id = int(member_id)
-            cursor.execute("""
-                DELETE FROM chat_history_tbl 
-                WHERE account_id = %s AND member_id = %s AND history_id = %s
-            """, (acc_id, mem_id, hist_id))
+        acc_id = None
+        if email:
+            cursor.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s LIMIT 1", (email,))
+            r = cursor.fetchone()
+            if r:
+                acc_id = r[0]
+
+        if not acc_id and account_id:
+            try:
+                acc_id = int(account_id)
+            except Exception:
+                pass
+
+        if not acc_id:
+            return jsonify({"success": False, "message": "Account not found"}), 404
+
+        if member_id and str(member_id).lower() not in ['all', 'null', 'undefined', '', 'none', '0']:
+            try:
+                mem_id = int(member_id)
+                cursor.execute("""
+                    DELETE FROM chat_history_tbl 
+                    WHERE account_id = %s AND member_id = %s AND history_id = %s
+                """, (acc_id, mem_id, hist_id))
+            except Exception:
+                cursor.execute("""
+                    DELETE FROM chat_history_tbl 
+                    WHERE account_id = %s AND history_id = %s
+                """, (acc_id, hist_id))
         else:
             cursor.execute("""
                 DELETE FROM chat_history_tbl 
@@ -213,8 +309,12 @@ def delete_chat():
 
         conn.commit()
 
-        if cursor.rowcount == 0:
-            return jsonify({"success": False, "message": "No matching history found"}), 404
+        # Trigger instant sync so deletion is mirrored
+        try:
+            from sync_worker import trigger_instant_sync
+            trigger_instant_sync()
+        except Exception:
+            pass
 
         return jsonify({
             "success": True,

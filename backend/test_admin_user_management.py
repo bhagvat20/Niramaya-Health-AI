@@ -30,8 +30,13 @@ class TestAdminUserManagement(unittest.TestCase):
         cls.admin_token = login_res.get_json()["token"]
 
         # Clean up existing test users from previous runs
-        cursor.execute("DELETE FROM account_tbl WHERE email IN ('manageuser1@example.com', 'updatedsmith@example.com', 'deluser@example.com')")
-        conn.commit()
+        cursor.execute("SELECT account_id FROM account_tbl WHERE email IN ('manageuser1@example.com', 'updatedsmith@example.com', 'deluser@example.com')")
+        old_ids = [r[0] for r in cursor.fetchall()]
+        if old_ids:
+            for tbl in ('password_reset_otps', 'chat_history_tbl', 'member_tbl'):
+                cursor.execute(f"DELETE FROM {tbl} WHERE account_id IN %s", (tuple(old_ids),))
+            cursor.execute("DELETE FROM account_tbl WHERE account_id IN %s", (tuple(old_ids),))
+            conn.commit()
 
         # Create dummy user 1 for management testing
         hashed = bcrypt.hashpw(b"Secret123", bcrypt.gensalt()).decode('utf-8')

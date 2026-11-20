@@ -943,25 +943,72 @@ async function sendMessage() {
             // Logged-in family user: save consultation history strictly under their own account & member profile
             const accountId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
             const memberId = localStorage.getItem("selectedMemberId") || sessionStorage.getItem("activeMemberId") || null;
-            if (accountId) {
+            const userEmail = (localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail") || "").trim().toLowerCase();
+
+            // Cache in session storage immediately so it shows instantly in History modal
+            if (userEmail) {
+                try {
+                    const sessionKey = "niramaya_user_recent_chats_" + userEmail;
+                    let existingChats = [];
+                    try {
+                        existingChats = JSON.parse(sessionStorage.getItem(sessionKey) || "[]");
+                    } catch (_) {}
+                    const newChatEntry = {
+                        history_id: "local_" + Date.now(),
+                        question: userInput,
+                        response: botSavedResponse,
+                        model: model,
+                        timestamp: new Date().toISOString(),
+                        member_name: getLoggedInDisplayName() || "You",
+                        member_id: memberId
+                    };
+                    existingChats.unshift(newChatEntry);
+                    if (existingChats.length > 50) existingChats = existingChats.slice(0, 50);
+                    sessionStorage.setItem(sessionKey, JSON.stringify(existingChats));
+                } catch (_) {}
+            }
+
+            if (accountId || userEmail) {
+                const savePayload = {
+                    account_id: accountId,
+                    email: userEmail,
+                    member_id: memberId,
+                    user_input: userInput,
+                    bot_response: botSavedResponse,
+                    model: model
+                };
+
                 fetch(API_BASE + "/savechat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        account_id: accountId,
-                        member_id: memberId,
-                        user_input: userInput,
-                        bot_response: botSavedResponse,
-                        model: model
-                    })
+                    body: JSON.stringify(savePayload)
                 })
                     .then(async (saveRes) => {
-                        if (saveRes.status === 404) {
-                            // Account was deleted by admin or server ephemeral SQLite restarted — clear stale session
-                            console.warn("Saved account_id no longer exists on server. Prompting re-login.");
+                        if (saveRes.ok) {
+                            const resData = await saveRes.json().catch(() => null);
+                            if (resData && resData.account_id) {
+                                localStorage.setItem("accountId", resData.account_id);
+                                sessionStorage.setItem("accountId", resData.account_id);
+                            }
+                        } else if (API_BASE !== CLOUD_API) {
+                            // If primary API failed, try fallback to Cloud API
+                            fetch(CLOUD_API + "/savechat", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(savePayload)
+                            }).catch(() => {});
                         }
                     })
-                    .catch(e => console.warn("Save chat notice:", e));
+                    .catch(e => {
+                        console.warn("Save chat notice:", e);
+                        if (API_BASE !== CLOUD_API) {
+                            fetch(CLOUD_API + "/savechat", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(savePayload)
+                            }).catch(() => {});
+                        }
+                    });
             }
         }
 
@@ -1563,7 +1610,9 @@ async function handleUpdateProfile(e) {
 
 // Consultation History Modal (Strictly for Logged-In Family Users Only)
 function openHistoryModal() {
-    if (!isLoggedIn || !(localStorage.getItem("accountId") || sessionStorage.getItem("accountId"))) {
+    const storedAccountId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
+    const userEmail = localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail");
+    if (!isLoggedIn || (!storedAccountId && !userEmail)) {
         alert("Please login to view your personal consultation history.");
         openLoginModal();
         return;
@@ -1579,10 +1628,11 @@ function loadHistory() {
     if (!historyList) return;
 
     const storedAccountId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
+    const userEmail = (localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail") || "").trim().toLowerCase();
     const activeMemberId = localStorage.getItem("selectedMemberId") || sessionStorage.getItem("activeMemberId") || null;
 
     // Strictly block unauthenticated/guest users from seeing any chat history
-    if (!isLoggedIn || !storedAccountId) {
+    if (!isLoggedIn || (!storedAccountId && !userEmail)) {
         historyList.innerHTML = `
             <div style="text-align:center; padding:35px; color:var(--secondary-text);">
                 <i class="fas fa-lock fa-2x" style="color:#6366f1; margin-bottom:12px;"></i>
@@ -1594,6 +1644,16 @@ function loadHistory() {
         return;
     }
 
+    // Helper to get local session chats as instant cache or fallback
+    const getSessionChats = () => {
+        if (!userEmail) return [];
+        try {
+            return JSON.parse(sessionStorage.getItem("niramaya_user_recent_chats_" + userEmail) || "[]");
+        } catch (_) {
+            return [];
+        }
+    };
+
     historyList.innerHTML = `
         <div style="text-align:center; padding:30px; color:var(--secondary-text);">
             <i class="fas fa-spinner fa-spin fa-2x" style="color:#6366f1;"></i>
@@ -1601,22 +1661,41 @@ function loadHistory() {
         </div>
     `;
 
-    // Strictly fetch ALL consultations belonging ONLY to this logged-in family account
-    // (never leaks other accounts' or guest chats, and shows all family member chats with member badges)
-    const reqBody = { account_id: storedAccountId };
+    // Strictly query consultations belonging to this account and email
+    const reqBody = { 
+        account_id: storedAccountId,
+        email: userEmail
+    };
 
-    const renderOwnHistory = (serverHistory) => {
-        const items = Array.isArray(serverHistory) ? serverHistory : [];
-        if (items.length === 0) {
+    const mergeAndRender = (serverChats) => {
+        const sessionChats = getSessionChats();
+        const combined = [];
+        const seen = new Set();
+
+        (serverChats || []).forEach(item => {
+            const key = (item.question || '').trim().toLowerCase() + "|||" + (item.model || '');
+            seen.add(key);
+            combined.push(item);
+        });
+
+        // Add any recent session chats that might not have landed on this server node yet
+        sessionChats.forEach(item => {
+            const key = (item.question || '').trim().toLowerCase() + "|||" + (item.model || '');
+            if (!seen.has(key)) {
+                combined.push(item);
+            }
+        });
+
+        if (combined.length === 0) {
             historyList.innerHTML = `
                 <div style="text-align:center; padding:35px; color:var(--secondary-text);">
                     <i class="fas fa-comment-medical fa-2x" style="color:#6366f1; margin-bottom:12px;"></i>
                     <p style="font-size:14px; font-weight:600; color:var(--text-color);">No consultation history yet</p>
-                    <p style="font-size:12.5px; color:var(--secondary-text); margin-top:4px;">Your own symptom checks will appear privately here.</p>
+                    <p style="font-size:12.5px; color:var(--secondary-text); margin-top:4px;">Your symptom checks and AI responses will appear privately here.</p>
                 </div>
             `;
         } else {
-            renderHistoryCards(items);
+            renderHistoryCards(combined);
         }
     };
 
@@ -1624,22 +1703,46 @@ function loadHistory() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(reqBody)
-    }, getApiTimeoutMs())
+    }, 7000)
         .then(async res => {
+            if (!res.ok) throw new Error("History fetch non-200");
             const data = await res.json().catch(() => null);
-            if (!res.ok || !data || !data.success) throw new Error("History fetch failed");
-            return data;
+            if (!data || !data.success) throw new Error("History fetch unsuccessful");
+            return data.history || [];
         })
-        .then(data => {
-            renderOwnHistory(data.history || []);
+        .then(serverHistory => {
+            mergeAndRender(serverHistory);
         })
-        .catch(() => {
-            historyList.innerHTML = `
-                <div style="text-align:center; padding:30px; color:#ef4444;">
-                    <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom:10px;"></i>
-                    <p style="font-size:14px;">Unable to load your consultation history right now. Please try again.</p>
-                </div>
-            `;
+        .catch(async () => {
+            // Fallback: If local API had an issue and CLOUD_API is available, try fetching from Cloud
+            if (API_BASE !== CLOUD_API) {
+                try {
+                    const cloudRes = await fastFetch(CLOUD_API + "/getchat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(reqBody)
+                    }, 8000);
+                    if (cloudRes.ok) {
+                        const cloudData = await cloudRes.json().catch(() => null);
+                        if (cloudData && cloudData.success && Array.isArray(cloudData.history)) {
+                            mergeAndRender(cloudData.history);
+                            return;
+                        }
+                    }
+                } catch (_) {}
+            }
+            // Display cached session consultations if network is down
+            const sessionChats = getSessionChats();
+            if (sessionChats.length > 0) {
+                mergeAndRender([]);
+            } else {
+                historyList.innerHTML = `
+                    <div style="text-align:center; padding:30px; color:#ef4444;">
+                        <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom:10px;"></i>
+                        <p style="font-size:14px;">Unable to load your consultation history right now. Please try again.</p>
+                    </div>
+                `;
+            }
         });
 }
 
@@ -1708,14 +1811,15 @@ function renderHistoryCards(items) {
 
 function displayConversation(question, response, model) {
     const chatContainer = document.getElementById("chat-container");
+    if (!chatContainer) return;
 
-    if (isFirstMessage) {
-        document.getElementById("greeting-container").style.display = "none";
-        document.getElementById("input-container").style.display = "none";
-        chatContainer.style.display = "flex";
-        document.getElementById("chat-footer").style.display = "flex";
-        isFirstMessage = false;
-    }
+    // Reset container to show this historical consultation clearly
+    chatContainer.innerHTML = "";
+    document.getElementById("greeting-container").style.display = "none";
+    document.getElementById("input-container").style.display = "none";
+    chatContainer.style.display = "flex";
+    document.getElementById("chat-footer").style.display = "flex";
+    isFirstMessage = false;
 
     let data;
     try {
@@ -1740,19 +1844,39 @@ function displayConversation(question, response, model) {
 function deleteHistory(event, historyId) {
     event.stopPropagation();
     const accountId = localStorage.getItem("accountId") || sessionStorage.getItem("accountId");
-    if (!isLoggedIn || !accountId) return;
+    const userEmail = (localStorage.getItem("userEmail") || sessionStorage.getItem("userEmail") || "").trim().toLowerCase();
+    if (!isLoggedIn || (!accountId && !userEmail)) return;
     if (!confirm("Are you sure you want to delete this consultation?")) return;
+
+    // Remove from session cache if present
+    if (userEmail) {
+        try {
+            const sessionKey = "niramaya_user_recent_chats_" + userEmail;
+            let existingChats = JSON.parse(sessionStorage.getItem(sessionKey) || "[]");
+            existingChats = existingChats.filter(c => String(c.history_id) !== String(historyId));
+            sessionStorage.setItem(sessionKey, JSON.stringify(existingChats));
+        } catch (_) {}
+    }
+
+    const delPayload = {
+        history_id: historyId,
+        account_id: accountId,
+        email: userEmail
+    };
 
     fetch(API_BASE + "/deletechat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            history_id: historyId,
-            account_id: accountId
-        })
+        body: JSON.stringify(delPayload)
     })
-        .then(r => r.json())
         .then(() => {
+            if (API_BASE !== CLOUD_API) {
+                fetch(CLOUD_API + "/deletechat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(delPayload)
+                }).catch(() => {});
+            }
             loadHistory();
         })
         .catch(() => loadHistory());
