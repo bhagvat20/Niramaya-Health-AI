@@ -42,7 +42,6 @@ from routes.admin_auth_API import admin_auth_bp
 from routes.admin_users_API import admin_users_bp
 from routes.health_content_API import health_content_bp
 from routes.admin_monitoring_API import admin_monitoring_bp
-from routes.database_viewer_API import database_viewer_bp
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -76,7 +75,6 @@ app.register_blueprint(admin_auth_bp)
 app.register_blueprint(admin_users_bp)
 app.register_blueprint(health_content_bp)
 app.register_blueprint(admin_monitoring_bp)
-app.register_blueprint(database_viewer_bp)
 
 # Automatic database setup in background (does not block gunicorn worker boot)
 def _background_db_init():

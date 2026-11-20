@@ -45,23 +45,16 @@ cd /d "%~dp0"
 echo.
 echo ============================================================
 echo Additional Options:
-echo  [1] Open Visual Database Explorer in Browser (GUI)
-echo  [2] Launch pgAdmin 4 (PostgreSQL GUI)
-echo  [3] Fix/Restart PostgreSQL 18 Service (Run as Admin)
-echo  [4] Open psql interactive command-line terminal
-echo  [5] Refresh database records
-echo  [6] Exit
+echo  [1] Launch pgAdmin 4 (PostgreSQL GUI)
+echo  [2] Fix/Restart PostgreSQL 18 Service (Run as Admin)
+echo  [3] Open psql interactive command-line terminal
+echo  [4] Refresh database records
+echo  [5] Exit
 echo ============================================================
 set "opt="
-set /p opt="Enter choice [1, 2, 3, 4, 5, or 6]: "
+set /p opt="Enter choice [1, 2, 3, 4, or 5]: "
 
 if "%opt%"=="1" (
-    echo Opening Visual Database Explorer in browser...
-    start "" "%~dp0frontend\database_viewer.html"
-    goto :refresh
-)
-
-if "%opt%"=="2" (
     echo Starting pgAdmin 4...
     set "PGADMIN_FOUND=0"
     for /d %%v in ("C:\Program Files\PostgreSQL\*") do (
@@ -77,13 +70,13 @@ if "%opt%"=="2" (
     goto :refresh
 )
 
-if "%opt%"=="3" (
+if "%opt%"=="2" (
     echo Fixing PostgreSQL 18 Service...
     call "%~dp0restart_postgresql.bat"
     goto :refresh
 )
 
-if "%opt%"=="4" (
+if "%opt%"=="3" (
     echo Opening psql interactive terminal...
     set "PSQL_FOUND=0"
     for /d %%v in ("C:\Program Files\PostgreSQL\*") do (
@@ -99,11 +92,11 @@ if "%opt%"=="4" (
     goto :refresh
 )
 
-if "%opt%"=="5" (
+if "%opt%"=="4" (
     goto :refresh
 )
 
-if "%opt%"=="6" (
+if "%opt%"=="5" (
     goto :eof
 )
 
