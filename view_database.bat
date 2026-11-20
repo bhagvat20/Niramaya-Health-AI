@@ -39,22 +39,120 @@ echo ============================================================
 echo.
 
 cd /d "%~dp0backend"
-"%PYTHON_CMD%" show_database.py
+"%PYTHON_CMD%" show_database.py summary
 cd /d "%~dp0"
 
 echo.
 echo ============================================================
-echo Additional Options:
-echo  [1] Launch pgAdmin 4 (PostgreSQL GUI)
-echo  [2] Fix/Restart PostgreSQL 18 Service (Run as Admin)
-echo  [3] Open psql interactive command-line terminal
-echo  [4] Refresh database records
-echo  [5] Exit
+echo  SELECT WHAT DATA YOU WANT TO VIEW:
+echo ============================================================
+echo   [1] View User Accounts (account_tbl - all registered users)
+echo   [2] View Family Members (member_tbl)
+echo   [3] View AI Consultations & History (chat_history_tbl)
+echo   [4] View Admin Accounts (admin_tbl)
+echo   [5] View Health Articles & Tips (health_content_tbl)
+echo   [6] View All Tables (Complete database dump)
+echo.
+echo  TOOLS & MANAGEMENT:
+echo   [7] Open psql Interactive Terminal (with SQL guide)
+echo   [8] Launch pgAdmin 4 (PostgreSQL GUI)
+echo   [9] Fix / Restart PostgreSQL 18 Service (Run as Admin)
+echo   [0] Exit
 echo ============================================================
 set "opt="
-set /p opt="Enter choice [1, 2, 3, 4, or 5]: "
+set /p opt="Enter choice [0-9]: "
 
 if "%opt%"=="1" (
+    cls
+    cd /d "%~dp0backend"
+    "%PYTHON_CMD%" show_database.py users
+    cd /d "%~dp0"
+    echo.
+    pause
+    goto :refresh
+)
+
+if "%opt%"=="2" (
+    cls
+    cd /d "%~dp0backend"
+    "%PYTHON_CMD%" show_database.py members
+    cd /d "%~dp0"
+    echo.
+    pause
+    goto :refresh
+)
+
+if "%opt%"=="3" (
+    cls
+    cd /d "%~dp0backend"
+    "%PYTHON_CMD%" show_database.py chat
+    cd /d "%~dp0"
+    echo.
+    pause
+    goto :refresh
+)
+
+if "%opt%"=="4" (
+    cls
+    cd /d "%~dp0backend"
+    "%PYTHON_CMD%" show_database.py admin
+    cd /d "%~dp0"
+    echo.
+    pause
+    goto :refresh
+)
+
+if "%opt%"=="5" (
+    cls
+    cd /d "%~dp0backend"
+    "%PYTHON_CMD%" show_database.py health
+    cd /d "%~dp0"
+    echo.
+    pause
+    goto :refresh
+)
+
+if "%opt%"=="6" (
+    cls
+    cd /d "%~dp0backend"
+    "%PYTHON_CMD%" show_database.py all
+    cd /d "%~dp0"
+    echo.
+    pause
+    goto :refresh
+)
+
+if "%opt%"=="7" (
+    cls
+    echo ============================================================
+    echo   POSTGRESQL 18 INTERACTIVE TERMINAL (psql)
+    echo ============================================================
+    set "PSQL_FOUND=0"
+    for /d %%v in ("C:\Program Files\PostgreSQL\*") do (
+        if exist "%%v\bin\psql.exe" (
+            set "PSQL_FOUND=1"
+            echo Current tables in database projectH:
+            echo ------------------------------------------------------------
+            "%%v\bin\psql.exe" -U postgres -d projectH -c "\dt"
+            echo ------------------------------------------------------------
+            echo Quick SQL Cheat Sheet:
+            echo   SELECT * FROM account_tbl LIMIT 10;
+            echo   SELECT * FROM member_tbl LIMIT 10;
+            echo   SELECT * FROM chat_history_tbl LIMIT 10;
+            echo   \q                       ^<-- Type \q and press Enter to exit
+            echo ------------------------------------------------------------
+            echo.
+            "%%v\bin\psql.exe" -U postgres -d projectH
+        )
+    )
+    if "!PSQL_FOUND!"=="0" (
+        echo [!] psql.exe not found in C:\Program Files\PostgreSQL\.
+        pause
+    )
+    goto :refresh
+)
+
+if "%opt%"=="8" (
     echo Starting pgAdmin 4...
     set "PGADMIN_FOUND=0"
     for /d %%v in ("C:\Program Files\PostgreSQL\*") do (
@@ -70,33 +168,13 @@ if "%opt%"=="1" (
     goto :refresh
 )
 
-if "%opt%"=="2" (
+if "%opt%"=="9" (
     echo Fixing PostgreSQL 18 Service...
     call "%~dp0restart_postgresql.bat"
     goto :refresh
 )
 
-if "%opt%"=="3" (
-    echo Opening psql interactive terminal...
-    set "PSQL_FOUND=0"
-    for /d %%v in ("C:\Program Files\PostgreSQL\*") do (
-        if exist "%%v\bin\psql.exe" (
-            "%%v\bin\psql.exe" -U postgres -d projectH
-            set "PSQL_FOUND=1"
-        )
-    )
-    if "!PSQL_FOUND!"=="0" (
-        echo [!] psql.exe not found in C:\Program Files\PostgreSQL\.
-        pause
-    )
-    goto :refresh
-)
-
-if "%opt%"=="4" (
-    goto :refresh
-)
-
-if "%opt%"=="5" (
+if "%opt%"=="0" (
     goto :eof
 )
 

@@ -43,6 +43,34 @@ else:
     db_engine = "PostgreSQL (localhost:5432)"
     db_name = "projectH"
 
+# Target filter from command line: e.g. "users", "account_tbl", "members", "chat", "summary", "all", etc.
+filter_arg = sys.argv[1].lower().strip() if len(sys.argv) > 1 else "summary"
+
+alias_map = {
+    "users": "account_tbl",
+    "user": "account_tbl",
+    "accounts": "account_tbl",
+    "account": "account_tbl",
+    "account_tbl": "account_tbl",
+    "members": "member_tbl",
+    "member": "member_tbl",
+    "member_tbl": "member_tbl",
+    "chats": "chat_history_tbl",
+    "chat": "chat_history_tbl",
+    "history": "chat_history_tbl",
+    "consultations": "chat_history_tbl",
+    "chat_history_tbl": "chat_history_tbl",
+    "admins": "admin_tbl",
+    "admin": "admin_tbl",
+    "admin_tbl": "admin_tbl",
+    "health": "health_content_tbl",
+    "content": "health_content_tbl",
+    "health_content_tbl": "health_content_tbl",
+}
+
+target_tbl = alias_map.get(filter_arg, None)
+is_summary = filter_arg in ("summary", "count", "counts", "overview")
+
 print("=" * 78)
 print("              NIRAMAYA HEALTH AI - CLINICAL DATABASE VIEWER")
 print("=" * 78)
@@ -75,7 +103,7 @@ try:
 except Exception as e:
     print(f" [!] Notice counting tables: {e}")
 
-tables = [
+all_tables = [
     ("account_tbl", ["account_id", "family_name", "email", "is_active", "created_at"]),
     ("member_tbl", ["member_id", "account_id", "name", "gender", "age", "height", "weight"]),
     ("chat_history_tbl", ["history_id", "account_id", "member_id", "model", "user_input", "timestamp"]),
@@ -83,17 +111,26 @@ tables = [
     ("health_content_tbl", ["content_id", "title", "category", "content_type", "status"])
 ]
 
-for tbl_name, cols in tables:
-    print(f"\n [TABLE] {tbl_name.upper()}")
+if is_summary:
+    tables_to_display = []
+elif target_tbl:
+    tables_to_display = [t for t in all_tables if t[0] == target_tbl]
+    limit_count = 25
+else:
+    tables_to_display = all_tables
+    limit_count = 10
+
+for tbl_name, cols in tables_to_display:
+    print(f"\n [TABLE] {tbl_name.upper()} (Showing up to {limit_count} latest records)")
     print("-" * 78)
     try:
         col_str = ", ".join(cols)
-        cur.execute(f"SELECT {col_str} FROM {tbl_name} ORDER BY 1 DESC LIMIT 10;")
+        cur.execute(f"SELECT {col_str} FROM {tbl_name} ORDER BY 1 DESC LIMIT {limit_count};")
         rows = cur.fetchall()
         if not rows:
             print("  (Table is currently empty)")
         else:
-            col_widths = [max(len(c), 12) for c in cols]
+            col_widths = [max(len(c), 10) for c in cols]
             for r in rows:
                 for i, v in enumerate(r):
                     s = str(v)[:28] if v is not None else "NULL"
