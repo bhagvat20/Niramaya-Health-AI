@@ -3,6 +3,12 @@ Niramaya Health AI - Concurrent Cloud & Offline Database Sync API
 Enables seamless bidirectional data exchange between Render Cloud and Local/Offline instances.
 When a user is added on Render, they immediately sync to the offline admin, and vice-versa.
 """
+import os
+import sys
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from flask import Blueprint, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
@@ -180,7 +186,7 @@ def exchange_sync_data():
                 cursor.execute("""
                     INSERT INTO chat_history_tbl (account_id, member_id, user_input, bot_response, model, timestamp)
                     VALUES (%s, %s, %s, %s, %s, %s);
-                """, (acc_id, mem_id, b_resp, model, ts))
+                """, (acc_id, mem_id, u_input, b_resp, model, ts))
 
         conn.commit()
 

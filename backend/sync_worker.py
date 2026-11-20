@@ -12,6 +12,10 @@ import threading
 import urllib.request
 from datetime import datetime
 
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 CLOUD_API_URL = os.environ.get("CLOUD_SYNC_URL", "https://niramaya-health-ai.onrender.com/api/sync/exchange")
 
 def is_running_on_render():
@@ -101,7 +105,7 @@ def run_one_sync_cycle():
             }
         )
 
-        with urllib.request.urlopen(req, timeout=12) as resp:
+        with urllib.request.urlopen(req, timeout=25) as resp:
             if resp.status == 200:
                 cloud_data = json.loads(resp.read().decode('utf-8'))
                 if cloud_data.get("success"):
@@ -198,7 +202,7 @@ def run_one_sync_cycle():
                             cursor.execute("""
                                 INSERT INTO chat_history_tbl (account_id, member_id, user_input, bot_response, model, timestamp)
                                 VALUES (%s, %s, %s, %s, %s, %s);
-                            """, (acc_id, mem_id, b_resp, model, ts))
+                            """, (acc_id, mem_id, u_input, b_resp, model, ts))
 
                     conn.commit()
                     return True
