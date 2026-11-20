@@ -66,6 +66,9 @@ alias_map = {
     "health": "health_content_tbl",
     "content": "health_content_tbl",
     "health_content_tbl": "health_content_tbl",
+    "otp": "password_reset_otps",
+    "otps": "password_reset_otps",
+    "password_reset_otps": "password_reset_otps",
 }
 
 target_tbl = alias_map.get(filter_arg, None)
@@ -108,7 +111,8 @@ all_tables = [
     ("member_tbl", ["member_id", "account_id", "name", "gender", "age", "height", "weight"]),
     ("chat_history_tbl", ["history_id", "account_id", "member_id", "model", "user_input", "timestamp"]),
     ("admin_tbl", ["admin_id", "username", "email", "role", "is_active"]),
-    ("health_content_tbl", ["content_id", "title", "category", "content_type", "status"])
+    ("health_content_tbl", ["content_id", "title", "category", "content_type", "status"]),
+    ("password_reset_otps", ["otp_id", "account_id", "email", "otp_code", "used", "expires_at"])
 ]
 
 if is_summary:
