@@ -17,13 +17,15 @@ def get_all_users():
     """
     Retrieve list of registered users with search and filter capabilities.
     Never exposes passwords or password hashes.
+    Synchronizes bidirectionally with Render before querying.
     """
     search_query = request.args.get('search', '').strip()
     status_filter = request.args.get('status', 'all').strip().lower()
     
+    # Fast 2.5s synchronous sync to pull any newly added Render users before reading
     try:
-        from sync_worker import trigger_instant_sync
-        trigger_instant_sync()
+        from sync_worker import sync_now
+        sync_now(timeout_sec=2.5)
     except Exception:
         pass
     
@@ -94,6 +96,113 @@ def get_all_users():
             cursor.close()
         if conn:
             conn.close()
+
+@admin_users_bp.route('/admin/users', methods=['POST'])
+@admin_required
+def create_new_user():
+    """
+    Create a new user account directly from Admin Panel.
+    Validates email and details, hashes password, creates primary member,
+    and immediately syncs with Render.
+    """
+    data = request.get_json(silent=True) or {}
+    fname = (data.get('family_name') or data.get('fname') or '').strip()
+    email = (data.get('email') or '').strip().lower()
+    password = (data.get('password') or '').strip()
+
+    if not email or not fname or not password:
+        return jsonify({"success": False, "message": "Family name, email, and password are required."}), 400
+
+    if not re.match(EMAIL_REGEX, email):
+        return jsonify({"success": False, "message": "Please enter a valid email address."}), 400
+
+    if len(password) < 6:
+        return jsonify({"success": False, "message": "Password must be at least 6 characters long."}), 400
+
+    conn = None
+    cursor = None
+    try:
+        import bcrypt
+        hashed_psw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT account_id FROM account_tbl WHERE LOWER(email) = %s;", (email,))
+        if cursor.fetchone():
+            return jsonify({"success": False, "message": "A user with this email already exists."}), 400
+
+        try:
+            cursor.execute("""
+                INSERT INTO account_tbl (email, password_hash, family_name, is_active)
+                VALUES (%s, %s, %s, TRUE);
+            """, (email, hashed_psw, fname))
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+                cursor.execute(
+                    "SELECT setval(pg_get_serial_sequence('account_tbl', 'account_id'), "
+                    "COALESCE((SELECT MAX(account_id) FROM account_tbl), 1), "
+                    "(SELECT COUNT(*) > 0 FROM account_tbl));"
+                )
+                conn.commit()
+                cursor.execute("""
+                    INSERT INTO account_tbl (email, password_hash, family_name, is_active)
+                    VALUES (%s, %s, %s, TRUE);
+                """, (email, hashed_psw, fname))
+                conn.commit()
+            except Exception:
+                pass
+
+        cursor.execute("SELECT account_id, created_at FROM account_tbl WHERE LOWER(email) = %s;", (email,))
+        row = cursor.fetchone()
+        account_id = row[0]
+        created_at = row[1]
+
+        # Create primary family member
+        try:
+            cursor.execute("""
+                INSERT INTO member_tbl (account_id, name, gender, age, height, weight)
+                VALUES (%s, %s, 'Other', 25, 'N/A', 'N/A');
+            """, (account_id, fname))
+            conn.commit()
+        except Exception:
+            pass
+
+        # Trigger immediate sync with Render
+        try:
+            from sync_worker import trigger_instant_sync
+            trigger_instant_sync()
+        except Exception:
+            pass
+
+        return jsonify({
+            "success": True,
+            "message": "User account created successfully",
+            "user": {
+                "account_id": account_id,
+                "family_name": fname,
+                "email": email,
+                "is_active": True,
+                "created_at": created_at.isoformat() if hasattr(created_at, 'isoformat') else str(created_at) if created_at else None,
+                "member_count": 1,
+                "chat_count": 0
+            }
+        }), 201
+
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return jsonify({"success": False, "message": f"Failed to create user: {str(e)}"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
 
 @admin_users_bp.route('/admin/users/<int:account_id>', methods=['GET'])
 @admin_required

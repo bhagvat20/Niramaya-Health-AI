@@ -221,6 +221,12 @@ def get_monitoring_overview():
     Combined endpoint returning stats, activity stream, and system status in a single request.
     """
     try:
+        from sync_worker import sync_now
+        sync_now(timeout_sec=2.0)
+    except Exception:
+        pass
+
+    try:
         # Call helper functions internally
         stats_resp, status_code1 = get_system_stats()
         activity_resp, status_code2 = get_recent_activity()

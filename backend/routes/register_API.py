@@ -113,6 +113,13 @@ def register_user():
             except Exception:
                 pass
 
+        # Immediately sync newly registered user to cloud/offline
+        try:
+            from sync_worker import trigger_instant_sync
+            trigger_instant_sync()
+        except Exception:
+            pass
+
         return jsonify({
             "success": True,
             "account_id": str(account_id),

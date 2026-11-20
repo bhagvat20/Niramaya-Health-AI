@@ -17,13 +17,14 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 CLOUD_API_URL = os.environ.get("CLOUD_SYNC_URL", "https://niramaya-health-ai.onrender.com/api/sync/exchange")
+_sync_lock = threading.Lock()
 
 def is_running_on_render():
     """Detects if currently executing inside Render cloud container."""
     return bool(os.environ.get("RENDER") or os.environ.get("RENDER_SERVICE_ID"))
 
 
-def run_one_sync_cycle():
+def run_one_sync_cycle(timeout_sec=15):
     """Executes a single bidirectional exchange cycle with the cloud."""
     # Don't sync with self if already on Render
     if is_running_on_render():
@@ -105,7 +106,7 @@ def run_one_sync_cycle():
             }
         )
 
-        with urllib.request.urlopen(req, timeout=25) as resp:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
             if resp.status == 200:
                 cloud_data = json.loads(resp.read().decode('utf-8'))
                 if cloud_data.get("success"):
@@ -220,16 +221,37 @@ def run_one_sync_cycle():
     return False
 
 
+def sync_now(timeout_sec=3.5):
+    """
+    Executes a synchronous bidirectional sync, waiting up to timeout_sec.
+    Ensures thread-safe exchange so callers get latest records immediately.
+    """
+    if is_running_on_render():
+        return False
+    acquired = _sync_lock.acquire(blocking=True, timeout=timeout_sec)
+    if not acquired:
+        return False
+    try:
+        return run_one_sync_cycle(timeout_sec=timeout_sec)
+    finally:
+        try:
+            _sync_lock.release()
+        except Exception:
+            pass
+
+
 def trigger_instant_sync():
-    """Runs a quick synchronous sync when requested by admin views."""
-    threading.Thread(target=run_one_sync_cycle, daemon=True).start()
+    """Runs a quick sync in the background without blocking the caller."""
+    if is_running_on_render():
+        return
+    threading.Thread(target=sync_now, args=(15,), daemon=True).start()
 
 
 def _background_sync_loop():
     """Continuous background sync loop every 10 seconds."""
     time.sleep(3)  # Wait for server to finish binding port
     while True:
-        run_one_sync_cycle()
+        sync_now(timeout_sec=15)
         time.sleep(10)
 
 

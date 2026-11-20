@@ -211,5 +211,28 @@ class TestAdminUserManagement(unittest.TestCase):
         )
         self.assertEqual(res2.status_code, 401)
 
+    def test_08_create_user_by_admin(self):
+        """Test admin can directly create a user account and retrieve it."""
+        res = self.client.post('/admin/users', json={
+            "family_name": "TestDirectAdd",
+            "email": "testdirectadd@example.com",
+            "password": "Password123!"
+        }, headers={'Authorization': f'Bearer {self.admin_token}'})
+        self.assertEqual(res.status_code, 201)
+        data = res.get_json()
+        self.assertTrue(data.get("success"))
+        created_user = data.get("user")
+        self.assertEqual(created_user["email"], "testdirectadd@example.com")
+        self.assertNotIn("password", created_user)
+        self.assertNotIn("password_hash", created_user)
+
+        # Clean up
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM member_tbl WHERE account_id = %s", (created_user["account_id"],))
+        cur.execute("DELETE FROM account_tbl WHERE account_id = %s", (created_user["account_id"],))
+        conn.commit()
+        conn.close()
+
 if __name__ == '__main__':
     unittest.main()

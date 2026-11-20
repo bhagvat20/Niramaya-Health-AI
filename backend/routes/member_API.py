@@ -43,6 +43,12 @@ def add_member():
         new_member_id = cursor.fetchone()[0]
         conn.commit()
 
+        try:
+            from sync_worker import trigger_instant_sync
+            trigger_instant_sync()
+        except Exception:
+            pass
+
         return jsonify({
             "success": True,
             "member_id": new_member_id,
