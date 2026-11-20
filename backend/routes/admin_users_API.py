@@ -21,6 +21,12 @@ def get_all_users():
     search_query = request.args.get('search', '').strip()
     status_filter = request.args.get('status', 'all').strip().lower()
     
+    try:
+        from sync_worker import trigger_instant_sync
+        trigger_instant_sync()
+    except Exception:
+        pass
+    
     conn = None
     cursor = None
     try:

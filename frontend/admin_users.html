@@ -471,6 +471,13 @@
         ? window.location.origin 
         : LOCAL_API;
 
+    // Fast origin probe for double-clicked file:// access
+    if (window.location.protocol === 'file:') {
+      fetch(LOCAL_API + '/api/status', { signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(600) : undefined })
+        .then(() => { API_BASE_URL = LOCAL_API; })
+        .catch(() => { API_BASE_URL = CLOUD_API; });
+    }
+
     async function apiFetch(endpoint, options = {}) {
       const makeOpts = (timeoutMs) => {
         const opts = { ...options };
