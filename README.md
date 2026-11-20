@@ -394,5 +394,5 @@ python test_live_server.py
 This project is licensed under the **MIT License**.
 
 
-*Built with ❤️ for healthcare innovation · Last Updated: October 2026*"# Niramaya-Health-AI" 
+*Built with ❤️ for healthcare innovation · Last Updated: November 2026*"# Niramaya-Health-AI" 
 "# Niramaya-Health-AI" 

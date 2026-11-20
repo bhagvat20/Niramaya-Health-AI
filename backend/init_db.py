@@ -36,6 +36,14 @@ def setup_database():
             else:
                 print("Database 'projectH' already exists.")
 
+            # Ensure schema also exists in default 'postgres' database for pgAdmin 4 viewers
+            try:
+                schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+                with open(schema_path, 'r', encoding='utf-8') as f:
+                    cursor.execute(f.read())
+            except Exception:
+                pass
+
             cursor.close()
             conn.close()
 
